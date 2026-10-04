@@ -1,0 +1,2663 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Termodel Web v1.42 — Esempio pannelli radianti</title>
+  <script>
+    // Android va riconosciuto prima del primo paint: evita il flash della UI desktop
+    // mentre il modulo principale e Three.js sono ancora in caricamento.
+    if (/Android/i.test(navigator.userAgent || '')) {
+      document.documentElement.classList.add('termodel-android', 'termodel-mobile-boot');
+      window.__termodelMobileBootFailsafe = window.setTimeout(() => {
+        document.documentElement.classList.remove('termodel-mobile-boot');
+      }, 10000);
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; background: #d3d3d3; color: #111; }
+    button, select { font: inherit; }
+
+    #termodelMobileBootSplash { display: none; }
+
+    html.termodel-mobile-boot body {
+      background: #d3d3d3;
+    }
+
+    html.termodel-mobile-boot #app {
+      visibility: hidden !important;
+    }
+
+    html.termodel-mobile-boot #termodelMobileBootSplash {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #d3d3d3;
+      color: #222;
+      font-family: "Segoe UI", Arial, sans-serif;
+      text-align: center;
+    }
+
+    .termodel-mobile-boot-title {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .termodel-mobile-boot-status {
+      font-size: 12px;
+      opacity: 0.72;
+    }
+
+    #app { width: 100%; height: 100%; display: grid; grid-template-rows: 24px 23px 27px 1fr 34px; background: #d3d3d3; }
+    #app.cad-layout-mode { grid-template-rows: 24px 1fr; }
+    #app.cad-layout-mode .menubar,
+    #app.cad-layout-mode .tabs,
+    #app.cad-layout-mode .bottom-bar { display: none; }
+
+    .titlebar {
+      display: flex; align-items: center; gap: 7px; padding: 0 6px;
+      background: #f4f4f4; border-bottom: 1px solid #c8c8c8; white-space: nowrap; overflow: hidden;
+    }
+    .app-icon { width: 15px; height: 15px; border-radius: 2px; background: linear-gradient(135deg,#ffd85a 0 50%,#b62020 50%); border: 1px solid #666; flex: 0 0 auto; }
+    .title-text { overflow: hidden; text-overflow: ellipsis; }
+
+    .menubar { display: flex; align-items: stretch; background: #f5f5f5; border-bottom: 1px solid #d0d0d0; padding-left: 2px; }
+    .menu { position: relative; }
+    .menu > button { height: 100%; border: 0; background: transparent; padding: 2px 8px; border-radius: 0; }
+    .menu > button:hover, .menu.open > button { background: #e3e3e3; }
+    .dropdown {
+      display: none; position: absolute; top: 100%; left: 0; min-width: 235px; z-index: 30;
+      background: #f7f7f7; border: 1px solid #aaa; box-shadow: 2px 3px 8px rgba(0,0,0,.18); padding: 3px 0;
+    }
+    .menu.open .dropdown { display: block; }
+    .dropdown button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 5px 22px 5px 24px; }
+    .dropdown button:hover { background: #dcecff; }
+    .dropdown-heading { padding: 5px 10px 3px 10px; color: #555; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .menu-check { display: flex; align-items: center; gap: 7px; min-height: 26px; padding: 3px 12px 3px 8px; white-space: nowrap; cursor: pointer; }
+    .menu-check:hover { background: #dcecff; }
+    .menu-check input { margin: 0; }
+    .menu-check select { min-width: 168px; margin-left: auto; font: inherit; }
+    .sep { height: 1px; background: #ccc; margin: 3px 4px; }
+
+    .tabs { display: flex; align-items: end; gap: 1px; padding: 2px 4px 0; background: #ededed; border-bottom: 1px solid #aaa; }
+    .tab { height: 23px; padding: 2px 10px; border: 1px solid #aaa; border-bottom: 0; background: #e5e5e5; }
+    .tab.active { background: #d3d3d3; position: relative; top: 1px; }
+
+    .workspace { position: relative; min-height: 0; overflow: hidden; background: #d3d3d3; }
+    .page { position: absolute; inset: 0; display: none; }
+    .page.active { display: block; }
+
+    #viewer { position: absolute; inset: 0; background: #d3d3d3; }
+    #viewer canvas { display: block; width: 100%; height: 100%; }
+
+    .info-page, .calc-page { padding: 22px; overflow: auto; background: #e5e5e5; }
+    .classic-group { max-width: 650px; border: 1px solid #999; background: #efefef; padding: 14px; }
+    .classic-group h3 { margin: -23px 0 12px 4px; display: inline-block; padding: 0 5px; background: #e5e5e5; font-size: 12px; font-weight: 400; }
+    .classic-row { display: grid; grid-template-columns: 180px 1fr; padding: 4px 0; }
+
+    .bottom-bar {
+      display: flex; align-items: center; gap: 5px; padding: 3px 5px;
+      background: #e5e5e5; border-top: 1px solid #aaa; overflow-x: auto; white-space: nowrap;
+    }
+    .bottom-bar button {
+      height: 26px; border: 1px solid #999; border-radius: 0; background: linear-gradient(#fff,#dedede); padding: 2px 7px; color: #111;
+    }
+    .bottom-bar button:active { background: #d3d3d3; }
+    .bottom-bar button:disabled { opacity: .45; cursor: default; }
+    .check-wrap { display: inline-flex; align-items: center; gap: 5px; padding-left: 2px; }
+
+    .viewport-status {
+      position: absolute; left: 8px; top: 8px; padding: 3px 6px; color: #555; background: rgba(230,230,230,.78); border: 1px solid rgba(120,120,120,.35); z-index: 4;
+    }
+    .render-origin-badge {
+      position: absolute; left: 8px; top: 34px; z-index: 4;
+      padding: 5px 8px;
+      border: 1px solid #9a9a9a;
+      background: rgba(245,245,245,.94);
+      color: #333;
+      font-weight: 700;
+      letter-spacing: .02em;
+      pointer-events: none;
+    }
+    .render-origin-badge.service {
+      border-color: #4f7d56;
+      background: rgba(233,247,235,.96);
+      color: #244e2b;
+    }
+    .render-origin-badge.local {
+      border-color: #a48b45;
+      background: rgba(255,248,220,.96);
+      color: #5f4c13;
+    }
+    .axis {
+      position: absolute; left: 18px; bottom: 18px; width: 54px; height: 54px; z-index: 4; pointer-events: none;
+    }
+    .axis .o { position: absolute; left: 25px; bottom: 12px; width: 5px; height: 5px; background: #555; border-radius: 50%; }
+    .axis .z { position:absolute; left:27px; bottom:14px; width:2px; height:31px; background:#38558d; transform-origin:bottom; }
+    .axis .x { position:absolute; left:27px; bottom:14px; width:24px; height:2px; background:#8f3434; transform:rotate(12deg); transform-origin:left; }
+    .axis .y { position:absolute; left:27px; bottom:14px; width:24px; height:2px; background:#397d3b; transform:rotate(155deg); transform-origin:left; }
+    .axis span { position:absolute; font-size:11px; font-weight:600; }
+    .axis .lz { left:27px; top:0; }.axis .lx { right:0; bottom:7px; }.axis .ly { left:0; bottom:4px; }
+
+    .view-cube {
+      position:absolute; right:20px; bottom:18px; width:58px; height:52px; z-index:4; opacity:.85; pointer-events:none;
+    }
+    .view-cube .cube-face { position:absolute; left:16px; top:7px; width:32px; height:32px; transform:rotate(30deg) skewY(-30deg) scaleY(.86); background:#e25b4f; border:1px solid rgba(255,255,255,.8); }
+    .view-cube .ring { position:absolute; left:4px; right:4px; bottom:0; height:14px; border:7px solid rgba(90,90,90,.35); border-radius:50%; }
+
+
+    .bottom-bar .ai-main-button {
+      font-weight: 700;
+      background: linear-gradient(#fff7c8,#efd56a);
+      border-color: #9b7d1d;
+    }
+
+    .ai-instruct-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0,0,0,.46);
+    }
+    .ai-instruct-modal.visible { display: flex; }
+
+    .web-help-window {
+      width: min(760px, 95vw);
+      max-height: min(820px, 92vh);
+      display: grid;
+      grid-template-rows: auto auto minmax(0,1fr) auto;
+      overflow: hidden;
+      background: #f4f5f7;
+      border: 2px solid #40586d;
+      border-radius: 8px;
+      box-shadow: 0 18px 52px rgba(0,0,0,.46);
+    }
+    .web-help-ai {
+      margin: 12px 14px 6px;
+      min-height: 46px;
+      border: 1px solid #477da2;
+      border-radius: 6px;
+      background: linear-gradient(#eef9ff,#cce7f7);
+      color: #173d57;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .web-help-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px 18px 16px;
+      background: #fff;
+      color: #2f3942;
+      line-height: 1.5;
+    }
+    .web-help-body h3 { margin: 15px 0 6px; font-size: 15px; }
+    .web-help-body p { margin: 0 0 10px; }
+    .web-help-body ul { margin: 6px 0 12px 20px; padding: 0; }
+    .web-help-body li { margin: 5px 0; }
+    .web-help-source {
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      border: 1px solid #c3ccd4;
+      background: #f7fafc;
+    }
+    .web-help-source a { font-weight: 700; }
+
+    .ai-instruct-window {
+      width: min(820px, 96vw);
+      max-height: min(860px, 92vh);
+      display: grid;
+      grid-template-rows: auto minmax(0,1fr) auto;
+      overflow: hidden;
+      background: #f4f5f7;
+      border: 2px solid #40586d;
+      border-radius: 8px;
+      box-shadow: 0 18px 52px rgba(0,0,0,.46);
+    }
+    .ai-instruct-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 14px;
+      background: #26384a;
+      color: #fff;
+    }
+    .ai-instruct-head h2 {
+      margin: 0;
+      font-size: 17px;
+    }
+    .ai-instruct-close {
+      width: 30px;
+      height: 28px;
+      border: 1px solid #8d9aa5;
+      background: #f5f5f5;
+      color: #111;
+      font-size: 20px;
+      line-height: 20px;
+      cursor: pointer;
+    }
+    .ai-instruct-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 18px 20px 16px;
+      background: #fff;
+      line-height: 1.45;
+      color: #2f3942;
+    }
+    .ai-instruct-body p {
+      margin: 0 0 12px;
+    }
+    .ai-instruct-body ol {
+      margin: 8px 0 4px 22px;
+      padding: 0;
+    }
+    .ai-instruct-body li {
+      margin: 6px 0;
+    }
+    .ai-instruct-ok {
+      padding: 11px 12px;
+      border: 1px solid #79a27e;
+      background: #eef8ef;
+      color: #315f36;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    .ai-instruct-lead {
+      margin: 14px 0 10px;
+      font-size: 15px;
+      color: #243746;
+    }
+    .ai-instruct-flow {
+      display: grid;
+      grid-template-columns: repeat(3,minmax(0,1fr));
+      gap: 10px;
+      margin: 12px 0 16px;
+    }
+    .ai-instruct-step {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid #bdc8d2;
+      border-radius: 7px;
+      background: #f7fafc;
+    }
+    .ai-instruct-step strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #223b50;
+    }
+    .ai-instruct-step-number {
+      display: inline-grid;
+      place-items: center;
+      width: 25px;
+      height: 25px;
+      margin-right: 5px;
+      border-radius: 50%;
+      background: #315f7b;
+      color: #fff;
+      font-weight: 800;
+    }
+    .ai-instruct-example {
+      margin-top: 14px;
+      padding: 13px 14px;
+      border: 2px solid #7c9bb2;
+      border-radius: 8px;
+      background: #eef7fc;
+    }
+    .ai-instruct-example h3 {
+      margin: 0 0 9px;
+      font-size: 15px;
+      color: #1d425c;
+    }
+    .ai-instruct-example ol {
+      margin-bottom: 0;
+    }
+    .ai-instruct-example-note {
+      margin-top: 9px;
+      color: #596874;
+      font-size: 12px;
+    }
+    @media (max-width:760px) {
+      .ai-instruct-flow { grid-template-columns:1fr; }
+      .ai-instruct-window { max-height:94vh; }
+    }
+    .ai-instruct-warning {
+      margin-top: 12px;
+      padding: 10px 11px;
+      border: 1px solid #d1a62a;
+      background: #fff5c7;
+      color: #5d4a00;
+      line-height: 1.4;
+    }
+    .ai-instruct-warning strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .ai-instruct-foot {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 9px 12px;
+      border-top: 1px solid #aaa;
+      background: #e8e8e8;
+    }
+    .project-start-copy {
+      margin:0 0 12px;
+      color:#34495e;
+      line-height:1.45;
+    }
+    .project-start-actions {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin-top:16px;
+    }
+    .project-start-actions button {
+      min-height:68px;
+      padding:10px 12px;
+      border:1px solid #8b99a8;
+      background:linear-gradient(#ffffff,#e8edf2);
+      cursor:pointer;
+      font-weight:700;
+    }
+    .project-start-actions button.primary {
+      border-color:#46799e;
+      background:linear-gradient(#eef9ff,#cfe8f6);
+    }
+    .project-start-note {
+      margin-top:14px;
+      padding:9px 11px;
+      border:1px solid #c5ccd3;
+      background:#f8fafc;
+      color:#5a6570;
+      font-size:13px;
+    }
+    @media (max-width:760px) {
+      .project-start-actions { grid-template-columns:1fr; }
+    }
+
+    .ai-instruct-foot button {
+      border: 1px solid #888;
+      background: linear-gradient(#fff,#e5e5e5);
+      padding: 7px 16px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .raster-ai-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0,0,0,.42);
+    }
+    .raster-ai-modal.visible { display: flex; }
+    .raster-ai-window {
+      width: min(1180px, 96vw);
+      height: min(760px, 92vh);
+      min-height: 520px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background: #f4f5f7;
+      border: 1px solid #666;
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+    }
+    .raster-ai-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 14px;
+      background: #26384a;
+      color: #fff;
+    }
+    .raster-ai-head h2 { margin: 0; font-size: 18px; }
+    .raster-ai-head p { margin: 3px 0 0; color: #dce6ef; }
+    .raster-ai-close {
+      width: 30px; height: 28px; border: 1px solid #8d9aa5;
+      background: #f5f5f5; color: #111; font-size: 20px; line-height: 20px; cursor: pointer;
+    }
+    .raster-ai-body {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 320px minmax(0,1fr) minmax(0,1fr);
+      gap: 10px;
+      padding: 10px;
+    }
+    .raster-ai-card {
+      min-height: 0;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid #c2c7cc;
+      padding: 12px;
+    }
+    .raster-ai-card h3 { margin: 0 0 7px; font-size: 14px; }
+    .raster-ai-step { margin-bottom: 15px; }
+    .raster-ai-step p { margin: 4px 0 8px; line-height: 1.35; color: #52606d; }
+    .raster-ai-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .raster-ai-actions button {
+      border: 1px solid #888;
+      background: linear-gradient(#fff,#e6e6e6);
+      padding: 6px 9px;
+      cursor: pointer;
+    }
+    .raster-ai-actions button.primary {
+      background: #e3f2fd;
+      border-color: #6d9ec2;
+      font-weight: 600;
+    }
+    .raster-ai-actions button:disabled { opacity: .45; cursor: default; }
+    .raster-ai-warning {
+      padding: 8px;
+      border: 1px solid #d3b94b;
+      background: #fff7cf;
+      line-height: 1.35;
+    }
+    .raster-ai-preview {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .raster-ai-preview h3 { margin: 0 0 8px; }
+    .raster-ai-preview-box {
+      position: relative;
+      flex: 1;
+      min-height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      background: #f7f8fa;
+      border: 1px solid #c9ced3;
+    }
+    .raster-ai-preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .raster-ai-placeholder {
+      padding: 18px;
+      text-align: center;
+      color: #7b8794;
+    }
+    .raster-ai-file-name {
+      margin-top: 7px;
+      color: #4a5661;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .raster-ai-svg-input {
+      width: 100%;
+      height: 110px;
+      resize: vertical;
+      margin-top: 7px;
+      font-family: Consolas, monospace;
+      font-size: 11px;
+    }
+    .raster-ai-validation {
+      margin-top: 8px;
+      padding: 8px;
+      min-height: 48px;
+      border: 1px solid #bbb;
+      background: #fafafa;
+      line-height: 1.4;
+      white-space: pre-line;
+    }
+    .raster-ai-validation.ok { border-color: #6e9e72; background: #eff8ef; }
+    .raster-ai-validation.error { border-color: #b46b67; background: #fff0ef; }
+    .raster-ai-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-top: 1px solid #aaa;
+      background: #e8e8e8;
+    }
+    .raster-ai-foot-note { color: #555; }
+    .raster-ai-foot button {
+      border: 1px solid #888;
+      background: linear-gradient(#fff,#e5e5e5);
+      padding: 6px 14px;
+      cursor: pointer;
+    }
+
+    .dxf-import-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1250;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0,0,0,.52);
+    }
+    .dxf-import-modal.visible { display: flex; }
+    .dxf-import-window {
+      width: min(760px, 94vw);
+      max-height: 88vh;
+      display: grid;
+      grid-template-rows: auto minmax(0,1fr) auto;
+      background: #f4f5f7;
+      border: 1px solid #555;
+      box-shadow: 0 16px 46px rgba(0,0,0,.38);
+    }
+    .dxf-import-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 14px;
+      background: #26384a;
+      color: #fff;
+    }
+    .dxf-import-head h2 { margin: 0; font-size: 17px; }
+    .dxf-import-head p { margin: 3px 0 0; color: #dce6ef; }
+    .dxf-import-close {
+      width: 30px;
+      height: 28px;
+      border: 1px solid #8d9aa5;
+      background: #f5f5f5;
+      color: #111;
+      font-size: 20px;
+      line-height: 20px;
+      cursor: pointer;
+    }
+    .dxf-import-body {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      grid-template-columns: minmax(250px, 1fr) minmax(250px, 1fr);
+      gap: 12px;
+      padding: 12px;
+    }
+    .dxf-import-card {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid #b8bec5;
+      background: #fff;
+    }
+    .dxf-import-card h3 { margin: 0 0 8px; font-size: 13px; }
+    .dxf-import-info { margin-bottom: 9px; color: #4e5963; line-height: 1.4; }
+    .dxf-layer-actions { display: flex; gap: 6px; margin-bottom: 7px; }
+    .dxf-layer-actions button,
+    .dxf-import-foot button {
+      border: 1px solid #888;
+      background: linear-gradient(#fff,#e5e5e5);
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    .dxf-layer-list {
+      max-height: 300px;
+      overflow: auto;
+      border: 1px solid #c8ccd0;
+      background: #fafafa;
+    }
+    .dxf-layer-row {
+      display: grid;
+      grid-template-columns: 24px minmax(0,1fr) auto;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 7px;
+      border-bottom: 1px solid #e1e3e5;
+    }
+    .dxf-layer-row:last-child { border-bottom: 0; }
+    .dxf-layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dxf-layer-count { color: #69737d; font-variant-numeric: tabular-nums; }
+    .dxf-unit-row {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) 100px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 8px;
+      border: 1px solid #c8ccd0;
+      background: #f8fafb;
+    }
+    .dxf-unit-row select {
+      width: 100%;
+      height: 28px;
+      border: 1px solid #888;
+      background: #fff;
+    }
+    .dxf-unit-note {
+      grid-column: 1 / -1;
+      color: #65717b;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .dxf-option-group { display: grid; gap: 9px; }
+    .dxf-option-group label { display: flex; gap: 7px; align-items: flex-start; }
+    .dxf-option-note { color: #65717b; font-size: 11px; line-height: 1.35; margin-left: 23px; }
+    .dxf-import-summary {
+      margin-top: 14px;
+      padding: 8px;
+      border: 1px solid #b8c4ce;
+      background: #f4f8fb;
+      line-height: 1.4;
+      white-space: pre-line;
+    }
+    .dxf-import-foot {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 7px;
+      padding: 9px 12px;
+      border-top: 1px solid #aaa;
+      background: #e8e8e8;
+    }
+    .dxf-import-foot button.primary {
+      background: #dff1ff;
+      border-color: #5c8db2;
+      font-weight: 700;
+    }
+    @media (max-width: 700px) {
+      .dxf-import-body { grid-template-columns: 1fr; }
+    }
+
+    .pdf-import-window { width: min(900px, 94vw); }
+    .pdf-import-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+    }
+    .pdf-page-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-bottom: 9px;
+    }
+    .pdf-page-toolbar button,
+    .pdf-page-toolbar input {
+      height: 28px;
+      border: 1px solid #888;
+      background: #fff;
+      color: #111;
+      padding: 2px 7px;
+    }
+    .pdf-page-toolbar button {
+      background: linear-gradient(#fff,#e5e5e5);
+      cursor: pointer;
+    }
+    .pdf-page-toolbar button:disabled { opacity: .45; cursor: default; }
+    .pdf-page-toolbar input {
+      width: 66px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .pdf-preview-wrap {
+      min-height: 300px;
+      max-height: 58vh;
+      overflow: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 10px;
+      border: 1px solid #aeb5bb;
+      background: #d8d8d8;
+    }
+    .pdf-preview-wrap canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,.22);
+    }
+    .pdf-import-note {
+      margin-top: 9px;
+      padding: 8px 9px;
+      border: 1px solid #c8b96a;
+      background: #fff9d9;
+      color: #4e4a31;
+      line-height: 1.4;
+    }
+
+    .svg-export-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0,0,0,.50);
+    }
+    .svg-export-modal.visible { display: flex; }
+    .svg-export-window {
+      width: min(920px, 94vw);
+      height: min(650px, 88vh);
+      min-height: 420px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background: #f4f5f7;
+      border: 1px solid #555;
+      box-shadow: 0 16px 46px rgba(0,0,0,.38);
+    }
+    .svg-export-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 14px;
+      background: #26384a;
+      color: #fff;
+    }
+    .svg-export-head h2 { margin: 0; font-size: 17px; }
+    .svg-export-head p { margin: 3px 0 0; color: #dce6ef; }
+    .svg-export-close {
+      width: 30px;
+      height: 28px;
+      border: 1px solid #8d9aa5;
+      background: #f5f5f5;
+      color: #111;
+      font-size: 20px;
+      line-height: 20px;
+      cursor: pointer;
+    }
+    .svg-export-body {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 7px;
+      padding: 12px;
+    }
+    .svg-export-label {
+      font-weight: 600;
+      color: #33404c;
+    }
+    .svg-export-text {
+      width: 100%;
+      height: 100%;
+      min-height: 280px;
+      resize: none;
+      border: 1px solid #8f969d;
+      background: #fff;
+      padding: 10px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre;
+      overflow: auto;
+    }
+    .svg-export-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      border-top: 1px solid #aaa;
+      background: #e8e8e8;
+    }
+    .svg-export-status { color: #47515a; }
+    .svg-export-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+    .svg-export-actions button {
+      border: 1px solid #888;
+      background: linear-gradient(#fff,#e5e5e5);
+      padding: 7px 14px;
+      cursor: pointer;
+    }
+    .svg-export-actions button.primary {
+      background: #dff1ff;
+      border-color: #5c8db2;
+      font-weight: 700;
+    }
+
+
+    .cad-page { background: #ececec; color: #222; }
+    .cad-toolbar {
+      position: absolute; left: 0; right: 0; top: 0; height: 38px; z-index: 6;
+      display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
+      padding: 4px 9px; background: #e5e5e5; border-bottom: 1px solid #aaa;
+      align-content: center;
+    }
+    .cad-toolbar label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .cad-tool-menu {
+      position: relative;
+      display: inline-block;
+    }
+    .cad-tool-menu > summary {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border: 1px solid #888;
+      background: linear-gradient(#fff,#dedede);
+      color: #111;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+    }
+    .cad-tool-menu > summary::-webkit-details-marker { display: none; }
+    .cad-tool-menu[open] > summary {
+      background: linear-gradient(#eef9ff,#cfe8f6);
+      border-color: #5c8db2;
+      font-weight: 700;
+    }
+    .cad-tool-dropdown {
+      position: absolute;
+      top: 31px;
+      left: 0;
+      z-index: 30;
+      min-width: 210px;
+      display: grid;
+      gap: 6px;
+      padding: 7px;
+      border: 1px solid #888;
+      background: #f4f4f4;
+      box-shadow: 2px 4px 10px rgba(0,0,0,.22);
+    }
+    .cad-tool-dropdown.compact { min-width: 155px; }
+    .cad-tool-dropdown label {
+      justify-content: flex-start;
+      min-height: 24px;
+      padding: 2px 3px;
+    }
+    .cad-tool-dropdown button,
+    .cad-tool-dropdown select {
+      width: 100%;
+      min-width: 0;
+    }
+    .cad-tool-dropdown .cad-tool-separator {
+      height: 1px;
+      margin: 1px 0;
+      background: #c8c8c8;
+    }
+    .cad-toolbar-plane {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      white-space:nowrap;
+      padding:0 4px;
+      border-left:1px solid #b7b7b7;
+      border-right:1px solid #b7b7b7;
+    }
+    .cad-toolbar-plane .cad-toolbar-plane-label {
+      font-size:11px;
+      font-weight:700;
+      color:#39434d;
+    }
+    .cad-toolbar-plane select {
+      min-width:92px;
+      max-width:145px;
+    }
+    .cad-toolbar-plane .cad-toolbar-arc {
+      min-width:34px;
+      padding-left:6px;
+      padding-right:6px;
+    }
+    .cad-toolbar select {
+      height: 28px;
+      border: 1px solid #888;
+      background: #fff;
+      color: #111;
+      padding: 2px 5px;
+    }
+    .cad-toolbar button {
+      height: 28px; border: 1px solid #888; border-radius: 0;
+      background: linear-gradient(#fff,#dedede); padding: 2px 9px; color: #111;
+    }
+    .cad-toolbar button:disabled { opacity: .5; cursor: default; }
+    .cad-toolbar .cad-spacer { flex: 1 1 auto; }
+    .cad-toolbar .cad-primary {
+      background: linear-gradient(#eef9ff,#cfe8f6);
+      border-color: #5c8db2;
+      font-weight: 700;
+    }
+    .cad-mobile-properties-toggle { display: none; }
+    .cad-toolbar button.active {
+      background: linear-gradient(#fff4c9,#f2d984);
+      border-color: #9f7b19;
+      font-weight: 700;
+    }
+    .cad-toolbar .cad-status {
+      flex: 0 1 340px;
+      min-width: 120px;
+      max-width: 340px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 11px;
+      color: #45515c;
+      white-space: nowrap;
+    }
+    .cad-toolbar .cad-status.dirty { color: #9a5a00; font-weight: 700; }
+    .cad-toolbar .cad-status.error { color: #a11616; font-weight: 700; }
+    .cad-executive-provenance {
+      position: absolute;
+      top: 46px;
+      right: 318px;
+      z-index: 8;
+      max-width: min(455px, calc(100% - 338px));
+      padding: 6px 8px;
+      border: 1px solid #87939d;
+      background: rgba(248,250,252,.94);
+      box-shadow: 0 1px 4px rgba(0,0,0,.12);
+      color: #35424c;
+      font-size: 10px;
+      line-height: 1.35;
+      pointer-events: none;
+    }
+    .cad-executive-provenance[hidden] { display: none; }
+    .cad-executive-provenance strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 10px;
+      letter-spacing: .025em;
+    }
+    .cad-executive-provenance span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cad-executive-provenance.consolidated {
+      border-color: #63806b;
+      background: rgba(238,248,240,.95);
+      color: #294a31;
+    }
+    .cad-executive-provenance.runtime {
+      border-color: #8b7b48;
+      background: rgba(255,250,230,.95);
+      color: #594a1c;
+    }
+        .cad-canvas {
+      position: absolute; left: 0; right: 310px; top: 38px; bottom: 0;
+      overflow: hidden; background: #f6f6f6;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cad-canvas svg { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
+    .cad-canvas.symbol-insert-mode svg { cursor: crosshair; }
+    .cad-canvas.wall-insert-mode svg,
+    .cad-canvas.wall-insert-mode svg * { cursor: crosshair !important; }
+    .cad-canvas.pan-mode svg,
+    .cad-canvas.pan-mode svg * { cursor: grabbing !important; }
+    .cad-edit-line { cursor: pointer; }
+    .cad-edit-line.selected {
+      stroke-width: 5.4 !important;
+      opacity: 1 !important;
+    }
+    .cad-edit-symbol {
+      cursor: pointer;
+    }
+    .cad-edit-symbol.selected {
+      stroke-width: 4 !important;
+      fill: #fff4c9 !important;
+    }
+    .cad-handle {
+      fill: #ffffff;
+      stroke: #111111;
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+      cursor: grab;
+      touch-action: none;
+    }
+    .cad-handle:active { cursor: grabbing; }
+    .cad-snap-marker {
+      fill: none;
+      stroke: #2e7d32;
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .cad-newline-preview {
+      fill: none;
+      stroke: #c62828;
+      stroke-width: 2.6;
+      stroke-dasharray: 8 5;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .cad-newline-start {
+      fill: #fff;
+      stroke: #c62828;
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .cad-context-menu {
+      position: fixed;
+      z-index: 90;
+      min-width: 170px;
+      padding: 3px;
+      border: 1px solid #888;
+      background: #f5f5f5;
+      box-shadow: 2px 3px 8px rgba(0,0,0,.22);
+    }
+    .cad-context-menu[hidden] { display: none; }
+    .cad-context-menu button {
+      display: block;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 6px 10px;
+      text-align: left;
+      color: #111;
+      cursor: pointer;
+    }
+    .cad-context-menu button[hidden] { display: none; }
+    .cad-context-menu button:hover { background: #dcecff; }
+    .cad-properties {
+      position: absolute;
+      top: 38px;
+      right: 0;
+      bottom: 0;
+      width: 310px;
+      z-index: 5;
+      overflow: auto;
+      background: #e9e9e9;
+      border-left: 1px solid #9a9a9a;
+      color: #222;
+    }
+    .cad-properties-head {
+      padding: 8px 10px;
+      background: #d8d8d8;
+      border-bottom: 1px solid #aaa;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .cad-properties-empty {
+      margin: 12px;
+      padding: 12px;
+      background: #f7f7f7;
+      border: 1px solid #bbb;
+      color: #666;
+      line-height: 1.4;
+    }
+    .cad-properties-body { padding: 8px 9px 12px; }
+    .cad-properties-section {
+      margin: 0 0 10px;
+      border: 1px solid #aaa;
+      background: #f3f3f3;
+    }
+    .cad-properties-section-title {
+      padding: 5px 7px;
+      background: #dedede;
+      border-bottom: 1px solid #aaa;
+      font-weight: 700;
+    }
+    .cad-prop-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+    }
+    .cad-prop-row label {
+      color: #333;
+      white-space: nowrap;
+    }
+    .cad-prop-row input,
+    .cad-prop-row select {
+      width: 100%;
+      min-width: 0;
+      height: 26px;
+      border: 1px solid #999;
+      background: #fff;
+      padding: 2px 5px;
+      font: inherit;
+    }
+    .cad-prop-row input[readonly] {
+      background: #ededed;
+      color: #555;
+    }
+    .cad-prop-color {
+      display: grid;
+      grid-template-columns: 1fr 28px;
+      gap: 5px;
+      align-items: center;
+    }
+    .cad-prop-with-arc {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) 38px;
+      gap: 4px;
+      align-items: center;
+    }
+    .cad-prop-arc {
+      height: 26px;
+      min-width: 38px;
+      border: 1px solid #888;
+      background: linear-gradient(#fff,#dedede);
+      padding: 0 5px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .cad-prop-swatch {
+      width: 28px;
+      height: 22px;
+      border: 1px solid #777;
+      background: #ccc;
+    }
+    .cad-north-control {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      padding: 8px 7px;
+    }
+    .cad-north-section-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .cad-north-close {
+      min-width:28px;
+      height:24px;
+      padding:0 7px;
+      border:1px solid #aaa;
+      border-radius:4px;
+      background:#f6f6f6;
+      cursor:pointer;
+      font-weight:700;
+      line-height:1;
+    }
+    .cad-north-close:hover {
+      background:#ececec;
+    }
+    #cadNorthOverlay {
+      cursor:pointer;
+    }
+    .cad-north-dial {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      border: 1px solid #777;
+      border-radius: 50%;
+      background:
+        linear-gradient(#888,#888) center/1px 100% no-repeat,
+        linear-gradient(90deg,#888,#888) center/100% 1px no-repeat,
+        radial-gradient(circle,#fff 0 48%,#e8e8e8 49% 100%);
+      box-shadow: inset 0 0 0 4px #f7f7f7;
+    }
+    .cad-north-dial-label {
+      position: absolute;
+      left: 50%;
+      top: 3px;
+      transform: translateX(-50%);
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .cad-north-needle {
+      position: absolute;
+      left: calc(50% - 1px);
+      top: 9px;
+      width: 2px;
+      height: 25px;
+      background: #c62828;
+      transform-origin: 50% 25px;
+      transform: rotate(0deg);
+    }
+    .cad-north-needle::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: -9px;
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 10px solid #c62828;
+    }
+    .cad-north-unknown {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      color: #a11616;
+    }
+    .cad-north-fields {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+    .cad-north-defined {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .cad-north-angle {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) 64px;
+      gap: 5px;
+      align-items: center;
+    }
+    .cad-north-angle input[type="range"] {
+      width: 100%;
+      min-width: 0;
+    }
+    .cad-north-angle input[type="number"] {
+      width: 64px;
+      height: 26px;
+      border: 1px solid #999;
+      padding: 2px 4px;
+      font: inherit;
+    }
+    .cad-north-help {
+      color: #59636d;
+      line-height: 1.25;
+      font-size: 10px;
+    }
+    .cad-prop-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      padding: 7px 6px 6px;
+      border-top: 1px solid #ccc;
+    }
+    .cad-prop-actions button {
+      height: 27px;
+      border: 1px solid #888;
+      background: linear-gradient(#fff,#dedede);
+      padding: 2px 10px;
+    }
+    .cad-properties-note {
+      margin: 0 6px 7px;
+      padding: 6px;
+      border: 1px solid #d0c27c;
+      background: #fff8cf;
+      color: #62551a;
+      line-height: 1.35;
+      font-size: 11px;
+    }
+    .cad-empty {
+      max-width: 560px; padding: 22px; text-align: center; color: #666;
+      border: 1px solid #bbb; background: #fff;
+    }
+    .cad-legend {
+      position: absolute; left: 10px; bottom: 10px; z-index: 7;
+      display: flex; gap: 12px; flex-wrap: wrap;
+      padding: 5px 8px; background: rgba(245,245,245,.92); border: 1px solid #aaa;
+      font-size: 11px;
+    }
+    .cad-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .cad-swatch { width: 18px; height: 3px; display: inline-block; background: #888; }
+    .cad-swatch.external { background: #1565c0; }
+    .cad-swatch.internal { background: #d35400; }
+    .cad-swatch.opening { background: #7b1fa2; }
+    .cad-swatch.window { background: #00897b; }
+
+    @media (max-width: 900px) {
+      .cad-toolbar { height: 76px; }
+      .cad-canvas { top: 76px; right: 260px; }
+      .cad-properties { top: 76px; width: 260px; }
+      .cad-executive-provenance {
+        top: 84px;
+        right: 268px;
+        max-width: min(405px, calc(100% - 288px));
+      }
+      .cad-toolbar .cad-spacer { display: none; }
+      .raster-ai-body {
+        grid-template-columns: 1fr;
+        overflow: auto;
+      }
+      .raster-ai-window { height: 94vh; }
+      .raster-ai-preview-box { min-height: 280px; }
+    }
+
+    @media (max-width: 760px) {
+      html, body {
+        font-size: 13px;
+        overscroll-behavior: none;
+      }
+
+      #app {
+        grid-template-rows: 42px 40px minmax(0,1fr) 48px;
+      }
+      #app > .titlebar { display: none; }
+      #app.cad-layout-mode {
+        grid-template-rows: minmax(0,1fr);
+      }
+
+      .menubar {
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+      .menu { flex: 0 0 auto; }
+      .menu > button {
+        min-width: 72px;
+        height: 42px;
+        padding: 0 13px;
+        font-size: 14px;
+      }
+      .dropdown {
+        position: fixed;
+        top: 44px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        min-width: 0;
+        max-height: calc(100dvh - 104px);
+        overflow: auto;
+        z-index: 120;
+      }
+      .dropdown button {
+        min-height: 44px;
+        padding: 9px 16px;
+        font-size: 14px;
+      }
+
+      .tabs {
+        min-width: 0;
+        align-items: stretch;
+        gap: 2px;
+        padding: 0 4px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tab {
+        flex: 0 0 auto;
+        min-width: 104px;
+        height: 40px;
+        padding: 5px 12px;
+        font-size: 13px;
+      }
+
+      .bottom-bar {
+        height: 48px;
+        gap: 5px;
+        padding: 4px 5px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+      .bottom-bar button {
+        flex: 0 0 auto;
+        height: 40px;
+        padding: 4px 11px;
+        font-size: 13px;
+      }
+      .check-wrap {
+        flex: 0 0 auto;
+        min-height: 40px;
+      }
+
+      #viewer { right: 0 !important; }
+      .viewport-status {
+        left: 6px;
+        top: 6px;
+        max-width: calc(100% - 12px);
+        padding: 4px 6px;
+        font-size: 10px;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .render-origin-badge {
+        left: 6px;
+        top: 34px;
+        max-width: calc(100% - 12px);
+        padding: 4px 6px;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .axis {
+        left: 8px;
+        bottom: 8px;
+        transform: scale(.82);
+        transform-origin: left bottom;
+      }
+      .view-cube {
+        right: 8px !important;
+        bottom: 8px;
+        transform: scale(.82);
+        transform-origin: right bottom;
+      }
+
+      .info-page, .calc-page { padding: 12px; }
+      .classic-group { max-width: none; padding: 12px; }
+      .classic-row {
+        grid-template-columns: 1fr;
+        gap: 2px;
+        padding: 7px 0;
+      }
+
+      /* CAD mobile: il disegno usa tutta la larghezza. */
+      .cad-toolbar {
+        height: 48px;
+        gap: 6px;
+        padding: 4px 6px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+      .cad-toolbar > * { flex: 0 0 auto; }
+      .cad-toolbar button,
+      .cad-toolbar select,
+      .cad-tool-menu > summary {
+        height: 40px;
+        min-height: 40px;
+        font-size: 13px;
+      }
+      .cad-tool-menu > summary { padding: 2px 11px; }
+      .cad-tool-dropdown {
+        position: fixed;
+        top: 52px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        min-width: 0;
+        max-height: calc(100dvh - 64px);
+        overflow: auto;
+        padding: 9px;
+        z-index: 150;
+      }
+      .cad-tool-dropdown button,
+      .cad-tool-dropdown select,
+      .cad-tool-dropdown label {
+        min-height: 42px;
+        font-size: 14px;
+      }
+      .cad-toolbar-plane {
+        height: 40px;
+        padding: 0 5px;
+      }
+      .cad-toolbar-plane select {
+        min-width: 105px;
+        max-width: 150px;
+      }
+      .cad-toolbar .cad-status {
+        min-width: 150px;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .cad-toolbar .cad-spacer { display: none; }
+      .cad-mobile-properties-toggle {
+        display: inline-block;
+        font-weight: 700;
+        background: linear-gradient(#fff7c8,#efd56a) !important;
+        border-color: #9b7d1d !important;
+      }
+      .cad-mobile-properties-toggle.active {
+        background: linear-gradient(#eef9ff,#cfe8f6) !important;
+        border-color: #46799e !important;
+      }
+
+      .cad-canvas {
+        top: 48px;
+        right: 0;
+        bottom: 0;
+      }
+      .cad-properties {
+        display: none;
+        top: 52px;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        width: auto;
+        z-index: 80;
+        border: 1px solid #7f8790;
+        box-shadow: 0 10px 32px rgba(0,0,0,.34);
+      }
+      .cad-page.mobile-properties-open .cad-properties {
+        display: block;
+      }
+      .cad-properties-head {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        padding: 11px 10px;
+        font-size: 14px;
+      }
+      .cad-properties-body { padding: 8px; }
+      .cad-prop-row {
+        grid-template-columns: 1fr;
+        gap: 3px;
+        padding: 6px;
+      }
+      .cad-prop-row label {
+        white-space: normal;
+        font-size: 12px;
+      }
+      .cad-prop-row input,
+      .cad-prop-row select,
+      .cad-prop-arc {
+        min-height: 40px;
+        height: 40px;
+        font-size: 14px;
+      }
+      .cad-prop-actions button {
+        min-height: 40px;
+        height: 40px;
+        font-size: 13px;
+      }
+      .cad-north-angle input[type="number"] {
+        height: 40px;
+      }
+      .cad-legend { display: none; }
+
+      /* Finestre di lavoro: pieno schermo e controlli toccabili. */
+      .ai-instruct-modal,
+      .raster-ai-modal,
+      .dxf-import-modal,
+      .svg-export-modal {
+        padding: 0;
+      }
+      .ai-instruct-window,
+      .raster-ai-window,
+      .dxf-import-window,
+      .pdf-import-window,
+      .svg-export-window {
+        width: 100vw;
+        max-width: none;
+        height: 100dvh;
+        max-height: none;
+        min-height: 0;
+        border-left: 0;
+        border-right: 0;
+      }
+      .raster-ai-foot,
+      .dxf-import-foot,
+      .svg-export-foot {
+        overflow-x: auto;
+      }
+      .raster-ai-foot button,
+      .dxf-import-foot button,
+      .svg-export-actions button,
+      .ai-instruct-foot button,
+      .pdf-page-toolbar button {
+        min-height: 40px;
+      }
+      .pdf-preview-wrap {
+        min-height: 180px;
+        max-height: 55dvh;
+        padding: 5px;
+      }
+    }
+
+    @media (max-width: 760px) and (orientation: landscape) {
+      #app:not(.cad-layout-mode) {
+        grid-template-rows: 36px 34px minmax(0,1fr) 44px;
+      }
+      .menu > button { height: 36px; }
+      .tab { height: 34px; }
+      .bottom-bar { height: 44px; }
+      .bottom-bar button { height: 36px; }
+      .render-origin-badge { top: 32px; }
+    }
+
+    @media (pointer: coarse) {
+      button, select, input[type="checkbox"], input[type="radio"] {
+        touch-action: manipulation;
+      }
+    }
+
+
+    /* Termodel Web v0.78 — adattamento smartphone */
+    @media (max-width: 820px) {
+      html, body {
+        font-size: 13px;
+      }
+
+      #app {
+        grid-template-rows: 28px 36px 40px minmax(0,1fr) 52px;
+      }
+
+      .titlebar {
+        min-width: 0;
+        padding: 0 8px;
+      }
+
+      .title-text {
+        min-width: 0;
+        font-size: 12px;
+      }
+
+      .menubar {
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .menubar::-webkit-scrollbar { display: none; }
+
+      .menu {
+        flex: 0 0 auto;
+      }
+
+      .menu > button {
+        min-width: 64px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      .dropdown {
+        position: fixed;
+        top: 64px;
+        left: 6px;
+        right: 6px;
+        width: auto;
+        min-width: 0;
+        max-height: calc(100dvh - 126px);
+        overflow: auto;
+        z-index: 80;
+      }
+
+      .dropdown button {
+        min-height: 42px;
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+
+      .tabs {
+        min-width: 0;
+        align-items: stretch;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+
+      .tab {
+        flex: 0 0 auto;
+        height: 36px;
+        min-width: max-content;
+        padding: 6px 13px;
+        font-size: 13px;
+      }
+
+      .bottom-bar {
+        min-width: 0;
+        gap: 6px;
+        padding: 5px 6px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+      }
+      .bottom-bar::-webkit-scrollbar { display: none; }
+
+      .bottom-bar button {
+        flex: 0 0 auto;
+        height: 40px;
+        min-width: max-content;
+        padding: 5px 12px;
+        font-size: 13px;
+        scroll-snap-align: start;
+      }
+
+      .check-wrap {
+        flex: 0 0 auto;
+        height: 40px;
+        min-width: 88px;
+        justify-content: center;
+        gap: 7px;
+        padding: 0 11px;
+        border: 1px solid #999;
+        background: linear-gradient(#fff,#dedede);
+        font-size: 0;
+        scroll-snap-align: start;
+      }
+
+      .check-wrap::after {
+        content: "Filtri";
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .check-wrap input {
+        width: 19px;
+        height: 19px;
+        margin: 0;
+      }
+
+      .viewport-status {
+        left: 6px;
+        right: 6px;
+        top: 6px;
+        max-width: calc(100% - 12px);
+        padding: 3px 5px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 10px;
+      }
+
+      .render-origin-badge {
+        left: 6px;
+        right: auto;
+        top: 31px;
+        max-width: calc(100% - 12px);
+        padding: 4px 6px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 10px;
+      }
+
+      .axis {
+        left: 8px;
+        bottom: 8px;
+        transform: scale(.82);
+        transform-origin: left bottom;
+      }
+
+      .view-cube {
+        right: 8px !important;
+        bottom: 8px;
+        transform: scale(.82);
+        transform-origin: right bottom;
+      }
+
+      .info-page,
+      .calc-page {
+        padding: 14px 10px;
+      }
+
+      .classic-group {
+        max-width: none;
+      }
+
+      .classic-row {
+        grid-template-columns: 1fr;
+        gap: 2px;
+        padding: 6px 0;
+      }
+
+      .ai-instruct-modal,
+      .project-start-modal,
+      .svg-export-modal {
+        padding: 8px;
+      }
+
+      .ai-instruct-window,
+      .project-start-window,
+      .svg-export-window {
+        width: 100%;
+        max-height: calc(100dvh - 16px);
+      }
+
+      .project-start-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .project-start-actions button {
+        min-height: 54px;
+      }
+    }
+
+    /* Termodel Web v0.81 — correzione finale griglia Android.
+       Deve restare dopo tutte le regole responsive generali. */
+    html.termodel-android,
+    html.termodel-android body {
+      min-height: 100%;
+    }
+
+    @media (max-width: 760px) {
+      html.termodel-android body {
+        height: 100dvh;
+      }
+
+      html.termodel-android #app {
+        height: 100dvh;
+        min-height: 100dvh;
+        grid-template-rows: minmax(0, 1fr);
+      }
+
+      html.termodel-android .workspace {
+        min-height: 0;
+        height: 100%;
+      }
+    }
+
+    /* Termodel Web v0.84 — Android immersivo.
+       Home Android = solo viewer 3D + palette Esplora/Help sovrapposta. */
+    html.termodel-android #app {
+      grid-template-rows: minmax(0, 1fr);
+    }
+
+    html.termodel-android .titlebar,
+    html.termodel-android .menubar,
+    html.termodel-android .tabs,
+    html.termodel-android .bottom-bar {
+      display: none !important;
+    }
+
+    html.termodel-android .workspace {
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    html.termodel-android #modelPage {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+
+    html.termodel-android #modelPage > .viewport-status,
+    html.termodel-android #modelPage > .render-origin-badge,
+    html.termodel-android #modelPage > .axis,
+    html.termodel-android #modelPage > .view-cube,
+    html.termodel-android #modelPage > .web-filter-panel {
+      display: none !important;
+    }
+
+    /* Termodel Web v0.85 — ProjectBrowser CAD Android.
+       Il CAD mobile/tablet diventa una tavola 2D immersiva con la sola
+       palette Home / Piano / ? NN sovrapposta. */
+    html.termodel-android #cadPage {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+
+    html.termodel-android #cadPage > .cad-toolbar,
+    html.termodel-android #cadPage > .cad-properties,
+    html.termodel-android #cadPage > .cad-context-menu {
+      display: none !important;
+    }
+
+    html.termodel-android #cadPage > .cad-canvas {
+      top: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      left: 0 !important;
+    }
+
+    html.termodel-android #cadPage > .cad-executive-provenance {
+      top: 8px;
+      right: 8px;
+      max-width: min(455px, calc(100% - 16px));
+      padding: 5px 7px;
+      z-index: 22;
+      font-size: 9px;
+    }
+    html.termodel-android #cadPage > .cad-executive-provenance strong {
+      font-size: 9px;
+    }
+
+    html.termodel-android #cadPage > .cad-canvas svg {
+      touch-action: none;
+    }
+
+    html.termodel-android #cadPage .cad-legend {
+      display: none !important;
+    }
+
+    /* ProjectBrowser: form compatta per scegliere un esempio quando il
+       modello iniziale non dispone di disegni CAD esplorabili. */
+    .project-explore-window {
+      width: min(560px, 94vw);
+      max-height: min(640px, 90vh);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+    .project-explore-window .ai-instruct-body {
+      min-height: 0;
+      overflow: auto;
+    }
+    .project-explore-message {
+      margin: 0 0 12px;
+      line-height: 1.45;
+    }
+    .project-explore-examples {
+      display: grid;
+      gap: 8px;
+    }
+    .project-explore-example {
+      display: grid;
+      gap: 3px;
+      min-height: 58px;
+      padding: 10px 12px;
+      text-align: left;
+      border: 1px solid #8b99a8;
+      background: linear-gradient(#fff, #e8edf2);
+      cursor: pointer;
+    }
+    .project-explore-example strong { font-size: 14px; }
+    .project-explore-example small {
+      color: #56616c;
+      line-height: 1.3;
+    }
+    .project-explore-example:focus {
+      outline: 2px solid #3d7fb1;
+      outline-offset: 1px;
+    }
+    .project-explore-example:disabled {
+      opacity: .55;
+      cursor: default;
+    }
+    .project-explore-status {
+      min-height: 20px;
+      margin-top: 10px;
+      color: #4b5968;
+      font-size: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .project-explore-modal {
+        padding: 12px !important;
+      }
+      .project-explore-window {
+        width: min(520px, calc(100vw - 24px)) !important;
+        height: auto !important;
+        max-height: calc(100dvh - 24px) !important;
+        border: 1px solid #666 !important;
+      }
+      .project-explore-window .ai-instruct-body {
+        max-height: calc(100dvh - 126px);
+        padding: 12px;
+      }
+      .project-explore-example {
+        min-height: 52px;
+        padding: 9px 10px;
+        font-size: 14px;
+      }
+    }
+
+    @media (max-width: 760px) and (orientation: landscape) {
+      .project-explore-modal {
+        padding: 8px !important;
+      }
+      .project-explore-window {
+        width: min(680px, calc(100vw - 16px)) !important;
+        max-height: calc(100dvh - 16px) !important;
+      }
+      .project-explore-window .ai-instruct-body {
+        max-height: calc(100dvh - 104px);
+        padding: 8px 12px;
+      }
+      .project-explore-example {
+        min-height: 44px;
+        padding: 6px 10px;
+      }
+      .project-explore-message {
+        margin-bottom: 8px;
+      }
+    }
+
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="termodelMobileBootSplash" role="status" aria-live="polite" aria-label="Avvio Termodel">
+    <div class="termodel-mobile-boot-title">Termodel</div>
+    <div class="termodel-mobile-boot-status">Preparazione interfaccia mobile…</div>
+  </div>
+  <div id="app">
+    <div class="titlebar">
+      <div class="app-icon"></div>
+      <div id="appTitleText" class="title-text">Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.42</div>
+    </div>
+
+    <nav class="menubar" aria-label="Menu principale">
+      <div class="menu"><button type="button">File</button><div class="dropdown">
+        <button type="button" id="newProjectButton">Nuovo</button><button type="button" id="openProjectButton">Apri...</button><button type="button" id="openExampleButton">Apri esempio...</button><input id="openProjectFileInput" type="file" accept=".txt,.termodel,text/plain" hidden /><button type="button">Carica progetto ZIP</button><div class="sep"></div>
+        <button type="button" id="saveProjectButton" disabled>Salva</button><button type="button">Salva progetto ZIP</button><button type="button" id="saveProjectAsButton" disabled>Salva con nome</button><button type="button" id="helpCopyProjectClipboard" disabled>Copia progetto negli appunti</button><div class="sep"></div>
+        <button type="button">Importa XML nazionale</button><button type="button">Esporta XML nazionale</button><button type="button">Esporta BIM (ifc)</button>
+      </div></div>
+      <div class="menu"><button type="button">Modifica</button><div class="dropdown">
+        <button type="button">Visualizza/Edita disegni di input nel CAD</button><button type="button">Archivio dati climatici</button><button type="button" data-archive="Pareti">Archivio Pareti</button><button type="button" data-archive="Finestre">Archivio Finestre</button><button type="button" data-archive="Ponti">Archivio Ponti termici</button><button type="button" data-archive="Confini">Archivio Confini</button><button type="button" data-archive="Zone">Archivio Zone</button><div class="sep"></div><button type="button" data-archive="Reti">Archivio Reti</button><button type="button" data-archive="TipologiePannelli">Archivio Tipologie pannelli</button>
+      </div></div>
+      <div class="menu"><button type="button">Visualizza</button><div class="dropdown">
+        <button type="button">Modello</button><button type="button" data-archive="Piani">Archivi</button><button type="button">Plugin Autocad</button><button type="button">Visualizza tutor</button><button type="button">Genera il modello all'avvio</button>
+      </div></div>
+      <div class="menu"><button type="button">Calcoli</button><div class="dropdown"><button type="button">Visualizza risultati dell'ultimo calcolo</button></div></div>
+      <div class="menu" id="helpMenu"><button type="button">Help</button><div class="dropdown">
+        <button id="helpOpenWebHelp" type="button">Help Termodel Web</button>
+        <div class="sep"></div>
+        <label class="menu-check"><input id="helpExplorationMode" type="checkbox" autocomplete="off" /> Modalità esplorazione</label>
+        <div class="sep"></div>
+        <div class="dropdown-heading">Termodel Service — Cloud predefinito</div>
+        <label class="menu-check"><input id="helpLocalService" type="checkbox" autocomplete="off" /> Usa localhost:5080 (debug Visual Studio)</label>
+        <div class="sep"></div>
+        <div class="dropdown-heading">Motore spirali — test pubblico</div>
+        <label class="menu-check">
+          <span>Motore</span>
+          <select id="helpSpiralEngine" title="Seleziona il motore spirali soltanto per il prossimo Aggiorna Modello">
+            <option value="">Predefinito Service</option>
+            <option value="Vittorio_revisionato">Vittorio_revisionato</option>
+            <option value="Vittorio">Vittorio</option>
+            <option value="Diego_Vittorio">Diego_Vittorio</option>
+          </select>
+        </label>
+        <label class="menu-check" title="Modificando questa opzione viene selezionato automaticamente Vittorio_revisionato; se disattivata Mandata e Return restano aperti">
+          <input id="helpSpiralClosure" type="checkbox" checked autocomplete="off" />
+          Chiudi circuito
+        </label>
+        <div class="sep"></div>
+        <div class="dropdown-heading">Log Aggiorna Modello</div>
+        <label class="menu-check"><input type="checkbox" data-log-category="Sempre" /> Sempre</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="colmi" /> colmi</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="spezza" /> spezza</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="Error" /> Error</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="Svg" /> Svg</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="RedrawHelix" /> RedrawHelix</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="GeneraModello" /> GeneraModello</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="Performance" /> Performance</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="PontiAutomatici" /> PontiAutomatici</label>
+        <label class="menu-check"><input type="checkbox" data-log-category="SpiraliDiego" /> spiralidiego</label>
+        <div class="sep"></div>
+        <button id="helpCopyLogClipboard" type="button" disabled>Copia log negli appunti</button>
+      </div></div>
+    </nav>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-page="modelPage" type="button">Modello</button>
+      <button class="tab" data-page="infoPage" type="button">Informazioni sul modello</button>
+      <button class="tab" data-page="calcPage" type="button">Calcoli</button>
+    </div>
+
+    <main class="workspace">
+      <section id="modelPage" class="page active">
+        <div id="viewer"></div>
+        <div class="viewport-status">Three.js · prototipo Web della finestra grafica Termodel</div>
+        <div id="renderOriginBadge" class="render-origin-badge local">ANTEPRIMA LOCALE · nessuna elaborazione server</div>
+        <div class="axis"><div class="o"></div><div class="z"></div><div class="x"></div><div class="y"></div><span class="lz">Z</span><span class="lx">X</span><span class="ly">Y</span></div>
+        <div class="view-cube"><div class="cube-face"></div><div class="ring"></div></div>
+      </section>
+      <section id="cadPage" class="page cad-page" aria-label="Viewer CAD Web">
+        <div class="cad-toolbar">
+          <details class="cad-tool-menu">
+            <summary>▧ Sfondo</summary>
+            <div class="cad-tool-dropdown">
+              <button id="cadAddBackground" type="button" title="Importa uno sfondo PDF, raster, SVG o DXF per il piano corrente">＋ Aggiungi sfondo</button>
+              <input id="cadBackgroundFile" type="file" accept=".pdf,application/pdf,.dxf,application/dxf,.svg,image/svg+xml,image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden />
+              <div class="cad-tool-separator"></div>
+              <button id="cadLoadGeneratedExecutive" type="button" title="Carica dal Service l'ultimo esecutivo pannelli SVG generato">↻ Esecutivo pannelli SVG</button>
+              <label><input id="cadShowGeneratedExecutive" type="checkbox" disabled /> Mostra esecutivo calcolato</label>
+              <div class="cad-tool-separator"></div>
+              <label><input id="cadShowBackground" type="checkbox" checked /> Mostra sfondo</label>
+              <label><input id="cadShowInput" type="checkbox" checked /> Mostra disegno input</label>
+            </div>
+          </details>
+
+          <details class="cad-tool-menu">
+            <summary>✎ Disegna</summary>
+            <div class="cad-tool-dropdown">
+              <select id="cadNewLineType" title="Tipo della nuova parete">
+                <option value="W" selected>W interna</option>
+                <option value="E">E esterna</option>
+              </select>
+              <button id="cadNewLine" type="button" title="Clicca il punto iniziale e poi i punti successivi">＋ Nuova parete</button>
+              <div id="cadEntitySeparator" class="cad-tool-separator"></div>
+              <button id="cadInsertAlign" type="button" title="Inserisci Allinea sul piano/layer corrente">＋ Allinea</button>
+              <button id="cadInsertOpening" type="button" title="Inserisci FIN in sequenza fino a Esc o Interrompi sequenza">＋ Porta/Finestra</button>
+              <button id="cadInsertOpeningTwoPoint" type="button" title="Disegna la larghezza della finestra con due punti sulla stessa parete">＋ Finestra 2 punti</button>
+              <button id="cadInsertBridge" type="button" title="Inserisci un ponte termico PON sulla parete">＋ Ponte</button>
+              <button id="cadInsertRoom" type="button" title="Inserisci un simbolo locale LOC">＋ Locale</button>
+              <button id="cadInsertRidge" type="button" hidden title="Inserisci BLOCCO,Colmo sulla linea di colmo">＋ Colmo</button>
+            </div>
+          </details>
+
+          <details class="cad-tool-menu">
+            <summary>⌖ Snap</summary>
+            <div class="cad-tool-dropdown compact">
+              <label title="Aggancia al punto più vicino lungo una parete"><input id="cadSnapNear" name="cadSnapMode" type="radio" value="near" checked /> Vicino</label>
+              <label title="Aggancia esclusivamente agli estremi delle pareti"><input id="cadSnapEndpoint" name="cadSnapMode" type="radio" value="endpoint" /> Estremo</label>
+              <div class="cad-tool-separator"></div>
+              <label title="Somma allo Snap normale gli endpoint dello sfondo SVG vettoriale"><input id="cadSnapBackground" type="checkbox" checked /> Sfondo vettoriale</label>
+              <label title="Vincola le nuove linee a orizzontale o verticale"><input id="cadOrtho" type="checkbox" checked /> Orto</label>
+            </div>
+          </details>
+
+          <span class="cad-toolbar-plane" title="Modalità operativa CAD: edificio oppure rete impiantistica">
+            <span class="cad-toolbar-plane-label">Modalità</span>
+            <select id="cadModeSelect" aria-label="Modalità CAD">
+              <option value="edificio">Edificio</option>
+              <option value="rete">Rete</option>
+            </select>
+            <span id="cadNetworkLabel" class="cad-toolbar-plane-label" hidden>Rete</span>
+            <select id="cadNetworkSelect" aria-label="Rete corrente" title="Rete corrente dall'archivio Reti" hidden></select>
+          </span>
+
+          <span class="cad-toolbar-plane" title="Piano corrente e archivio Piani">
+            <span class="cad-toolbar-plane-label">Piano</span>
+            <select id="cadPropPiano" aria-label="Piano corrente"></select>
+            <button id="cadOpenPianiArchive" class="cad-toolbar-arc" type="button" title="Apri archivio Piani">▤ Arc</button>
+            <button id="cadAddRoofPlane" class="cad-toolbar-arc" type="button" title="Crea un nuovo piano Copertura usando lo stesso sfondo del piano corrente">＋ Copertura</button>
+          </span>
+          <button id="cadMobilePropertiesToggle" class="cad-mobile-properties-toggle" type="button" aria-expanded="false" title="Apri o chiudi il pannello Dati CAD">▤ Dati</button>
+          <button id="cadUndo" type="button" disabled title="Annulla ultima modifica">↶ Undo</button>
+          <button id="cadRedo" type="button" disabled title="Ripristina modifica annullata">↷ Redo</button>
+          <button id="cadDelete" type="button" disabled title="Elimina la parete selezionata">× Elimina</button>
+          <button id="cadRegenerate" class="cad-primary" type="button" disabled>⟳ Rigenera pianta</button>
+          <span id="cadEditStatus" class="cad-status">Seleziona una parete E/W</span>
+          <span class="cad-spacer"></span>
+          <button id="cadExportArchitectural" type="button" disabled title="Disponibile dopo la generazione della pianta">⇩ Esporta pianta CAD (.DXF)</button>
+          <button id="cadReturnModel" type="button" title="Se il DisegnoInput è stato modificato, rigenera automaticamente il modello prima di tornare">↩ Torna al modello 3d</button>
+        </div>
+        <div id="cadExecutiveProvenance" class="cad-executive-provenance" hidden aria-live="polite"></div>
+                <div id="cadCanvas" class="cad-canvas">
+          <div class="cad-empty">Genera prima una pianta da raster con AI. Qui potrai correggere direttamente le pareti E/W del DisegnoInput.svg.</div>
+        </div>
+        <div id="cadContextMenu" class="cad-context-menu" hidden role="menu" aria-label="Menu contestuale CAD">
+          <button id="cadRepeatLastCommand" type="button" role="menuitem" hidden>Ripeti ultimo comando</button>
+          <button id="cadCloseSequence" type="button" role="menuitem" hidden>Chiudi</button>
+          <button id="cadCloseOrthogonalSequence" type="button" role="menuitem" hidden>Chiudi ortogonale</button>
+          <button id="cadStopSequence" type="button" role="menuitem">Interrompi sequenza</button>
+        </div>
+
+        <aside id="cadPropertiesPanel" class="cad-properties" aria-label="Dati CAD Termodel">
+          <div id="cadPropertiesHead" class="cad-properties-head">Dati CAD · Pareti</div>
+          <div id="cadPropertiesEmpty" class="cad-properties-empty">
+            I dati correnti della parete verranno usati da ＋ Nuova parete.
+          </div>
+          <div id="cadPropertiesBody" class="cad-properties-body" hidden>
+            <section id="cadNorthPropertiesSection" class="cad-properties-section" hidden>
+              <div class="cad-north-section-head">
+                <div class="cad-properties-section-title">Orientamento edificio · Nord</div>
+                <button id="cadNorthClose" class="cad-north-close" type="button" title="Chiudi pannello Nord" aria-label="Chiudi pannello Nord">×</button>
+              </div>
+              <div class="cad-north-control">
+                <div class="cad-north-dial" aria-label="Bussola Nord">
+                  <span class="cad-north-dial-label">N</span>
+                  <i id="cadNorthNeedle" class="cad-north-needle" aria-hidden="true"></i>
+                  <span id="cadNorthUnknown" class="cad-north-unknown">?</span>
+                </div>
+                <div class="cad-north-fields">
+                  <label class="cad-north-defined">
+                    <input id="cadNorthDefined" type="checkbox" />
+                    Orientamento definito
+                  </label>
+                  <div class="cad-north-angle">
+                    <input id="cadNorthRange" type="range" min="0" max="359" step="1" value="0" disabled />
+                    <input id="cadNorthAngle" type="number" min="0" max="359" step="1" placeholder="?" disabled aria-label="Angolo Nord in gradi" />
+                  </div>
+                  <div class="cad-north-help">0° = alto della pianta · positivo in senso orario. Il Nord è unico per tutto il progetto.</div>
+                </div>
+              </div>
+            </section>
+
+            <section id="cadSymbolPropertiesSection" class="cad-properties-section" hidden>
+              <div id="cadSymbolSectionTitle" class="cad-properties-section-title">Attributi simbolo</div>
+              <div class="cad-prop-row">
+                <label>Posizione:</label>
+                <input id="cadSymbolPosition" type="text" readonly />
+              </div>
+              <div id="cadSymbolFields"></div>
+              <div class="cad-prop-actions">
+                <button id="cadSymbolApply" type="button">Applica al simbolo</button>
+              </div>
+              <div class="cad-properties-note">
+                Gli attributi visualizzati provengono direttamente dai <code>tspan</code> del simbolo SVG.
+              </div>
+            </section>
+
+            <section id="cadWallPropertiesSection" class="cad-properties-section">
+              <div class="cad-properties-section-title">Edificio · Pareti</div>
+              <div class="cad-prop-row">
+                <label for="cadPropTipoParete">Tipo parete:</label>
+                <div class="cad-prop-with-arc">
+                  <select id="cadPropTipoParete"></select>
+                  <button id="cadOpenParetiArchive" class="cad-prop-arc" type="button" title="Apri archivio Pareti">Arc</button>
+                </div>
+              </div>
+              <div class="cad-prop-row">
+                <label for="cadPropColore">Colore:</label>
+                <div class="cad-prop-color">
+                  <input id="cadPropColore" type="text" readonly />
+                  <i id="cadPropColorSwatch" class="cad-prop-swatch" aria-hidden="true"></i>
+                </div>
+              </div>
+              <div class="cad-prop-row">
+                <label for="cadPropConfineParete">Confine parete:</label>
+                <div class="cad-prop-with-arc">
+                  <select id="cadPropConfineParete"></select>
+                  <button id="cadOpenConfiniArchive" class="cad-prop-arc" type="button" title="Apri archivio Confini">Arc</button>
+                </div>
+              </div>
+              <div class="cad-prop-row">
+                <label for="cadPropTipoLinea">Tipo linea:</label>
+                <input id="cadPropTipoLinea" type="text" readonly />
+              </div>
+            </section>
+
+            <section id="cadWallGeometrySection" class="cad-properties-section">
+              <div class="cad-properties-section-title">Geometria CAD</div>
+              <div class="cad-prop-row"><label>X1 / Y1:</label><input id="cadPropStart" type="text" readonly /></div>
+              <div class="cad-prop-row"><label>X2 / Y2:</label><input id="cadPropEnd" type="text" readonly /></div>
+              <div class="cad-prop-row"><label>Lunghezza:</label><input id="cadPropLength" type="text" readonly /></div>
+              <div class="cad-prop-actions">
+                <button id="cadPropConfirm" type="button">Applica alla linea</button>
+              </div>
+              <div class="cad-properties-note">
+                Conforme a <code>MainWindow.xaml → Grid_DatiCad / Grid_pareti</code>.
+                Il Piano corrente filtra la vista; le nuove entità ereditano automaticamente il piano. Layer, colore e tipo linea restano correlati readonly come nel desktop.
+              </div>
+            </section>
+
+            <section id="cadBackgroundCalibrationSection" class="cad-properties-section" hidden>
+              <div class="cad-properties-section-title">Calibrazione sfondo</div>
+              <div id="cadCalibrationReference" class="cad-properties-note"></div>
+              <div class="cad-prop-row">
+                <label for="cadCalibrationRealMeters">Misura reale (m):</label>
+                <input id="cadCalibrationRealMeters" type="number" min="0.001" step="0.001" inputmode="decimal" />
+              </div>
+              <div class="cad-prop-actions">
+                <button id="cadCalibrateBackground" type="button">Calibra</button>
+              </div>
+              <div id="cadCalibrationNote" class="cad-properties-note">
+                Seleziona una parete orizzontale o verticale come riferimento.
+              </div>
+            </section>
+          </div>
+        </aside>
+        <div class="cad-legend" aria-label="Legenda">
+          <span><i class="cad-swatch"></i> Sfondo importato · riferimento grafico del piano corrente</span>
+          <span><i class="cad-swatch external"></i> E esterne</span>
+          <span><i class="cad-swatch internal"></i> W interne</span>
+          <span><i class="cad-swatch opening"></i> P porte</span>
+          <span><i class="cad-swatch window"></i> F finestre</span>
+        </div>
+      </section>
+      <section id="infoPage" class="page info-page">
+        <div class="classic-group"><h3>Informazioni sul modello</h3>
+          <div class="classic-row"><span>Progetto:</span><strong>Esempio iniziale Termodel Web</strong></div>
+          <div class="classic-row"><span>Motore grafico:</span><strong>Three.js</strong></div>
+          <div class="classic-row"><span>Oggetti:</span><strong>Modello reale esportato da Termodel</strong></div>
+          <div class="classic-row"><span>Origine UI:</span><strong>MainWindow.xaml</strong></div>
+          <div style="margin-top:18px; padding:14px; border:1px solid #9aa8b6; background:#f7fbff;">
+            <strong style="display:block; margin-bottom:6px;">Se non lo hai ancora fatto, programma l'AI per aiutarti con Termodel.</strong>
+            <span style="display:block; margin-bottom:10px; color:#4b5968;">Segui la procedura guidata e scegli cosa vuoi fare: informazioni, progetto Termodel o pianta raster.</span>
+            <a href="./IndiceAI.html?v=0.25" target="_blank" rel="noopener"
+               style="display:inline-block; padding:7px 12px; border:1px solid #5c8db2; background:linear-gradient(#eef9ff,#cfe8f6); color:#111; text-decoration:none; font-weight:700;">
+              Avvia istruzioni step by step
+            </a>
+          </div>
+        </div>
+      </section>
+      <section id="calcPage" class="page calc-page">
+        <div class="classic-group"><h3>Calcoli</h3>
+          <p>Area lasciata volutamente dimostrativa. In futuro qui arriveranno i risultati prodotti dal motore C# Termodel sul server.</p>
+        </div>
+      </section>
+    </main>
+
+    <div class="bottom-bar">
+      <button type="button" data-archive="Piani">Gestione Piani</button>
+      <button type="button" id="instructAiButton" class="ai-main-button" title="Copia negli appunti le istruzioni minime per collegare l'AI a Termodel">Istruisci AI</button>
+      <button type="button" id="importAiButton" class="ai-main-button" title="Importa direttamente dagli appunti il progetto restituito dall'AI">Importa da AI</button>
+      <button type="button" data-action="Edita nel Cad">Edita nel Cad</button>
+      <button type="button" id="resetView">Aggiorna Modello</button>
+      <label class="check-wrap"><input type="checkbox" id="filtersCheck" checked /> Mostra Filtri Grafici</label>
+    </div>
+  </div>
+
+
+  <div id="webHelpModal" class="ai-instruct-modal" aria-hidden="true">
+    <section class="web-help-window" role="dialog" aria-modal="true" aria-labelledby="webHelpTitle">
+      <header class="ai-instruct-head">
+        <h2 id="webHelpTitle">Termodel Web — Help</h2>
+        <button id="webHelpClose" class="ai-instruct-close" type="button" aria-label="Chiudi Help">×</button>
+      </header>
+      <button id="webHelpInstructAi" class="web-help-ai" type="button">Istruisci AI per Termodel Web</button>
+      <div class="web-help-body">
+        <p><strong>Termodel Web PC</strong> permette di costruire, controllare e visualizzare nel browser il modello Termodel.</p>
+        <p>Se vuoi un approfondimento, premi <strong>Istruisci AI per Termodel Web</strong>: viene copiato negli appunti un breve messaggio che porta la tua AI alle istruzioni Web aggiornate sul sito Termodel.</p>
+
+        <h3>Creare una pianta con l'AI</h3>
+        <ul>
+          <li><strong>Da descrizione:</strong> descrivi a parole locali, dimensioni, pareti, porte e finestre. L'AI segue le istruzioni Termodel Web e restituisce un input compatibile con il progetto.</li>
+          <li><strong>Da sfondo bitmap/raster:</strong> parti da una pianta PNG/JPG/BMP/TIFF usata come riferimento; l'AI interpreta la stessa immagine secondo il flusso Termodel e costruisce l'input unifilare Web.</li>
+        </ul>
+
+        <h3>CAD 2D e 3D</h3>
+        <p>Nel CAD 2D il riferimento tecnico è <strong>DisegnoInput.svg</strong>. Lo sfondo è solo un riferimento grafico. Pianta pulita, modello 3D e disegni esecutivi sono elaborati derivati dal progetto.</p>
+
+        <h3>Modalità esplorazione</h3>
+        <p>Attivandola dal menu Help, ogni comando cliccato mostra una spiegazione contestuale senza bloccare l'azione normale.</p>
+
+        <div class="web-help-source">
+          Le istruzioni AI della versione Web sono mantenute separatamente sul sito e possono essere aggiornate senza modificare il programma:
+          <a href="./TermodelWeb.html?v=0.1" target="_blank" rel="noopener">apri Istruzioni AI Termodel Web</a>.
+        </div>
+      </div>
+      <footer class="ai-instruct-foot">
+        <button id="webHelpCloseBottom" type="button">Chiudi</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <div id="aiInstructModal" class="ai-instruct-modal" aria-hidden="true">
+    <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="aiInstructTitle">
+      <header class="ai-instruct-head">
+        <h2 id="aiInstructTitle">Istruisci la tua AI per Termodel</h2>
+        <button id="aiInstructClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+      <div class="ai-instruct-body">
+        <div class="ai-instruct-ok">✓ Il messaggio di collegamento è già stato copiato negli appunti.</div>
+
+        <p class="ai-instruct-lead"><strong>Adesso devi soltanto incollarlo nella tua AI e inviarlo.</strong> Il messaggio indica all'AI dove leggere sul sito Termodel le istruzioni aggiornate.</p>
+
+        <div class="ai-instruct-flow" aria-label="Procedura in tre passaggi">
+          <div class="ai-instruct-step">
+            <strong><span class="ai-instruct-step-number">1</span> Apri la tua AI</strong>
+            Puoi usare ChatGPT, Meta AI, Gemini o un altro assistente capace di aprire pagine Web.
+          </div>
+          <div class="ai-instruct-step">
+            <strong><span class="ai-instruct-step-number">2</span> Incolla e invia</strong>
+            Su PC premi <strong>Ctrl+V</strong>. Su telefono tieni premuto nel campo del messaggio e scegli <strong>Incolla</strong>, poi usa il comando <strong>Invia</strong>.
+          </div>
+          <div class="ai-instruct-step">
+            <strong><span class="ai-instruct-step-number">3</span> Continua la conversazione</strong>
+            Attendi che l'AI legga le istruzioni Termodel; poi descrivi ciò che vuoi sapere o fare.
+          </div>
+        </div>
+
+        <div class="ai-instruct-example" role="note" aria-label="Esempio Meta AI in WhatsApp">
+          <h3>Esempio: Meta AI in WhatsApp</h3>
+          <ol>
+            <li>Apri <strong>WhatsApp</strong> e entra nella conversazione con <strong>Meta AI</strong>.</li>
+            <li>Tocca il campo in cui normalmente scrivi un messaggio.</li>
+            <li>Tieni premuto nel campo e scegli la voce <strong>Incolla</strong>.</li>
+            <li>Controlla che sia comparso il messaggio Termodel copiato da questa pagina.</li>
+            <li>Tocca il normale comando <strong>Invia</strong> della chat.</li>
+            <li>Dopo la risposta dell'AI, continua scrivendo la tua richiesta.</li>
+          </ol>
+          <div class="ai-instruct-example-note">L'esempio usa soltanto nomi e descrizioni testuali dei comandi: non vengono incorporati loghi, icone o altri asset grafici di WhatsApp/Meta.</div>
+        </div>
+
+        <div class="ai-instruct-warning" role="note" aria-label="Avvertenza sulle prestazioni AI">
+          <strong>⚠ Attenzione</strong>
+          Le prestazioni, la qualità dei risultati e la capacità di aprire le istruzioni Web possono cambiare in funzione dell'AI utilizzata.
+        </div>
+
+        <p style="margin-top:12px; color:#66727c;">Se l'AI non riesce ad aprire il collegamento Web, prova con un assistente che consenta la consultazione di pagine Internet.</p>
+      </div>
+      <footer class="ai-instruct-foot">
+        <button id="aiInstructCloseBottom" type="button">Ho capito</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <div id="projectExploreModal" class="ai-instruct-modal project-explore-modal" aria-hidden="true">
+    <section class="ai-instruct-window project-explore-window" role="dialog" aria-modal="true" aria-labelledby="projectExploreTitle">
+      <header class="ai-instruct-head">
+        <h2 id="projectExploreTitle">Esplora un esempio Termodel</h2>
+        <button id="projectExploreClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+      <div class="ai-instruct-body">
+        <p class="project-explore-message">
+          Modello realizzato con gli strumenti avanzati di Termodel non esplorabile, selezionare un esempio per esplorare il disegno di input ed i disegni esecutivi
+        </p>
+        <div id="projectExploreExamples" class="project-explore-examples" role="list" aria-label="Esempi Termodel"></div>
+        <div id="projectExploreStatus" class="project-explore-status" role="status" aria-live="polite"></div>
+      </div>
+      <footer class="ai-instruct-foot">
+        <button id="projectExploreCloseBottom" type="button">Annulla</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <div id="projectStartModal" class="ai-instruct-modal" aria-hidden="true">
+    <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="projectStartTitle">
+      <header class="ai-instruct-head">
+        <h2 id="projectStartTitle">Crea il tuo progetto Termodel</h2>
+        <button id="projectStartClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+      <div class="ai-instruct-body">
+        <p id="projectStartMessage" class="project-start-copy">
+          Il modello iniziale è un esempio. Per modificare archivi e disegno crea il tuo progetto.
+        </p>
+        <div class="project-start-actions">
+          <button id="projectStartBlank" class="primary" type="button">Edita nel Cad<br><small>Apri un progetto vuoto nel CAD Web</small></button>
+          <button id="projectStartInstructAi" type="button">Istruisci AI<br><small>Prepara la tua AI per Termodel</small></button>
+          <button id="projectStartImportAi" type="button">Importa da AI<br><small>Usa il progetto o la pianta negli appunti</small></button>
+        </div>
+        <div class="project-start-note">
+          Il progetto vuoto e gli archivi vengono inizializzati dal template Termodel locale; il browser non inventa dati tecnici.
+        </div>
+      </div>
+      <footer class="ai-instruct-foot">
+        <button id="projectStartCloseBottom" type="button">Annulla</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <div id="rasterAiModal" class="raster-ai-modal" aria-hidden="true">
+    <section class="raster-ai-window" role="dialog" aria-modal="true" aria-labelledby="rasterAiTitle">
+      <header class="raster-ai-head">
+        <div>
+          <h2 id="rasterAiTitle">Crea un piano Termodel da una pianta raster</h2>
+          <p>Prova il flusso AI senza AutoCAD: raster → GPT → SVG-LFT validato.</p>
+        </div>
+        <button id="rasterAiClose" class="raster-ai-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+
+      <div class="raster-ai-body">
+        <aside class="raster-ai-card">
+          <div class="raster-ai-step">
+            <h3>1. Scegli la pianta originale</h3>
+            <p>La pianta resta nel tuo browser per l'anteprima. PNG e JPG sono consigliati.</p>
+            <div class="raster-ai-actions">
+              <button id="rasterSelectButton" type="button" class="primary">Scegli pianta...</button>
+              <input id="rasterFileInput" type="file" accept="image/*,.bmp,.tif,.tiff" hidden />
+            </div>
+          </div>
+
+          <div class="raster-ai-step">
+            <h3>2. Passala al tuo ChatGPT</h3>
+            <p>Copia le istruzioni Termodel. Poi apri ChatGPT e <strong>allega di nuovo la stessa pianta</strong>: GPT deve vedere l'immagine originale.</p>
+            <div class="raster-ai-actions">
+              <button id="rasterCopyPrompt" type="button" disabled>Copia istruzioni Termodel</button>
+              <button id="rasterOpenChatGpt" type="button" disabled>Apri ChatGPT</button>
+            </div>
+            <div class="raster-ai-warning" style="margin-top:8px">
+              La stessa pianta viene quindi selezionata qui e allegata una seconda volta nella chat GPT. In questa modalità non usiamo API né server AI di Termodel.
+            </div>
+          </div>
+
+          <div class="raster-ai-step">
+            <h3>3. Riporta lo SVG creato e visualizza il 3D</h3>
+            <p>Incolla direttamente il blocco <code>TERMODEL-SVG-TEXT-V1</code> copiato da ChatGPT. Restano compatibili anche un normale <code>&lt;svg&gt;...&lt;/svg&gt;</code> o il file <code>DisegnoInput.svg</code>. Dopo il ritorno da GPT, GeneraPianta Web usa JSTS per costruire i locali e la pianta architettonica: i lati sul perimetro esterno restano sul filo interno, i divisori vengono spostati di 7,5 cm verso ogni locale e il perimetro edificio viene portato 40 cm verso l’esterno. La pianta pulita può essere esportata in DXF CAD.</p>
+            <div class="raster-ai-actions">
+              <button id="rasterLoadSvg" type="button">Apri SVG...</button>
+              <input id="rasterSvgFileInput" type="file" accept=".svg,.txt,image/svg+xml,text/plain" hidden />
+              <button id="rasterPasteSvg" type="button">Incolla SVG</button>
+              <button id="rasterValidateSvg" type="button">Controlla SVG</button>
+            </div>
+            <textarea id="rasterSvgText" class="raster-ai-svg-input" placeholder="Incolla qui [TERMODEL-SVG-TEXT-V1]... oppure un normale &lt;svg&gt;...&lt;/svg&gt;."></textarea>
+            <div id="rasterValidation" class="raster-ai-validation">In attesa dello SVG.</div>
+          </div>
+
+          <div class="raster-ai-actions">
+            <button id="rasterExportSvg" type="button" class="primary" disabled>Esporta / Copia SVG Termodel</button>
+            <button id="rasterDownloadCleanSvg" type="button" disabled>Scarica pianta SVG pulita</button>
+            <button id="rasterDownloadAiJson" type="button" disabled>Scarica JSON 3D AI</button>
+          </div>
+        </aside>
+
+        <section class="raster-ai-card raster-ai-preview">
+          <h3>Pianta raster originale</h3>
+          <div class="raster-ai-preview-box">
+            <div id="rasterPreviewPlaceholder" class="raster-ai-placeholder">Seleziona la pianta da elaborare.</div>
+            <img id="rasterPreviewImage" alt="Anteprima pianta raster" hidden />
+          </div>
+          <div id="rasterFileName" class="raster-ai-file-name">Nessun file selezionato.</div>
+        </section>
+
+        <section class="raster-ai-card raster-ai-preview">
+          <h3>Pianta SVG pulita generata nel Web</h3>
+          <div class="raster-ai-preview-box">
+            <div id="svgPreviewPlaceholder" class="raster-ai-placeholder">Dopo il ritorno da GPT, GeneraPianta.js costruirà qui la pianta pulita con JSTS.</div>
+            <img id="svgPreviewImage" alt="Anteprima SVG creato dall'AI" hidden />
+          </div>
+          <div class="raster-ai-file-name">Pianta 2D derivata dal linework SVG tramite JSTS; è anche la base di pavimenti e soffitti.</div>
+        </section>
+      </div>
+
+      <footer class="raster-ai-foot">
+        <div class="raster-ai-foot-note">GPT consegna la geometria; GeneraPianta.js usa JSTS per i locali e genera pianta SVG pulita, pavimenti e soffitti estrusi. “Ritorna al progetto” ripristina il modello originale.</div>
+        <button id="rasterAiCloseBottom" type="button">Chiudi</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <div id="pdfImportModal" class="dxf-import-modal" aria-hidden="true">
+    <section class="dxf-import-window pdf-import-window" role="dialog" aria-modal="true" aria-labelledby="pdfImportTitle">
+      <header class="dxf-import-head">
+        <div>
+          <h2 id="pdfImportTitle">Importa sfondo PDF</h2>
+          <p id="pdfImportFileName">Caricamento documento...</p>
+        </div>
+        <button id="pdfImportClose" class="dxf-import-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+      <div class="pdf-import-body">
+        <section class="dxf-import-card">
+          <div class="pdf-page-toolbar">
+            <button id="pdfPrevPage" type="button" title="Pagina precedente">←</button>
+            <label for="pdfPageNumber"><strong>Pagina</strong></label>
+            <input id="pdfPageNumber" type="number" min="1" step="1" value="1" />
+            <span id="pdfPageCount">di 1</span>
+            <button id="pdfNextPage" type="button" title="Pagina successiva">→</button>
+          </div>
+          <div id="pdfImportInfo" class="dxf-import-info">Preparazione anteprima...</div>
+          <div class="pdf-preview-wrap">
+            <canvas id="pdfPreviewCanvas" aria-label="Anteprima pagina PDF"></canvas>
+          </div>
+          <div class="pdf-import-note">
+            In questa prima versione la pagina PDF viene convertita in <strong>sfondo raster PNG</strong>.
+            Dopo l'importazione traccia o seleziona una parete orizzontale/verticale con misura reale nota e usa <strong>Calibra</strong>.
+          </div>
+        </section>
+      </div>
+      <footer class="dxf-import-foot">
+        <button id="pdfImportCancel" type="button">Annulla</button>
+        <button id="pdfImportRasterize" type="button" class="primary">Importa pagina</button>
+      </footer>
+    </section>
+  </div>
+
+  <div id="dxfImportModal" class="dxf-import-modal" aria-hidden="true">
+    <section class="dxf-import-window" role="dialog" aria-modal="true" aria-labelledby="dxfImportTitle">
+      <header class="dxf-import-head">
+        <div>
+          <h2 id="dxfImportTitle">Importa sfondo DXF</h2>
+          <p id="dxfImportFileName">Analisi del disegno...</p>
+        </div>
+        <button id="dxfImportClose" class="dxf-import-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+      <div class="dxf-import-body">
+        <section class="dxf-import-card">
+          <h3>Layer da convertire</h3>
+          <div id="dxfImportInfo" class="dxf-import-info"></div>
+          <div class="dxf-layer-actions">
+            <button id="dxfSelectAll" type="button">Tutti</button>
+            <button id="dxfSelectNone" type="button">Nessuno</button>
+          </div>
+          <div id="dxfLayerList" class="dxf-layer-list"></div>
+        </section>
+        <section class="dxf-import-card">
+          <h3>Conversione tipo plotter</h3>
+          <div class="dxf-unit-row">
+            <strong>Unità del disegno:</strong>
+            <select id="dxfDrawingUnit" aria-label="Unità del disegno DXF">
+              <option value="m">m</option>
+              <option value="cm">cm</option>
+              <option value="mm">mm</option>
+            </select>
+            <div class="dxf-unit-note">
+              Questa scelta determina automaticamente la scala reale: Termodel converte tutte le coordinate in centimetri. La calibrazione manuale serve solo per correggere DXF o unità errati.
+            </div>
+          </div>
+          <div class="dxf-option-group">
+            <label>
+              <input id="dxfModeLines" name="dxfMode" type="radio" checked />
+              <span><strong>Solo linee / polilinee</strong><div class="dxf-option-note">Default: LINE, POLYLINE e LWPOLYLINE.</div></span>
+            </label>
+            <label>
+              <input id="dxfModeCurves" name="dxfMode" type="radio" />
+              <span><strong>Linee + curve</strong><div class="dxf-option-note">Aggiunge archi, cerchi, ellissi e spline convertiti in tratti.</div></span>
+            </label>
+            <label>
+              <input id="dxfConvertText" type="checkbox" />
+              <span><strong>Converti testo</strong><div class="dxf-option-note">TEXT e MTEXT diventano testo SVG.</div></span>
+            </label>
+            <label>
+              <input id="dxfExplodeBlocks" type="checkbox" />
+              <span><strong>Esplodi blocchi</strong><div class="dxf-option-note">Gli INSERT vengono trasformati nella geometria contenuta nei BLOCK.</div></span>
+            </label>
+          </div>
+          <div id="dxfImportSummary" class="dxf-import-summary"></div>
+        </section>
+      </div>
+      <footer class="dxf-import-foot">
+        <button id="dxfImportCancel" type="button">Annulla</button>
+        <button id="dxfImportConvert" type="button" class="primary">Converti</button>
+      </footer>
+    </section>
+  </div>
+
+  <div id="svgExportModal" class="svg-export-modal" aria-hidden="true">
+    <section class="svg-export-window" role="dialog" aria-modal="true" aria-labelledby="svgExportTitle">
+      <header class="svg-export-head">
+        <div>
+          <h2 id="svgExportTitle">Esporta SVG Termodel</h2>
+          <p>Testo SVG validato pronto per la clipboard o per il download.</p>
+        </div>
+        <button id="svgExportClose" class="svg-export-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+
+      <div class="svg-export-body">
+        <label class="svg-export-label" for="svgExportText">DisegnoInput.svg validato</label>
+        <textarea id="svgExportText" class="svg-export-text" readonly spellcheck="false"></textarea>
+      </div>
+
+      <footer class="svg-export-foot">
+        <div id="svgExportStatus" class="svg-export-status" aria-live="polite">Pronto per la copia.</div>
+        <div class="svg-export-actions">
+          <button id="svgExportCopy" type="button" class="primary">Copia SVG</button>
+          <button id="svgExportDownload" type="button">Scarica SVG</button>
+          <button id="svgExportCloseBottom" type="button">Chiudi</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"
+          integrity="sha512-uD8O1KVrtd2ar9XaZntrb9ne07Btc7+uudbQpOMXa7UQcls1/uEU65bdxeIqncsuDk+ow1ioX33EBUf0c0SvMQ=="
+          crossorigin="anonymous"></script>
+  <script type="module" src="./app.js?v=1.42"></script>
+</body>
+</html>

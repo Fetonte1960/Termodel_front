@@ -1,0 +1,859 @@
+{
+  "Piani": {
+    "Attivo": {
+      "LunghezzaMassima": 250,
+      "Descr": "Piano attivo",
+      "Ini": "Attivo",
+      "Combo": [
+        "Attivo",
+        "Inattivo"
+      ],
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "Nome": {
+      "LunghezzaMassima": 200,
+      "Ini": "Unico",
+      "Descr": "Nome del Piano ",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "Tipo": {
+      "LunghezzaMassima": 250,
+      "Descr": "Tipo di piano",
+      "Ini": "Calpestabile",
+      "Combo": [
+        "Calpestabile",
+        "Copertura"
+      ],
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "NomeFile": {
+      "LunghezzaMassima": 100,
+      "Descr": "File DXF con lo schema",
+      "Ini": "DisegnoInput"
+    },
+    "LayerCad": {
+      "LunghezzaMassima": 100,
+      "Descr": "Layer nel DXF",
+      "Ini": "Unico",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "AltezzaNetta": {
+      "NumeroCifre": 5,
+      "Ini": "3",
+      "NumeroDecimali": 1,
+      "Descr": "Altezza netta (m)"
+    },
+    "AltezzaLorda": {
+      "NumeroCifre": 5,
+      "Ini": "3.3",
+      "NumeroDecimali": 1,
+      "Descr": "Altezza lorda (m)"
+    },
+    "PianiUguali": {
+      "NumeroCifre": 3,
+      "Descr": "Piani uguali",
+      "Ini": "1",
+      "NumeroDecimali": 0
+    },
+    "TipoFinestre": {
+      "LunghezzaMassima": 250,
+      "Descr": "Finestre di default",
+      "Ini": "Nessuno",
+      "Combo": [
+        "auto_combo",
+        "Finestre",
+        "DescBreve",
+        "Nessuno"
+      ]
+    }
+  },
+  "Pareti": {
+    "Codice": {
+      "LunghezzaMassima": 50
+    },
+    "DescBreve": {
+      "LunghezzaMassima": 150,
+      "Descr": "Descrizione",
+      "Ini": "Parete",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "Colore": {
+      "LunghezzaMassima": 250,
+      "Descr": "Colore nel CAD",
+      "Combo": [
+        "1 - Rosso",
+        "2 - Giallo",
+        "3 - Verde",
+        "4 - Ciano",
+        "5 - Blu",
+        "6 - Magenta",
+        "7 - Bianco/Nero",
+        "8 - Grigio",
+        "9 - Grigio Scuro"
+      ]
+    },
+    "Spessore": {
+      "NumeroCifre": 3,
+      "NumeroDecimali": 1,
+      "Descr": "Spessore (m)"
+    },
+    "Trasmittanza": {
+      "NumeroCifre": 3,
+      "NumeroDecimali": 3,
+      "Descr": "Trasmittanza (W/m²K)"
+    },
+    "Descrizione": {
+      "LunghezzaMassima": 350
+    },
+    "PontiAutomatici": {
+      "LunghezzaMassima": 250,
+      "Descr": "Ponti automatici",
+      "Combo": [
+        "auto_combo",
+        "PontiAutomatici",
+        "DescBreve",
+        "Nessuno"
+      ]
+    }
+  },
+  "Finestre": {
+    "Codice": {
+      "LunghezzaMassima": 50
+    },
+    "DescBreve": {
+      "LunghezzaMassima": 250,
+      "Descr": "Descrizione",
+      "Ini": "Finestra",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "Descrizione": {
+      "LunghezzaMassima": 350
+    },
+    "Finestrata": {
+      "LunghezzaMassima": 250,
+      "Descr": "Parete finestrata ?",
+      "Ini": "Finestra semplice",
+      "Combo": [
+        "Finestra semplice",
+        "Parete finestrata"
+      ]
+    },
+    "RipetizioneVerticaleIntervallo": {
+      "NumeroCifre": 5,
+      "Descr": "Ripetizione verticale,intervallo (m)",
+      "Ini": "0",
+      "NumeroDecimali": 3
+    },
+    "RipetizioneVerticaleQuota": {
+      "NumeroCifre": 5,
+      "Descr": "Ripetizione verticale,quota iniziale (m)",
+      "Ini": "0",
+      "NumeroDecimali": 3
+    },
+    "LarghezzaProfiloTelaio": {
+      "NumeroCifre": 5,
+      "Descr": "Larghezza profilo telaio (m)",
+      "Ini": "0.08",
+      "NumeroDecimali": 3
+    },
+    "PontiAutomatici": {
+      "LunghezzaMassima": 250,
+      "Descr": "Ponti automatici",
+      "Combo": [
+        "auto_combo",
+        "PontiAutomaticiFinestre",
+        "DescBreve",
+        "Nessuno"
+      ]
+    }
+  },
+  "Ponti": {
+    "DescBreve": {
+      "LunghezzaMassima": 250,
+      "Descr": "Descrizione",
+      "Ini": "Ponte",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "Descrizione": {
+      "LunghezzaMassima": 350
+    },
+    "TrasmLin": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2,
+      "Descr": "Trasmittanza lineare (W/(m·K)"
+    },
+    "Categoria": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2,
+      "Descr": "Categoria"
+    }
+  },
+  "PontiAutomatici": {
+    "DescBreve": {
+      "LunghezzaMassima": 150,
+      "Descr": "Descrizione breve",
+      "Ini": "Ponti automatici",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "Descrizione": {
+      "LunghezzaMassima": 150,
+      "Descr": "Descrizione"
+    },
+    "Alto": {
+      "LunghezzaMassima": 250,
+      "Descr": "Orizzontale in alto (solaio)",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "AltoUltimo": {
+      "LunghezzaMassima": 250,
+      "Ini": "Nessuno",
+      "Descr": "Orizzontale in alto (solaio ultimo p.)",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "BalconeUnicoPiano": {
+      "LunghezzaMassima": 250,
+      "Ini": "Nessuno",
+      "Descr": "Balcone ( basso e alto )",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "TipoCassonetto": {
+      "LunghezzaMassima": 250,
+      "Ini": "Nessuno",
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "AltCassonetto": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 1,
+      "Ini": "0"
+    },
+    "Basso": {
+      "LunghezzaMassima": 250,
+      "Descr": "Orizzontale basso ( solaio )",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "BassoTerra": {
+      "LunghezzaMassima": 250,
+      "Ini": "Nessuno",
+      "Descr": "Orizzontale basso (pavimento p. Terra )",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "Balcone": {
+      "LunghezzaMassima": 250,
+      "Ini": "Nessuno",
+      "Descr": "Balcone ( solo basso )",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "TipoSottofinestra": {
+      "LunghezzaMassima": 250,
+      "Ini": "Uguale alla parete",
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve",
+        "Uguale alla parete"
+      ]
+    },
+    "LateraliFinestra": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "SpigoloPareteSporgente": {
+      "LunghezzaMassima": 250,
+      "Descr": "Verticali parete spigolo sporgente",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "SpigoloPareteRientrante": {
+      "LunghezzaMassima": 250,
+      "Descr": "Verticali parete spigolo rientrante",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "GiunzioneParetePiana": {
+      "LunghezzaMassima": 250,
+      "Descr": "Verticali parete giunzione piana",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "Divisorio": {
+      "LunghezzaMassima": 250,
+      "Descr": "Divisorio appoggiato su esterna",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    }
+  },
+  "PontiAutomaticiFinestre": {
+    "DescBreve": {
+      "LunghezzaMassima": 150,
+      "Descr": "Descrizione breve",
+      "Ini": "Ponti automatici",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "Descrizione": {
+      "LunghezzaMassima": 150,
+      "Descr": "Descrizione"
+    },
+    "Alto": {
+      "LunghezzaMassima": 250,
+      "Descr": "Orizzontale in alto ",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "AltoUltimo": {
+      "LunghezzaMassima": 250,
+      "Ini": "Nessuno",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "TipoCassonetto": {
+      "LunghezzaMassima": 250,
+      "Ini": "Nessuno",
+      "Descr": "Tipo cassonetto",
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "AltCassonetto": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 1,
+      "Ini": "0",
+      "Descr": "Altezza cassonetto"
+    },
+    "Basso": {
+      "LunghezzaMassima": 250,
+      "Descr": "Orizzontale basso  ( davanzale )",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "BassoTerra": {
+      "LunghezzaMassima": 250,
+      "Ini": "Nessuno",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "TipoSottofinestra": {
+      "LunghezzaMassima": 250,
+      "Ini": "Uguale alla parete",
+      "Descr": "Tipo sottofinestra",
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve",
+        "Uguale alla parete"
+      ]
+    },
+    "LateraliFinestra": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ],
+      "Descr": "Verticale laterali finestra"
+    },
+    "SpigoloPareteSporgente": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "SpigoloPareteRientrante": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    },
+    "GiunzioneParetePiana": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Nessuno"
+      ]
+    }
+  },
+  "Confini": {
+    "Codice": {
+      "LunghezzaMassima": 250,
+      "Descr": "Descrizione",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "Tipo": {
+      "LunghezzaMassima": 250,
+      "Descr": "Tipo confine",
+      "Combo": [
+        "Automatico",
+        "Esterno",
+        "AmbienteNonClimatizzato",
+        "AmbienteClimatizzato",
+        "Terreno"
+      ]
+    },
+    "Tipolinea": {
+      "LunghezzaMassima": 250,
+      "Descr": "Tipo linea nel CAD",
+      "Combo": [
+        "Continuous",
+        "FITTIZIA",
+        "TRATTEGGIATA",
+        "TRATTOPUNTO",
+        "DIVIDI"
+      ]
+    },
+    "TipoNonClimatizzato": {
+      "LunghezzaMassima": 450,
+      "Descr": "Classifricazione UNI 11300",
+      "Combo": [
+        "auto_combo",
+        "NonClimatizzati",
+        "Descrizione",
+        "Non UNI 11300"
+      ]
+    },
+    "TipoTerreno": {
+      "LunghezzaMassima": 450,
+      "Descr": "Tipo terreno",
+      "Combo": [
+        "Argilla o limo",
+        "Sabbia o ghiaia",
+        "Roccia"
+      ]
+    }
+  },
+  "NonClimatizzati": {
+    "Descrizione": {
+      "LunghezzaMassima": 350
+    },
+    "IDXML": {
+      "LunghezzaMassima": 150
+    }
+  },
+  "Zone": {
+    "Codice": {
+      "LunghezzaMassima": 250,
+      "Descr": "Descrizione",
+      "Grid": [
+        "Archivio"
+      ]
+    },
+    "IDXML": {
+      "LunghezzaMassima": 50
+    },
+    "Descrizione": {
+      "LunghezzaMassima": 350
+    },
+    "Tipo": {
+      "LunghezzaMassima": 250,
+      "Ini": "AmbienteClimatizzato",
+      "Descr": "Tipo",
+      "Combo": [
+        "AmbienteClimatizzato",
+        "AmbienteNonClimatizzato",
+        "Edificio adiacente",
+        "Pozzo luce",
+        "Balcone"
+      ]
+    },
+    "TipoNonClimatizzato": {
+      "LunghezzaMassima": 450,
+      "Ini": "Ambiente senza serramenti esterni e con almeno due pareti esterne",
+      "Descr": "(Valido nel  caso edificio adiacente )",
+      "Combo": [
+        "auto_combo",
+        "NonClimatizzati",
+        "Descrizione",
+        "Non UNI 11300"
+      ]
+    },
+    "PonteBalcone": {
+      "LunghezzaMassima": 450,
+      "Ini": "Non balcone",
+      "Descr": "Ponte termico del balcone",
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve",
+        "Non balcone"
+      ]
+    }
+  },
+  "DatiCad": {
+    "LordoNetto": {
+      "LunghezzaMassima": 250,
+      "Ini": "Netto",
+      "Combo": [
+        "Netto",
+        "Lordo"
+      ]
+    },
+    "Piano": {
+      "LunghezzaMassima": 100,
+      "Combo": [
+        "auto_combo",
+        "Piani",
+        "Nome"
+      ]
+    },
+    "Layer": {
+      "LunghezzaMassima": 250,
+      "ReadOnly": true,
+      "Correlato": [
+        "Piani",
+        "Piano",
+        "Nome",
+        "LayerCad"
+      ]
+    },
+    "TipoParete": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve"
+      ]
+    },
+    "ConfineParete": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Confini",
+        "Codice"
+      ]
+    },
+    "Colore": {
+      "LunghezzaMassima": 250,
+      "ReadOnly": true,
+      "Correlato": [
+        "Pareti",
+        "TipoParete",
+        "DescBreve",
+        "Colore"
+      ]
+    },
+    "TipoLinea": {
+      "LunghezzaMassima": 250,
+      "ReadOnly": true,
+      "Correlato": [
+        "Confini",
+        "ConfineParete",
+        "Codice",
+        "Tipolinea"
+      ]
+    },
+    "Porta": {
+      "LunghezzaMassima": 250,
+      "Ini": "Struttura trasparente",
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve",
+        "Struttura trasparente"
+      ]
+    },
+    "TipoFinestra": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Finestre",
+        "DescBreve",
+        "Da piano"
+      ]
+    },
+    "AltezzaFinestra": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "LarghezzaFinestra": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "AnteFinestra": {
+      "NumeroCifre": 2,
+      "NumeroDecimali": 0
+    },
+    "SottoFinestra": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "SopraLuce": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "TipoPonte": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Ponti",
+        "DescBreve"
+      ]
+    },
+    "OrientamentoPonte": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "Orizzontale",
+        "Verticale"
+      ]
+    },
+    "FonteLunghezzaPonte": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "Altezza parete o lunghezza parete",
+        "Valore imposto"
+      ]
+    },
+    "LungPonte": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 1
+    },
+    "DescrizioneLocale": {
+      "LunghezzaMassima": 350
+    },
+    "Zona": {
+      "LunghezzaMassima": 350,
+      "Combo": [
+        "auto_combo",
+        "Zone",
+        "Descrizione"
+      ]
+    },
+    "FonteAltezza": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "Da piano",
+        "Valore imposto"
+      ]
+    },
+    "AltezzaLorda": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "AltezzaNetta": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "FonteQuotaPavimento": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "Da piano",
+        "Valore imposto"
+      ]
+    },
+    "QuotaPavimento": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "TipoSoffitto": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve"
+      ]
+    },
+    "ConfineSoffitto": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Confini",
+        "Codice",
+        "Automatico"
+      ]
+    },
+    "ColoreCopertura": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "Solaio piano",
+        "1 - Rosso",
+        "2 - Giallo",
+        "3 - Verde",
+        "4 - Ciano",
+        "5 - Blu",
+        "6 - Magenta",
+        "7 - Bianco/Nero",
+        "8 - Grigio",
+        "9 - Grigio Scuro"
+      ]
+    },
+    "TipoPavimento": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve"
+      ]
+    },
+    "ConfinePavimento": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Confini",
+        "Codice",
+        "Automatico"
+      ]
+    },
+    "ConfineSoffittoAutomatico": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Confini",
+        "Codice",
+        "Esterno"
+      ]
+    },
+    "ConfinePavimentoAutomatico": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "auto_combo",
+        "Confini",
+        "Codice",
+        "Esterno"
+      ]
+    },
+    "ProgrammaCad": {
+      "LunghezzaMassima": 250,
+      "Combo": [
+        "Autocad",
+        "LibreCad"
+      ]
+    },
+    "VersioneCad": {
+      "LunghezzaMassima": 250,
+      "Combo": []
+    },
+    "QuotaColmo": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "QuotaGronda": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2
+    },
+    "QuotaShed": {
+      "NumeroCifre": 5,
+      "NumeroDecimali": 2,
+      "Ini": "0"
+    },
+    "PareteShed": {
+      "LunghezzaMassima": 250,
+      "Ini": "Dal piano sottostante",
+      "Combo": [
+        "auto_combo",
+        "Pareti",
+        "DescBreve",
+        "Dal piano sottostante"
+      ]
+    },
+    "LatoParteBassaShed": {
+      "LunghezzaMassima": 250,
+      "Ini": "Colmo semplice",
+      "Combo": [
+        "Destra o sopra",
+        "Sinistra o sotto",
+        "Colmo semplice"
+      ]
+    }
+  }
+}

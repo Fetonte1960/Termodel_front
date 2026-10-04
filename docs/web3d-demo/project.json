@@ -1,0 +1,72 @@
+{
+  "project": "Demo stanza 5x4",
+  "units": "m",
+  "room": {
+    "id": "R001",
+    "name": "Soggiorno demo",
+    "width": 5.0,
+    "depth": 4.0,
+    "height": 2.7,
+    "wallThickness": 0.25
+  },
+  "entities": [
+    {
+      "id": "E001",
+      "type": "wall",
+      "label": "Parete Nord",
+      "side": "north",
+      "stratigraphy": "Laterizio 21 cm + intonaci",
+      "openings": [
+        {
+          "id": "F001",
+          "type": "window",
+          "label": "Finestra soggiorno",
+          "center": 0.75,
+          "width": 1.50,
+          "height": 1.20,
+          "sill": 0.90
+        }
+      ]
+    },
+    {
+      "id": "E002",
+      "type": "wall",
+      "label": "Parete Sud",
+      "side": "south",
+      "stratigraphy": "Laterizio 21 cm + intonaci",
+      "openings": [
+        {
+          "id": "P001",
+          "type": "door",
+          "label": "Porta ingresso",
+          "center": -1.15,
+          "width": 0.90,
+          "height": 2.10,
+          "sill": 0.0
+        }
+      ]
+    },
+    {
+      "id": "E003",
+      "type": "wall",
+      "label": "Parete Est",
+      "side": "east",
+      "stratigraphy": "Laterizio 21 cm + intonaci",
+      "openings": []
+    },
+    {
+      "id": "E004",
+      "type": "wall",
+      "label": "Parete Ovest",
+      "side": "west",
+      "stratigraphy": "Laterizio 21 cm + intonaci",
+      "openings": []
+    },
+    {
+      "id": "S001",
+      "type": "floor",
+      "label": "Solaio pavimento",
+      "stratigraphy": "Demo solaio"
+    }
+  ]
+}

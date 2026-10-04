@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gbXML
+    xmlns="http://www.gbxml.org/schema"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.gbxml.org/schema https://www.gbxml.org/schema/8-01/GreenBuildingXML_Ver8.01.xsd"
+    temperatureUnit="C"
+    lengthUnit="Meters"
+    areaUnit="SquareMeters"
+    volumeUnit="CubicMeters"
+    useSIUnitsForResults="true"
+    version="8.01"
+    SurfaceReferenceLocation="Interior">
+
+  <!--
+    TERMODEL CENED BRIDGE - FIXTURE GBXML-SHADING-001
+
+    Sistema di riferimento:
+      +X = Est
+      +Y = Nord
+      +Z = alto
+      facciata finestrata Sud: y = 0
+      esterno Sud: y negativo
+
+    Edificio:
+      stanza 4.00 x 4.00 m
+      altezza 3.00 m
+      due finestre sulla parete Sud
+
+    Ombreggiamenti geometrici:
+      balcone/aggetto orizzontale:
+        x = 0.25 .. 3.75
+        y = 0.00 .. -1.20
+        z = 2.50
+        profondita = 1.20 m
+
+      setto verticale Ovest:
+        x = 0.35
+        y = 0.00 .. -0.80
+        z = 0.80 .. 2.70
+        profondita = 0.80 m
+
+      setto verticale Est:
+        x = 3.65
+        y = 0.00 .. -0.80
+        z = 0.80 .. 2.70
+        profondita = 0.80 m
+
+      ostacolo remoto / palazzo di fronte:
+        piano y = -8.00
+        x = -4.00 .. 8.00
+        z = 0.00 .. 10.00
+        distanza dalla facciata = 8.00 m
+        larghezza = 12.00 m
+        altezza = 10.00 m
+
+    Tutti gli elementi ombreggianti sono Surface surfaceType="Shade".
+    Non sono presenti fattori di ombreggiamento precalcolati:
+    la fixture trasporta le cause geometriche.
+  -->
+
+  <Campus id="Campus-001">
+    <Name>Fixture ombreggiamenti Termodel CENED Bridge</Name>
+
+    <Location>
+      <Name>Posizione fittizia</Name>
+      <ZipcodeOrPostalCode>00000</ZipcodeOrPostalCode>
+      <Longitude>9.000000</Longitude>
+      <Latitude>45.000000</Latitude>
+      <Elevation>0</Elevation>
+      <CADModelAzimuth>0</CADModelAzimuth>
+    </Location>
+
+    <Building id="Building-001" buildingType="SingleFamily">
+      <Name>Edificio test ombreggiamenti</Name>
+      <Description>Una stanza con due finestre, balcone, setti verticali e ostacolo remoto.</Description>
+      <Area>16.00</Area>
+
+      <Space
+          id="Space-001"
+          zoneIdRef="Zone-001"
+          conditionType="HeatedAndCooled">
+        <Name>Stanza 4x4</Name>
+        <Description>Spazio termico unico per il test degli ombreggiamenti geometrici.</Description>
+        <Area>16.00</Area>
+        <Volume>48.00</Volume>
+
+        <PlanarGeometry>
+          <PolyLoop>
+            <CartesianPoint><Coordinate>0</Coordinate><Coordinate>0</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>4</Coordinate><Coordinate>0</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>4</Coordinate><Coordinate>4</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>0</Coordinate><Coordinate>4</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          </PolyLoop>
+        </PlanarGeometry>
+      </Space>
+    </Building>
+
+    <Surface id="Surface-Floor" surfaceType="SlabOnGrade" constructionIdRef="Construction-Floor">
+      <Name>Pavimento su terreno</Name>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>0</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>4</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>4</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>0</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+
+    <Surface id="Surface-Roof" surfaceType="Roof" constructionIdRef="Construction-Roof">
+      <Name>Copertura piana</Name>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>0</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>0</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>4</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>4</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+
+    <Surface id="Surface-South" surfaceType="ExteriorWall" constructionIdRef="Construction-Wall">
+      <Name>Parete Sud con due finestre</Name>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>0</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>0</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>0</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>0</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+
+      <Opening id="Window-South-01" openingType="FixedWindow" coordinatesAbsolute="true">
+        <Name>Finestra Sud 1</Name>
+        <U-value unit="WPerSquareMeterK">2.80</U-value>
+        <PlanarGeometry>
+          <PolyLoop>
+            <CartesianPoint><Coordinate>0.50</Coordinate><Coordinate>0</Coordinate><Coordinate>1.00</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>1.50</Coordinate><Coordinate>0</Coordinate><Coordinate>1.00</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>1.50</Coordinate><Coordinate>0</Coordinate><Coordinate>2.20</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>0.50</Coordinate><Coordinate>0</Coordinate><Coordinate>2.20</Coordinate></CartesianPoint>
+          </PolyLoop>
+        </PlanarGeometry>
+      </Opening>
+
+      <Opening id="Window-South-02" openingType="FixedWindow" coordinatesAbsolute="true">
+        <Name>Finestra Sud 2</Name>
+        <U-value unit="WPerSquareMeterK">2.80</U-value>
+        <PlanarGeometry>
+          <PolyLoop>
+            <CartesianPoint><Coordinate>2.50</Coordinate><Coordinate>0</Coordinate><Coordinate>1.00</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>3.50</Coordinate><Coordinate>0</Coordinate><Coordinate>1.00</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>3.50</Coordinate><Coordinate>0</Coordinate><Coordinate>2.20</Coordinate></CartesianPoint>
+            <CartesianPoint><Coordinate>2.50</Coordinate><Coordinate>0</Coordinate><Coordinate>2.20</Coordinate></CartesianPoint>
+          </PolyLoop>
+        </PlanarGeometry>
+      </Opening>
+    </Surface>
+
+    <Surface id="Surface-North" surfaceType="ExteriorWall" constructionIdRef="Construction-Wall">
+      <Name>Parete Nord</Name>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>4</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>4</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>4</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>4</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+
+    <Surface id="Surface-West" surfaceType="ExteriorWall" constructionIdRef="Construction-Wall">
+      <Name>Parete Ovest</Name>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>4</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>0</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>0</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0</Coordinate><Coordinate>4</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+
+    <Surface id="Surface-East" surfaceType="ExteriorWall" constructionIdRef="Construction-Wall">
+      <Name>Parete Est</Name>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>0</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>4</Coordinate><Coordinate>0</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>4</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>4</Coordinate><Coordinate>0</Coordinate><Coordinate>3</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+
+    <!-- BALCONE / AGGETTO ORIZZONTALE -->
+    <Surface id="Shade-Balcony" surfaceType="Shade" constructionIdRef="Construction-Shade">
+      <Name>Balcone Sud - aggetto 1.20 m</Name>
+      <Description>Superficie ombreggiante orizzontale sopra le due finestre.</Description>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>0.25</Coordinate><Coordinate>0.00</Coordinate><Coordinate>2.50</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>3.75</Coordinate><Coordinate>0.00</Coordinate><Coordinate>2.50</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>3.75</Coordinate><Coordinate>-1.20</Coordinate><Coordinate>2.50</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0.25</Coordinate><Coordinate>-1.20</Coordinate><Coordinate>2.50</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+
+    <!-- SETTO VERTICALE LATERALE OVEST -->
+    <Surface id="Shade-Fin-West" surfaceType="Shade" constructionIdRef="Construction-Shade">
+      <Name>Setto verticale Ovest - profondita 0.80 m</Name>
+      <Description>Setto laterale in prossimita della prima finestra.</Description>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>0.35</Coordinate><Coordinate>0.00</Coordinate><Coordinate>0.80</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0.35</Coordinate><Coordinate>-0.80</Coordinate><Coordinate>0.80</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0.35</Coordinate><Coordinate>-0.80</Coordinate><Coordinate>2.70</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>0.35</Coordinate><Coordinate>0.00</Coordinate><Coordinate>2.70</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+
+    <!-- SETTO VERTICALE LATERALE EST -->
+    <Surface id="Shade-Fin-East" surfaceType="Shade" constructionIdRef="Construction-Shade">
+      <Name>Setto verticale Est - profondita 0.80 m</Name>
+      <Description>Setto laterale in prossimita della seconda finestra.</Description>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>3.65</Coordinate><Coordinate>0.00</Coordinate><Coordinate>0.80</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>3.65</Coordinate><Coordinate>0.00</Coordinate><Coordinate>2.70</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>3.65</Coordinate><Coordinate>-0.80</Coordinate><Coordinate>2.70</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>3.65</Coordinate><Coordinate>-0.80</Coordinate><Coordinate>0.80</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+
+    <!-- OSTACOLO REMOTO: FACCIATA DEL PALAZZO DI FRONTE -->
+    <Surface id="Shade-Opposite-Building" surfaceType="Shade" constructionIdRef="Construction-Shade">
+      <Name>Palazzo di fronte - facciata ombreggiante</Name>
+      <Description>Ostacolo remoto a 8.00 m dalla facciata Sud, largo 12 m e alto 10 m.</Description>
+      <AdjacentSpaceId spaceIdRef="Space-001"/>
+      <PlanarGeometry>
+        <PolyLoop>
+          <CartesianPoint><Coordinate>-4.00</Coordinate><Coordinate>-8.00</Coordinate><Coordinate>0.00</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>8.00</Coordinate><Coordinate>-8.00</Coordinate><Coordinate>0.00</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>8.00</Coordinate><Coordinate>-8.00</Coordinate><Coordinate>10.00</Coordinate></CartesianPoint>
+          <CartesianPoint><Coordinate>-4.00</Coordinate><Coordinate>-8.00</Coordinate><Coordinate>10.00</Coordinate></CartesianPoint>
+        </PolyLoop>
+      </PlanarGeometry>
+    </Surface>
+  </Campus>
+
+  <Construction id="Construction-Wall" constructionIsSchematic="true">
+    <Name>Parete demo</Name>
+    <U-value unit="WPerSquareMeterK">1.20</U-value>
+  </Construction>
+
+  <Construction id="Construction-Roof" constructionIsSchematic="true">
+    <Name>Copertura demo</Name>
+    <U-value unit="WPerSquareMeterK">1.00</U-value>
+  </Construction>
+
+  <Construction id="Construction-Floor" constructionIsSchematic="true">
+    <Name>Pavimento demo</Name>
+    <U-value unit="WPerSquareMeterK">0.80</U-value>
+  </Construction>
+
+  <Construction id="Construction-Shade" constructionIsSchematic="true">
+    <Name>Superficie ombreggiante geometrica</Name>
+    <Description>Costruzione fittizia necessaria al riferimento delle Surface di tipo Shade.</Description>
+  </Construction>
+
+  <Zone id="Zone-001">
+    <Name>Zona termica 1</Name>
+    <Description>Zona unica associata a Space-001.</Description>
+  </Zone>
+</gbXML>

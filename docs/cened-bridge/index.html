@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CENED Bridge Web 0.1.3-dev</title>
+<style>
+:root{--bg:#f4f6f8;--panel:#fff;--ink:#1f2933;--muted:#66737f;--line:#dce2e7;--brand:#155e75;--brand2:#203743;--ok:#16794b;--warn:#a15c00;--bad:#b42318;--shadow:0 8px 26px rgba(31,41,51,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#fff;border-bottom:1px solid var(--line);padding:16px 24px;display:flex;justify-content:space-between;gap:18px;align-items:center;position:sticky;top:0;z-index:5}
+h1,h2,h3{margin:0}.eyebrow{text-transform:uppercase;letter-spacing:.11em;font-size:11px;font-weight:800;color:var(--brand)}h1{font-size:22px;margin-top:3px}.version{font-size:12px;background:#e5f3f6;color:var(--brand);padding:4px 8px;border-radius:999px}.warning{font-size:12px;color:var(--warn);font-weight:700;margin-top:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 12px;font-weight:700;cursor:pointer}.btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}.file input{display:none}
+.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 82px)}aside{background:#16232d;padding:15px 10px;color:#fff}.nav{width:100%;border:0;background:transparent;color:#c9d4dc;padding:11px 12px;border-radius:8px;text-align:left;cursor:pointer;margin-bottom:3px}.nav:hover,.nav.active{background:#213743;color:#fff}.nav.active{box-shadow:inset 3px 0 0 #63c0ce}
+.status{margin-top:20px;padding:11px;border:1px solid #324957;background:#20313d;border-radius:10px;font-size:12px}.progress{height:6px;background:#334a57;border-radius:10px;overflow:hidden;margin:9px 0}.progress span{display:block;height:100%;background:#63c0ce}
+main{padding:26px;max-width:1500px;width:100%;margin:auto}.section-head{margin-bottom:16px}.section-head h2{font-size:25px;margin:4px 0}.section-head p{color:var(--muted);margin:0;max-width:850px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}.card{padding:15px}.card small{display:block;color:var(--muted);margin-bottom:6px}.card strong{font-size:24px}.card strong span{font-size:11px;color:var(--muted);font-weight:600}
+.panel{padding:17px;margin-bottom:16px}.panel h3{font-size:15px;margin-bottom:12px}.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center}.step{background:#eef2f4;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700}.step.ok{background:#e7f7ef;color:var(--ok)}.step.now{background:#fff1db;color:var(--warn)}.step.off{opacity:.45}
+.check{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;padding:5px 0;font-size:13px}.dot{width:9px;height:9px;border-radius:50%;background:var(--bad)}.dot.ok{background:var(--ok)}
+.tablewrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}table{width:100%;border-collapse:collapse;min-width:700px}th,td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;font-size:12px}th{background:#f8fafb;color:#55636e;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.field{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0;font-size:13px}.field span{color:var(--muted)}.field b{text-align:right}.tags{display:flex;gap:7px;flex-wrap:wrap}.tag{padding:7px 9px;border-radius:999px;border:1px solid var(--line);font-size:12px}.tag.on{background:#e8f7ef;color:var(--ok)}.tag.off{color:#7a8790;background:#f6f7f8}
+.notice{position:fixed;right:20px;top:92px;background:#1f2933;color:#fff;padding:11px 14px;border-radius:9px;z-index:10;box-shadow:var(--shadow);font-size:13px}.notice.hidden{display:none}.notice.ok{background:var(--ok)}.notice.warn{background:var(--warn)}.notice.bad{background:var(--bad)}
+.ape-tools{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.ape{position:relative;max-width:960px;margin:auto;background:#fff;border:1px solid #ccd4da;padding:32px;box-shadow:var(--shadow);overflow:hidden}.ape-title{display:flex;justify-content:space-between;border-bottom:3px solid var(--brand);padding-bottom:12px;margin-bottom:14px}.ape-section{border-top:1px solid var(--line);padding:15px 0}.ape-section h3{text-transform:uppercase;font-size:13px;color:#374957;margin-bottom:11px}.band{display:grid;grid-template-columns:1fr 1fr;gap:10px}.band>div{background:#f2f6f7;border:1px solid var(--line);border-radius:9px;padding:14px}.band small{display:block;color:var(--muted)}.band strong{font-size:27px}.wm{position:absolute;right:-45px;top:50px;transform:rotate(35deg);font-weight:900;font-size:23px;color:rgba(180,35,24,.16);border:4px solid rgba(180,35,24,.12);padding:8px 42px}
+pre{background:#101820;color:#e7eef2;padding:17px;border-radius:11px;overflow:auto;max-height:650px;font-size:12px;line-height:1.45}.muted{color:var(--muted);font-size:13px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}aside{display:flex;overflow:auto;gap:4px}.nav{min-width:max-content}.status{display:none}header{align-items:flex-start;flex-direction:column}.fields,.band{grid-template-columns:1fr}main{padding:17px}}
+@media print{header,aside,.ape-tools .btn,.notice{display:none!important}.layout{display:block}main{padding:0}.ape{box-shadow:none;border:0;max-width:none}}
+
+.viewer-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}
+.viewer-stage{background:#1b2228;border-radius:12px;overflow:hidden;min-height:620px;position:relative;border:1px solid #2b3942}
+#gb3d{height:620px;width:100%}
+.viewer-tools{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.viewer-tools .btn{padding:7px 10px}
+.viewer-details{background:#f7f9fa;border:1px solid var(--line);border-radius:10px;padding:10px;min-height:150px}
+.viewer-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}
+.viewer-row:last-child{border-bottom:0}.viewer-row span{color:var(--muted)}.viewer-row b{text-align:right}
+.viewer-placeholder{height:100%;min-height:620px;display:grid;place-items:center;color:#c8d1d7;padding:30px;text-align:center}
+.viewer-empty{color:var(--muted);font-size:13px}
+.legend{display:grid;gap:7px;font-size:12px;margin-top:12px}.legend span{display:flex;align-items:center;gap:8px}.sw{width:13px;height:13px;border-radius:3px;display:inline-block}
+.sw.env{background:#c7d0d5}.sw.win{background:#68bde7}.sw.bal{background:#df7f32}.sw.fin{background:#d7aa35}.sw.remote{background:#c24b3a}
+.source-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}.source-box{padding:12px;border:1px solid var(--line);border-radius:10px;background:#f7f9fa}.source-box b{display:block;margin-bottom:4px}.source-box small{color:var(--muted)}
+@media(max-width:1050px){.viewer-layout{grid-template-columns:1fr}.viewer-stage,#gb3d,.viewer-placeholder{min-height:520px;height:520px}}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<header>
+  <div><div class="eyebrow">Software Bridge per modelli termici</div><h1>CENED Bridge Web <span class="version">v0.1.3-dev</span></h1><div class="warning">BOZZA PER DISCUSSIONE — nessun calcolo CENED ufficiale</div></div>
+  <div class="actions">
+    <label class="btn file">Importa gbXML<input id="gbxmlInput" type="file" accept=".xml,.gbxml,text/xml,application/xml"></label>
+    <label class="btn file">Importa XML nazionale<input id="xmlInput" type="file" accept=".xml,text/xml,application/xml"></label>
+    <button class="btn" id="reset">Ripristina fixture</button>
+    <button class="btn primary" id="verify">Verifica modello</button>
+  </div>
+</header>
+<div class="layout">
+  <aside><div id="nav"></div><div id="status" class="status"></div></aside>
+  <main><div id="notice" class="notice hidden"></div><section id="content"></section></main>
+</div>
+<script>
+var VERSION='0.1.3-dev';
+var demo={
+ meta:{source:'Demo WebJS'},
+ building:{region:'Regione demo',province:'Provincia demo',municipality:'Comune demo',address:'Via Esempio 10',climateZone:'D',degreeDays:1800,constructionYear:1985,heatedArea:82.4,heatedVolume:247.2,lat:45,long:9},
+ services:{heating:true,cooling:false,dhw:true,ventilation:false,lighting:false,transport:false},
+ zones:[{id:'Z001',description:'Zona Termica 1',rooms:[{id:'L001',description:'Soggiorno',area:34.2,volume:102.6,height:3},{id:'L002',description:'Zona notte',area:48.2,volume:144.6,height:3}]}],
+ opaque:[{id:'OP001',room:'L001',description:'Parete esterna tipo A',boundary:'Esterno',area:26.4,u:1.12,exp:180,inc:90},{id:'OP002',room:'L002',description:'Parete esterna tipo A',boundary:'Esterno',area:31.8,u:1.12,exp:270,inc:90},{id:'OP003',room:'L001',description:'Pavimento su terreno',boundary:'Terreno',area:34.2,u:.88,exp:0,inc:180},{id:'OP004',room:'L002',description:'Solaio superiore',boundary:'Esterno',area:48.2,u:1.35,exp:0,inc:0}],
+ windows:[{id:'FN0001',room:'L001',description:'Finestra 1.20 × 1.40',area:1.68,glass:1.24,frame:.44,u:2.8,exp:180},{id:'FN0002',room:'L002',description:'Portafinestra 1.40 × 2.20',area:3.08,glass:2.45,frame:.63,u:2.9,exp:270}],
+ bridges:[{id:'PT001',room:'L001',description:'Finestra / Porta',category:7,psi:.15,length:5.2},{id:'PT002',room:'L002',description:'Solaio di interpiano',category:8,psi:.30,length:9.4}],
+ systems:[{id:'IMP001',service:'Climatizzazione invernale',description:'Caldaia a condensazione demo',carrier:'Gas naturale',power:24,eff:.91},{id:'IMP002',service:'Produzione ACS',description:'Bollitore elettrico demo',carrier:'Energia elettrica',power:1.5,eff:.75}],
+ results:{calculated:false,energyClass:'—',epNren:null,epRen:null,co2:null,eph:null,sv:null,note:'Risultati non calcolati: la bozza non integra CENED+2 Motore.'}
+};
+var model=JSON.parse(JSON.stringify(demo));
+var geometryModel=null;
+var inputState={gbxml:false,national:false,gbxmlName:'',nationalName:'',gbxmlFixture:false,nationalFixture:false};
+var current='overview';
+var sections=[['overview','Panoramica'],['viewer','Viewer 3D'],['general','Dati generali'],['zones','Zone e locali'],['opaque','Involucro'],['windows','Serramenti'],['bridges','Ponti termici'],['systems','Impianti'],['results','Risultati'],['ape','Anteprima APE'],['xml','XML']];
+var nav=document.getElementById('nav'),content=document.getElementById('content'),statusBox=document.getElementById('status'),notice=document.getElementById('notice');
+
+function fmt(v,d){if(v===null||v===undefined||v===''||isNaN(Number(v)))return '—';return Number(v).toLocaleString('it-IT',{maximumFractionDigits:d===undefined?2:d})}
+function txt(n,s,f){var x=n?n.querySelector(s):null;return x&&x.textContent.trim()?x.textContent.trim():(f||'')}
+function num(n,s,f){var raw=txt(n,s,'');if(raw==='')return f===undefined?0:f;var x=Number(raw.replace(',','.'));return isFinite(x)?x:(f===undefined?0:f)}
+function boolv(n,s,f){var x=txt(n,s,'').toLowerCase();if(x==='true'||x==='1'||x==='si'||x==='sì')return true;if(x==='false'||x==='0'||x==='no')return false;return !!f}
+function esc(s){return String(s===undefined?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+function hesc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function notify(msg,type){notice.textContent=msg;notice.className='notice '+(type||'');setTimeout(function(){notice.className='notice hidden'},4200)}
+function validate(){var c=[['gbXML geometrico importato',inputState.gbxml],['XML nazionale complementare importato',inputState.national],['Comune',!!model.building.municipality],['Indirizzo',!!model.building.address],['Zona climatica',!!model.building.climateZone],['Superficie utile riscaldata',model.building.heatedArea>0],['Volume lordo riscaldato',model.building.heatedVolume>0],['Almeno una zona',model.zones.length>0],['Almeno un locale',model.zones.some(function(z){return z.rooms.length>0})],['Involucro presente',(model.opaque.length+model.windows.length)>0]];var ok=c.filter(function(x){return x[1]}).length;return{checks:c,ok:ok,total:c.length,ratio:ok/c.length}}
+function syncSourceLabel(){
+ if(inputState.gbxml&&inputState.national){
+   model.meta.source=(inputState.gbxmlFixture&&inputState.nationalFixture)?'Fixture consolidate gbXML + XML nazionale':'gbXML + XML nazionale';
+ }else if(inputState.national)model.meta.source=inputState.nationalFixture?'Fixture XML nazionale':'XML nazionale importato';
+ else if(inputState.gbxml)model.meta.source=inputState.gbxmlFixture?'Fixture gbXML':'gbXML importato';
+ else model.meta.source='Demo WebJS';
+}
+function head(title,sub){return '<div class="section-head"><div class="eyebrow">WebJS / '+hesc(model.meta.source)+'</div><h2>'+title+'</h2><p>'+sub+'</p></div>'}
+function cards(a){return '<div class="grid">'+a.map(function(x){return '<div class="card"><small>'+x[0]+'</small><strong>'+x[1]+(x[2]?'<span> '+x[2]+'</span>':'')+'</strong></div>'}).join('')+'</div>'}
+function table(headers,rows){return '<div class="tablewrap"><table><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>'}).join('')+'</tr></thead><tbody>'+(rows.length?rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+c+'</td>'}).join('')+'</tr>'}).join(''):'<tr><td colspan="'+headers.length+'">Nessun dato</td></tr>')+'</tbody></table></div>'}
+function field(k,v){return '<div class="field"><span>'+k+'</span><b>'+(v||'—')+'</b></div>'}
+function serviceLabel(k){return({heating:'Riscaldamento',cooling:'Raffrescamento',dhw:'ACS',ventilation:'Ventilazione',lighting:'Illuminazione',transport:'Trasporto'})[k]||k}
+function renderNav(){nav.innerHTML=sections.map(function(s){return '<button class="nav '+(current===s[0]?'active':'')+'" data-id="'+s[0]+'">'+s[1]+'</button>'}).join('');Array.prototype.forEach.call(nav.querySelectorAll('[data-id]'),function(b){b.onclick=function(){current=b.getAttribute('data-id');render()}})}
+function renderStatus(){var v=validate(),pct=Math.round(v.ratio*100);statusBox.innerHTML='<b>Completezza '+pct+'%</b><div class="progress"><span style="width:'+pct+'%"></span></div><div>'+v.ok+'/'+v.total+' controlli superati</div>'}
+function overview(){var v=validate(),rooms=model.zones.reduce(function(n,z){return n+z.rooms.length},0),gs=geometryModel?geometryModel.summary:null;content.innerHTML=head('Panoramica','Il Bridge raccoglie due sorgenti pubbliche separate: gbXML per la geometria e XML nazionale per i dati complementari.')+
+'<div class="source-pair"><div class="source-box"><b>gbXML geometrico</b><small>'+(inputState.gbxml?(inputState.gbxmlFixture?'<b>Fixture consolidata</b> · ':'')+hesc(inputState.gbxmlName)+' · '+(gs?gs.surfaces+' superfici, '+gs.openings+' aperture, '+gs.shades+' Shade':'caricato'):'non importato')+'</small></div><div class="source-box"><b>XML nazionale</b><small>'+(inputState.national?(inputState.nationalFixture?'<b>Fixture consolidata</b> · ':'')+hesc(inputState.nationalName)+' · dati complementari importati':'non importato')+'</small></div></div><br>'+
+cards([['Zone',model.zones.length],['Locali',rooms],['Elementi involucro',model.opaque.length+model.windows.length+model.bridges.length],['Impianti',model.systems.length]])+'<div class="panel"><h3>Flusso</h3><div class="flow"><span class="step ok">1. Importa</span><span>→</span><span class="step '+(v.ratio===1?'ok':'now')+'">2. Verifica</span><span>→</span><span class="step">3. Prepara dati</span><span>→</span><span class="step off">4. Motore CENED</span><span>→</span><span class="step">5. XML / APE</span></div><p class="muted">Il Motore è intenzionalmente disattivato.</p></div><div class="panel"><h3>Validazione preliminare</h3>'+v.checks.map(function(x){return '<div class="check"><span class="dot '+(x[1]?'ok':'')+'"></span><span>'+x[0]+'</span><b>'+(x[1]?'OK':'Manca')+'</b></div>'}).join('')+'</div>'}
+
+function viewer(){
+ var g=geometryModel,gs=g?g.summary:null;
+ content.innerHTML=head('Viewer 3D — controllo geometrico','Viewer read-only derivato dal renderer Three.js di Termodel Web. Mostra esclusivamente la geometria proveniente dal gbXML; l’XML nazionale non viene usato per inventare coordinate mancanti.')+
+ (g?cards([['Superfici',gs.surfaces],['Aperture',gs.openings],['Shade',gs.shades],['Ostacoli remoti',gs.remoteShades]]):'')+
+ '<div class="panel"><div class="viewer-tools"><button class="btn" id="viewerIso">Isometrica</button><button class="btn" id="viewerTop">Pianta</button><button class="btn" id="viewerWire">Spigoli</button><button class="btn" id="viewerReset">Reset vista</button></div>'+
+ '<div class="viewer-layout"><div class="viewer-stage"><div id="gb3d"></div></div><div><h3>Entità selezionata</h3><div id="viewerDetails" class="viewer-details"></div><div class="legend"><span><i class="sw env"></i> Involucro</span><span><i class="sw win"></i> Aperture</span><span><i class="sw bal"></i> Aggetto / balcone</span><span><i class="sw fin"></i> Setto verticale</span><span><i class="sw remote"></i> Ostacolo remoto</span></div></div></div></div>';
+ setTimeout(function(){if(window.Cened3D)window.Cened3D.mount('gb3d',geometryModel)},0);
+}
+
+function general(){var b=model.building;content.innerHTML=head('Dati generali','Riepilogo dei dati identificativi e dei servizi energetici presenti.')+'<div class="panel fields">'+field('Regione',b.region)+field('Provincia',b.province)+field('Comune',b.municipality)+field('Indirizzo',b.address)+field('Zona climatica',b.climateZone)+field('Gradi giorno',fmt(b.degreeDays,0))+field('Anno costruzione',b.constructionYear)+field('Superficie utile riscaldata',fmt(b.heatedArea)+' m²')+field('Volume lordo riscaldato',fmt(b.heatedVolume)+' m³')+field('Coordinate GIS',fmt(b.lat,6)+' ; '+fmt(b.long,6))+'</div><div class="panel"><h3>Servizi energetici</h3><div class="tags">'+Object.keys(model.services).map(function(k){var v=model.services[k];return '<span class="tag '+(v?'on':'off')+'">'+serviceLabel(k)+': '+(v?'Sì':'No')+'</span>'}).join('')+'</div></div>'}
+function zones(){var r=[];model.zones.forEach(function(z){z.rooms.forEach(function(x){r.push([z.description,x.id,x.description,fmt(x.area)+' m²',fmt(x.volume)+' m³',fmt(x.height)+' m'])})});content.innerHTML=head('Zone e locali','Gerarchia termica normalizzata e indipendente dalla UI di origine.')+table(['Zona','ID locale','Descrizione','Sup. netta','Vol. netto','H media'],r)}
+function opaque(){content.innerHTML=head('Involucro opaco','Superfici classificate per confine termico; orientamento e inclinazione sono dati di mapping.')+table(['ID','Locale','Descrizione','Confine','Area','U','Esp.','Incl.'],model.opaque.map(function(x){return[x.id,x.room,x.description,x.boundary,fmt(x.area)+' m²',fmt(x.u,3)+' W/m²K',fmt(x.exp,0)+'°',fmt(x.inc,0)+'°']}))}
+function windows(){content.innerHTML=head('Serramenti','Separazione fra geometria, vetro, telaio e trasmittanza complessiva.')+table(['ID','Locale','Descrizione','Area','Vetro','Telaio','U corr.','Esp.'],model.windows.map(function(x){return[x.id,x.room,x.description,fmt(x.area)+' m²',fmt(x.glass)+' m²',fmt(x.frame)+' m²',fmt(x.u,3)+' W/m²K',fmt(x.exp,0)+'°']}))}
+function bridges(){content.innerHTML=head('Ponti termici','Descrizione, categoria, trasmittanza lineare e lunghezza.')+table(['ID','Locale','Descrizione','Categoria','Ψ','Lunghezza'],model.bridges.map(function(x){return[x.id,x.room,x.description,x.category,fmt(x.psi,3)+' W/mK',fmt(x.length)+' m']}))}
+function systems(){content.innerHTML=head('Impianti','Prima rappresentazione tabellare dei servizi e dei generatori.')+table(['ID','Servizio','Descrizione','Vettore','Potenza','Efficienza'],model.systems.map(function(x){return[x.id,x.service,x.description,x.carrier||'—',x.power?fmt(x.power)+' kW':'—',x.eff?fmt(x.eff,3):'—']}))}
+function results(){var r=model.results;content.innerHTML=head('Risultati','Valori letti dall’XML importato oppure non calcolati.')+cards([['Classe',r.energyClass],['EPgl,nren',fmt(r.epNren),r.epNren===null?'':'kWh/m² anno'],['EPgl,ren',fmt(r.epRen),r.epRen===null?'':'kWh/m² anno'],['CO₂',fmt(r.co2),r.co2===null?'':'kg/m² anno'],['EPH,nd',fmt(r.eph),r.eph===null?'':'kWh/m² anno'],['S/V',fmt(r.sv,4)]])+'<div class="panel muted">'+r.note+'</div>'}
+function ape(){var b=model.building,r=model.results;content.innerHTML='<div class="ape-tools"><div><div class="eyebrow">Fac-simile di controllo</div><h2>ANTEPRIMA APE — NON UFFICIALE</h2></div><button class="btn" onclick="window.print()">Stampa</button></div><div class="ape"><div class="ape-title"><b>ATTESTATO DI PRESTAZIONE ENERGETICA</b><span>Anteprima WebJS</span></div><div class="ape-section"><h3>Dati generali</h3><div class="fields">'+field('Comune',b.municipality)+field('Indirizzo',b.address)+field('Zona climatica',b.climateZone)+field('Anno costruzione',b.constructionYear)+field('Superficie utile riscaldata',fmt(b.heatedArea)+' m²')+field('Volume lordo riscaldato',fmt(b.heatedVolume)+' m³')+'</div></div><div class="ape-section"><h3>Prestazione energetica globale e del fabbricato</h3><div class="band"><div><small>CLASSE ENERGETICA</small><strong>'+r.energyClass+'</strong></div><div><small>EPgl,nren</small><strong>'+fmt(r.epNren)+'</strong></div></div><p class="muted">'+r.note+'</p></div><div class="ape-section"><h3>Prestazione energetica degli impianti</h3>'+cards([['EPgl,ren',fmt(r.epRen)],['Emissioni CO₂',fmt(r.co2)],['EPH,nd',fmt(r.eph)],['S/V',fmt(r.sv,4)]])+'</div><div class="ape-section"><h3>Raccomandazioni</h3><p class="muted">Sezione predisposta; nessuna raccomandazione viene generata automaticamente.</p></div><div class="ape-section"><h3>Soggetto certificatore / sopralluogo / software</h3><p class="muted">Dati volutamente omessi nel progetto demo.</p></div><div class="wm">NON UFFICIALE</div></div>'}
+function buildXml(){var locals='';model.zones.forEach(function(z){locals+='<subEdificio><identificativo><id>'+esc(z.id)+'</id><descrizione>'+esc(z.description)+'</descrizione></identificativo><listaLocali>';z.rooms.forEach(function(r){locals+='<locale><identificativo><id>'+esc(r.id)+'</id><descrizione>'+esc(r.description)+'</descrizione></identificativo><superficieNetta>'+r.area+'</superficieNetta><volumeNetto>'+r.volume+'</volumeNetto><altezzaNettaMedia>'+r.height+'</altezzaNettaMedia></locale>'});locals+='</listaLocali></subEdificio>'});return '<?xml version="1.0" encoding="utf-8"?><documento><ape2015><info><copyright>BOZZA WEBJS - NON UFFICIALE</copyright><versione>draft</versione></info><datiGenerali><datiIdentificativi><indirizzo>'+esc(model.building.address)+'</indirizzo><zonaClimatica>'+esc(model.building.climateZone)+'</zonaClimatica><annoCostruzione>'+model.building.constructionYear+'</annoCostruzione><superficieUtileRiscaldata>'+model.building.heatedArea+'</superficieUtileRiscaldata><volumeLordoRiscaldato>'+model.building.heatedVolume+'</volumeLordoRiscaldato></datiIdentificativi></datiGenerali></ape2015><datiCalcolo><info><copyright>BOZZA WEBJS - STRUTTURA DIMOSTRATIVA</copyright><versione>draft</versione></info><datiGenerali><regione>'+esc(model.building.region)+'</regione><comune>'+esc(model.building.municipality)+'</comune><zonaClimatica>'+esc(model.building.climateZone)+'</zonaClimatica></datiGenerali><fabbricato>'+locals+'</fabbricato></datiCalcolo></documento>'}
+function xmlview(){var x=buildXml();content.innerHTML=head('XML nazionale — bozza','Serializzazione dimostrativa ispirata al Golden Reference. Non è dichiarata conforme a CENED+2 Motore o CEER.')+'<div class="actions" style="margin-bottom:10px"><button class="btn" id="copyxml">Copia XML</button><button class="btn" id="savexml">Scarica XML demo</button></div><pre>'+hesc(x)+'</pre>';document.getElementById('copyxml').onclick=function(){navigator.clipboard.writeText(x);notify('XML copiato.','ok')};document.getElementById('savexml').onclick=function(){var u=URL.createObjectURL(new Blob([x],{type:'application/xml'})),a=document.createElement('a');a.href=u;a.download='cened-bridge-demo.xml';a.click();URL.revokeObjectURL(u)}}
+
+function childrenLocal(n,name){return n?Array.prototype.filter.call(n.children||[],function(c){return c.localName===name}):[]}
+function childLocal(n,name){var a=childrenLocal(n,name);return a.length?a[0]:null}
+function allLocal(n,name){return n?Array.prototype.slice.call(n.getElementsByTagNameNS('*',name)):[]}
+function localText(n,name,f){var c=childLocal(n,name);return c&&c.textContent.trim()?c.textContent.trim():(f||'')}
+function pointOf(cp){var c=childrenLocal(cp,'Coordinate');return{x:Number(c[0]?.textContent||0),y:Number(c[1]?.textContent||0),z:Number(c[2]?.textContent||0)}}
+function pointsOf(n){var pg=childLocal(n,'PlanarGeometry'),pl=childLocal(pg,'PolyLoop');return childrenLocal(pl,'CartesianPoint').map(pointOf)}
+function polyArea3(points){if(points.length<3)return 0;var o=points[0],area=0;for(var i=1;i<points.length-1;i++){var a={x:points[i].x-o.x,y:points[i].y-o.y,z:points[i].z-o.z},b={x:points[i+1].x-o.x,y:points[i+1].y-o.y,z:points[i+1].z-o.z};var cx=a.y*b.z-a.z*b.y,cy=a.z*b.x-a.x*b.z,cz=a.x*b.y-a.y*b.x;area+=Math.sqrt(cx*cx+cy*cy+cz*cz)*.5}return area}
+function extents(points){var xs=points.map(function(p){return p.x}),ys=points.map(function(p){return p.y}),zs=points.map(function(p){return p.z});return{minX:Math.min.apply(null,xs),maxX:Math.max.apply(null,xs),minY:Math.min.apply(null,ys),maxY:Math.max.apply(null,ys),minZ:Math.min.apply(null,zs),maxZ:Math.max.apply(null,zs)}}
+function mergeBounds(list){var b={minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity,minZ:Infinity,maxZ:-Infinity};list.forEach(function(e){var q=extents(e.points);b.minX=Math.min(b.minX,q.minX);b.maxX=Math.max(b.maxX,q.maxX);b.minY=Math.min(b.minY,q.minY);b.maxY=Math.max(b.maxY,q.maxY);b.minZ=Math.min(b.minZ,q.minZ);b.maxZ=Math.max(b.maxZ,q.maxZ)});return b}
+function bboxDistance(a,b){function gap(a0,a1,b0,b1){return a1<b0?b0-a1:(b1<a0?a0-b1:0)}var dx=gap(a.minX,a.maxX,b.minX,b.maxX),dy=gap(a.minY,a.maxY,b.minY,b.maxY),dz=gap(a.minZ,a.maxZ,b.minZ,b.maxZ);return Math.sqrt(dx*dx+dy*dy+dz*dz)}
+function centroid(points){var s=points.reduce(function(a,p){a.x+=p.x;a.y+=p.y;a.z+=p.z;return a},{x:0,y:0,z:0}),n=Math.max(points.length,1);return{x:s.x/n,y:s.y/n,z:s.z/n}}
+function centroidDistance(a,b){var p=centroid(a),q=centroid(b),dx=p.x-q.x,dy=p.y-q.y,dz=p.z-q.z;return Math.sqrt(dx*dx+dy*dy+dz*dz)}
+function parseGbXml(text){
+ var xml=new DOMParser().parseFromString(text,'application/xml');
+ if(xml.querySelector('parsererror'))throw new Error('gbXML non ben formato');
+ if(!xml.documentElement||xml.documentElement.localName!=='gbXML')throw new Error('Radice <gbXML> non trovata');
+ var version=xml.documentElement.getAttribute('version')||'';
+ var surfaces=allLocal(xml,'Surface');
+ var base=[],shades=[],openings=[];
+ surfaces.forEach(function(s,i){
+   var pts=pointsOf(s);if(pts.length<3)return;
+   var st=s.getAttribute('surfaceType')||'',id=s.getAttribute('id')||('Surface-'+(i+1));
+   var e={id:id,name:localText(s,'Name',id),kind:st==='Shade'?'shade':'surface',surfaceType:st,source:'gbXML',points:pts,area:polyArea3(pts),constructionId:s.getAttribute('constructionIdRef')||''};
+   if(st==='Shade')shades.push(e);else base.push(e);
+   childrenLocal(s,'Opening').forEach(function(o,oi){var op=pointsOf(o);if(op.length<3)return;openings.push({id:o.getAttribute('id')||id+'-Opening-'+(oi+1),name:localText(o,'Name','Apertura'),kind:'opening',openingType:o.getAttribute('openingType')||'',source:'gbXML',hostSurfaceId:id,points:op,area:polyArea3(op)})});
+ });
+ if(!base.length)throw new Error('gbXML senza superfici di involucro leggibili');
+ var bb=mergeBounds(base),hosts=base.filter(function(s){return openings.some(function(o){return o.hostSurfaceId===s.id})});
+ shades.forEach(function(s){
+   var q=extents(s.points),dx=q.maxX-q.minX,dy=q.maxY-q.minY,dz=q.maxZ-q.minZ,dist=bboxDistance(q,bb),horizontal=dz<0.02;
+   if(horizontal){s.classification='Aggetto orizzontale / balcone';var spans=[dx,dy].filter(function(v){return v>.001}).sort(function(a,b){return a-b});s.depth=spans[0]||0;s.width=spans[1]||spans[0]||0}
+   else if(dist>1.5){s.classification='Ostruzione esterna remota';s.distance=dist;s.height=dz;s.width=Math.max(dx,dy)}
+   else{s.classification='Setto verticale';s.depth=Math.max(dx,dy);s.height=dz}
+   if(hosts.length){var host=hosts.slice().sort(function(a,b){return centroidDistance(s.points,a.points)-centroidDistance(s.points,b.points)})[0];s.hostSurfaceId=host.id;s.affectedOpenings=openings.filter(function(o){return o.hostSurfaceId===host.id}).map(function(o){return o.id})}
+ });
+ var entities=base.concat(openings).concat(shades);
+ return{version:version,source:'gbXML',entities:entities,surfaces:base,openings:openings,shades:shades,bounds:bb,summary:{surfaces:base.length,openings:openings.length,shades:shades.length,remoteShades:shades.filter(function(s){return s.classification==='Ostruzione esterna remota'}).length}};
+}
+
+function parseXml(text){var xml=new DOMParser().parseFromString(text,'application/xml');if(xml.querySelector('parsererror'))throw new Error('XML non ben formato');if(!xml.querySelector('documento'))throw new Error('Radice <documento> non trovata');var m=JSON.parse(JSON.stringify(demo)),ape=xml.querySelector('ape2015'),calc=xml.querySelector('datiCalcolo');m.meta.source='XML nazionale importato';m.building.region=txt(ape,'datiExtra > regione',txt(calc,'datiGenerali > regione',''));m.building.province=txt(ape,'datiExtra > provincia','');m.building.municipality=txt(ape,'datiExtra > comune',txt(calc,'datiGenerali > comune',''));m.building.address=txt(ape,'datiIdentificativi > indirizzo',txt(calc,'datiGenerali > indirizzo',''));m.building.climateZone=txt(ape,'datiIdentificativi > zonaClimatica',txt(calc,'datiGenerali > zonaClimatica',''));m.building.degreeDays=num(ape,'datiExtra > gradiGiorno',num(calc,'datiGenerali > gradiGiorno',0));m.building.constructionYear=num(ape,'datiIdentificativi > annoCostruzione',0);m.building.heatedArea=num(ape,'datiIdentificativi > superficieUtileRiscaldata',num(calc,'fabbricato > superficieNetta',0));m.building.heatedVolume=num(ape,'datiIdentificativi > volumeLordoRiscaldato',num(calc,'fabbricato > volumeLordoClimatizzato',0));m.building.lat=num(ape,'datiIdentificativi > LatitudineGIS',num(calc,'datiGenerali > latitudineGIS',0));m.building.long=num(ape,'datiIdentificativi > LongitudineGIS',num(calc,'datiGenerali > longitudineGIS',0));m.services.heating=boolv(ape,'serviziEnergeticiPresenti > climatizzazioneInvernale',true);m.services.cooling=boolv(ape,'serviziEnergeticiPresenti > climatizzazioneEstiva',false);m.services.dhw=boolv(ape,'serviziEnergeticiPresenti > produzioneAcquaCaldaSanitaria',true);m.services.ventilation=boolv(ape,'serviziEnergeticiPresenti > ventilazioneMeccanica',false);m.services.lighting=boolv(ape,'serviziEnergeticiPresenti > illuminazione',false);m.services.transport=boolv(ape,'serviziEnergeticiPresenti > trasportoPersoneCose',false);var cl=ape?ape.querySelector('prestazioneEnergeticaGlobale > classificazione'):null;m.results.energyClass=txt(cl,'classeEnergetica','—');m.results.epNren=num(cl,'epglnren',null);m.results.epRen=num(ape,'prestazioneImpianti > epglren',null);m.results.co2=num(ape,'prestazioneImpianti > emissioniCO2',null);m.results.eph=num(ape,'datiFabbricato > ephnd',null);m.results.sv=num(ape,'datiFabbricato > rapportoSV',null);m.results.calculated=m.results.epNren!==null;m.results.note=m.results.calculated?'Valori letti dall’XML importato; non ricalcolati dalla WebJS.':'XML importato senza risultati APE leggibili dalla bozza.';var zs=calc?calc.querySelectorAll('fabbricato > subEdificio'):[];m.zones=Array.prototype.map.call(zs,function(z,zi){return{id:txt(z,'identificativo > id','Z'+(zi+1)),description:txt(z,'identificativo > descrizione','Zona '+(zi+1)),rooms:Array.prototype.map.call(z.querySelectorAll('listaLocali > locale'),function(r,ri){return{id:txt(r,'identificativo > id','L'+(ri+1)),description:txt(r,'identificativo > descrizione','Locale '+(ri+1)),area:num(r,'superficieNetta',0),volume:num(r,'volumeNetto',0),height:num(r,'altezzaNettaMedia',0)}})}});m.opaque=Array.prototype.map.call(calc?calc.querySelectorAll('superficieOpaca'):[],function(n,i){return{id:'OP'+(i+1),room:n.closest('locale')?txt(n.closest('locale'),'identificativo > id',''):'',description:txt(n,'descrizione','Superficie opaca '+(i+1)),boundary:n.parentElement?n.parentElement.tagName.replace(/^confine/,''):'',area:num(n,'superficieDisperdente',0),u:num(n,'trasmittanza',0),exp:num(n,'esposizione',0),inc:num(n,'inclinazione',0)}});m.windows=Array.prototype.map.call(calc?calc.querySelectorAll('superficieVetrata'):[],function(n,i){return{id:txt(n,'idComponenteVetrata','FN'+(i+1)),room:n.closest('locale')?txt(n.closest('locale'),'identificativo > id',''):'',description:txt(n,'descrizione','Serramento '+(i+1)),area:num(n,'superficieDisperdente',0),glass:num(n,'areaVetro',0),frame:num(n,'areaTelaio',0),u:num(n,'trasmittanzaInfissoCorretta',num(n,'trasmittanzaInfisso',0)),exp:num(n,'esposizione',0)}});m.bridges=Array.prototype.map.call(calc?calc.querySelectorAll('PonteTermico'):[],function(n,i){return{id:'PT'+(i+1),room:n.closest('locale')?txt(n.closest('locale'),'identificativo > id',''):'',description:txt(n,'descrizione','Ponte '+(i+1)),category:num(n,'categoria',0),psi:num(n,'trasmittanzaLineare',0),length:num(n,'lunghezza',0)}});m.systems=Array.prototype.map.call(calc?calc.querySelectorAll('impianti > impianto'):[],function(n,i){return{id:'IMP'+(i+1),service:Array.prototype.map.call(n.querySelectorAll('servizio > *'),function(x){return x.tagName}).join(', ')||'Impianto',description:txt(n,'descrizione','Impianto '+(i+1)),carrier:'',power:num(n,'generazione generatore potenzaNominale',0),eff:num(n,'generazione generatore risultati efficienza',0)}});return m}
+function render(){renderNav();renderStatus();({overview:overview,viewer:viewer,general:general,zones:zones,opaque:opaque,windows:windows,bridges:bridges,systems:systems,results:results,ape:ape,xml:xmlview}[current]||overview)()}
+async function autoloadFixtures(){
+ try{
+   notify('Caricamento fixture consolidate…','warn');
+   var responses=await Promise.all([
+     fetch('./fixtures/BLUMATICA-XML-001-SANITIZED.xml?v=0.1.3',{cache:'no-store'}),
+     fetch('./fixtures/GBXML-SHADING-001.xml?v=0.1.3',{cache:'no-store'})
+   ]);
+   if(!responses[0].ok||!responses[1].ok)throw new Error('Fixture non raggiungibili');
+   var texts=await Promise.all([responses[0].text(),responses[1].text()]);
+   model=parseXml(texts[0]);
+   geometryModel=parseGbXml(texts[1]);
+   inputState={
+     gbxml:true,
+     national:true,
+     gbxmlName:'GBXML-SHADING-001.xml',
+     nationalName:'BLUMATICA-XML-001-SANITIZED.xml',
+     gbxmlFixture:true,
+     nationalFixture:true
+   };
+   syncSourceLabel();
+   current='viewer';
+   notify('Fixture consolidate caricate automaticamente.','ok');
+   render();
+ }catch(err){
+   geometryModel=null;
+   inputState={gbxml:false,national:false,gbxmlName:'',nationalName:'',gbxmlFixture:false,nationalFixture:false};
+   syncSourceLabel();
+   notify('Errore caricamento fixture consolidate: '+err.message,'bad');
+   render();
+ }
+}
+document.getElementById('verify').onclick=function(){var v=validate();notify(v.ratio===1?'Controlli preliminari superati.':(v.total-v.ok)+' controlli da completare.',v.ratio===1?'ok':'warn');current='overview';render()}
+document.getElementById('reset').onclick=function(){if(window.Cened3D)window.Cened3D.dispose();autoloadFixtures()}
+document.getElementById('xmlInput').onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{model=parseXml(r.result);inputState.national=true;inputState.nationalName=f.name;inputState.nationalFixture=false;syncSourceLabel();current='overview';notify('XML nazionale importato: '+f.name+'.','ok');render()}catch(err){notify(err.message,'bad')}};r.readAsText(f);e.target.value=''}
+document.getElementById('gbxmlInput').onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{geometryModel=parseGbXml(r.result);inputState.gbxml=true;inputState.gbxmlName=f.name;inputState.gbxmlFixture=false;syncSourceLabel();current='viewer';notify('gbXML importato: '+f.name+' · '+geometryModel.summary.shades+' Shade.','ok');render()}catch(err){notify(err.message,'bad')}};r.readAsText(f);e.target.value=''}
+render();autoloadFixtures();
+</script>
+<script type="module" src="./viewer3d.js?v=0.1.3"></script>
+</body>
+</html>

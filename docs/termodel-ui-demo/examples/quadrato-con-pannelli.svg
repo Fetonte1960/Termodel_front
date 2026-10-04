@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+  viewBox="-80 -50 530 500"
+  width="900"
+  height="760"
+  data-termodel-format="TERMODEL-PROJECT-SVG-V1"
+  data-termodel-units="cm">
+  <g id="calpestabile">
+    <line id="E001" x1="0" y1="0" x2="400" y2="0"
+      data-termodel-piano="Unico" data-termodel-layer="Unico"
+      data-termodel-tipo-parete="Parete esterna isolata"
+      data-termodel-confine-parete="Automatico"
+      data-termodel-colore="1 - Rosso"
+      data-termodel-tipo-linea="Continuous" stroke="#ff0000"/>
+    <line id="E002" x1="400" y1="0" x2="400" y2="400"
+      data-termodel-piano="Unico" data-termodel-layer="Unico"
+      data-termodel-tipo-parete="Parete esterna isolata"
+      data-termodel-confine-parete="Automatico"
+      data-termodel-colore="1 - Rosso"
+      data-termodel-tipo-linea="Continuous" stroke="#ff0000"/>
+    <line id="E003" x1="400" y1="400" x2="0" y2="400"
+      data-termodel-piano="Unico" data-termodel-layer="Unico"
+      data-termodel-tipo-parete="Parete esterna isolata"
+      data-termodel-confine-parete="Automatico"
+      data-termodel-colore="1 - Rosso"
+      data-termodel-tipo-linea="Continuous" stroke="#ff0000"/>
+    <line id="E004" x1="0" y1="400" x2="0" y2="0"
+      data-termodel-piano="Unico" data-termodel-layer="Unico"
+      data-termodel-tipo-parete="Parete esterna isolata"
+      data-termodel-confine-parete="Automatico"
+      data-termodel-colore="1 - Rosso"
+      data-termodel-tipo-linea="Continuous" stroke="#ff0000"/>
+    <line id="T001" x1="-50" y1="200" x2="50" y2="200"
+      data-termodel-piano="Unico"
+      data-termodel-layer="Unico_tubipannelli"
+      data-termodel-entity="Tubo"
+      data-termodel-rete="RAD-DEFAULT"
+      data-termodel-linetype="Continuous"
+      data-termodel-color="1"
+      stroke="#ff0000"/>
+    <text id="R001" x="200" y="200" font-size="1"
+      data-termodel-piano="Unico" data-termodel-layer="Unico">
+      <tspan x="200" dy="0">BLOCCO,LOC</tspan>
+      <tspan x="200" dy="1.2em">DESCR.,Quadrato con pannelli</tspan>
+      <tspan x="200" dy="1.2em">ZONA,Zona climatizzata</tspan>
+      <tspan x="200" dy="1.2em">CPAV,Automatico</tspan>
+      <tspan x="200" dy="1.2em">CSOF,Automatico</tspan>
+      <tspan x="200" dy="1.2em">CCOPERTURA,Solaio piano</tspan>
+      <tspan x="200" dy="1.2em">TPAV,Pavimento su terreno</tspan>
+      <tspan x="200" dy="1.2em">TSOF,Solaio Esterno in laterocemento</tspan>
+      <tspan x="200" dy="1.2em">ALTEZZALORDA,Da piano</tspan>
+      <tspan x="200" dy="1.2em">ALTEZZANETTA,Da piano</tspan>
+      <tspan x="200" dy="1.2em">QUOTAPAVIMENTO,Da piano</tspan>
+    </text>
+  </g>
+  <g id="copertura"/>
+</svg>

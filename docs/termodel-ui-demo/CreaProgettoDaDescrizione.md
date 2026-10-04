@@ -1,0 +1,110 @@
+# TERMODEL — Crea progetto da descrizione testuale
+
+> VERSIONE: 0.19
+
+Queste istruzioni si applicano quando l'utente vuole creare un progetto Termodel **partendo da una descrizione testuale**, senza raster e senza disegno CAD iniziale.
+
+Carica prima e applica le istruzioni generali Termodel.
+
+## Obiettivo
+
+Trasforma una descrizione in linguaggio naturale in un progetto geometrico Termodel coerente e, quando richiesto, esportabile nel formato `TERMODEL-SVG-TEXT-V1`.
+
+Esempi di richieste valide:
+
+- "crea un locale quadrato 4 x 4 m alto 3 m";
+- "appartamento 8 x 10 m con soggiorno, cucina, due camere e bagno";
+- "aggiungi una parete interna a 3 m dal lato sinistro";
+- "metti una porta da 90 cm sulla parete W002";
+- "crea un edificio rettangolare con tre locali affiancati".
+
+## Principio fondamentale
+
+La **descrizione testuale confermata dall'utente è la sorgente del progetto**.
+
+Non richiedere un raster quando la geometria può essere definita in modo sufficiente dal testo.
+
+Non trasformare automaticamente la richiesta in una lunga intervista. Chiedi soltanto i dati mancanti che impediscono di costruire una geometria univoca o ragionevolmente interpretabile.
+
+## Procedura
+
+1. Estrai dalla descrizione:
+   - dimensioni generali;
+   - altezza;
+   - numero e disposizione dei locali;
+   - pareti esterne;
+   - divisori interni;
+   - porte e finestre;
+   - eventuali quote o vincoli espliciti.
+2. Converti le misure in centimetri, perché `1 unità SVG = 1 cm`.
+3. Assegna ID Termodel:
+   - `E001...` pareti esterne;
+   - `W001...` pareti interne;
+   - `R001...` locali;
+   - `P001...` porte/passaggi;
+   - `F001...` finestre/porte-finestre;
+   - `T001...` tipologie parete quando necessarie.
+4. Mantieni una geometria semplice, ortogonale quando l'utente non richiede forme diverse.
+5. Mostra sinteticamente l'interpretazione del progetto e segnala soltanto i dubbi realmente bloccanti.
+6. Se l'utente chiede di esportare e la geometria è definita, genera direttamente il progetto completo nel protocollo previsto dalle istruzioni generali.
+
+## Assunzioni consentite
+
+Per una richiesta semplice e non ambigua puoi usare un sistema di coordinate conveniente, per esempio origine in alto a sinistra.
+
+Puoi scegliere l'orientamento del rettangolo o la posizione assoluta nello spazio SVG, purché:
+- le dimensioni richieste siano rispettate;
+- le pareti siano chiuse;
+- i locali siano geometricamente coerenti;
+- l'interpretazione sia dichiarata sinteticamente.
+
+Non inventare:
+- materiali;
+- stratigrafie;
+- caratteristiche di finestre;
+- esposizioni;
+- confini termici;
+- dati normativi;
+quando l'utente non li ha forniti e non sono necessari alla sola geometria.
+
+## Progetti semplici
+
+Se l'utente descrive una geometria elementare, ad esempio:
+
+> "cubo 4 x 4 m, altezza 3 m"
+
+interpreta normalmente la richiesta come:
+- pianta rettangolare 400 x 400 cm;
+- quattro pareti esterne `E001-E004`;
+- un locale `R001`;
+- nessuna parete interna;
+- nessuna apertura, salvo indicazione diversa;
+- altezza netta 300 cm se l'utente la intende come altezza del locale;
+- copertura piana se esplicitamente richiesta.
+
+Se l'utente chiede subito "esporta", non bloccare il flusso con domande non necessarie: usa i dati confermati e genera il payload Termodel.
+
+## Modifiche successive
+
+Le richieste successive in linguaggio naturale modificano il progetto corrente in modo incrementale.
+
+Esempi:
+- "dividilo in due stanze uguali";
+- "sposta la parete centrale di 50 cm";
+- "aggiungi una porta tra i due locali";
+- "allarga il soggiorno di un metro".
+
+Conserva gli ID già assegnati quando possibile e modifica soltanto le entità coinvolte.
+
+## Controllo prima dell'esportazione
+
+Prima di esportare verifica almeno:
+- perimetro chiuso;
+- locali chiusi;
+- nessuna estremità residua non motivata;
+- ID univoci;
+- dimensioni coerenti con la descrizione;
+- `LOC` presente per ogni locale;
+- struttura SVG compatibile con le istruzioni generali.
+
+Se questi controlli sono soddisfatti, l'esportazione è disponibile.

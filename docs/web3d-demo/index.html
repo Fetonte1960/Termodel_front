@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Termodel Web3D Demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #11151a; }
+    #app { position: fixed; inset: 0; }
+    #viewer { position: absolute; inset: 0; }
+    .panel {
+      position: absolute; z-index: 10; backdrop-filter: blur(10px);
+      background: rgba(20, 25, 31, .84); border: 1px solid rgba(255,255,255,.10);
+      border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.25);
+    }
+    #topbar { left: 14px; top: 14px; right: 14px; min-height: 58px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+    #brand { margin-right: auto; min-width: 200px; }
+    #brand strong { display: block; font-size: 16px; letter-spacing: .2px; }
+    #brand span { display: block; margin-top: 2px; font-size: 12px; opacity: .68; }
+    button {
+      border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: inherit;
+      border-radius: 9px; padding: 8px 11px; cursor: pointer; font-weight: 600;
+    }
+    button:hover { background: rgba(255,255,255,.12); }
+    #info { right: 14px; top: 86px; width: min(310px, calc(100vw - 28px)); padding: 14px; }
+    #info h2 { margin: 0 0 10px; font-size: 15px; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.07); font-size: 13px; }
+    .row:last-child { border-bottom: 0; }
+    .key { opacity: .62; }
+    #hint { left: 14px; bottom: 14px; padding: 10px 12px; font-size: 12px; opacity: .82; }
+    #status { font-size: 12px; opacity: .72; padding-left: 3px; }
+    @media (max-width: 760px) {
+      #topbar { flex-wrap: wrap; }
+      #brand { width: 100%; }
+      #info { top: 128px; width: 245px; }
+      button { padding: 7px 9px; }
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="viewer"></div>
+
+    <div id="topbar" class="panel">
+      <div id="brand">
+        <strong>Termodel Web3D — demo</strong>
+        <span>Modello geometrico nel browser · Three.js</span>
+      </div>
+      <button id="btnIso">Isometrica</button>
+      <button id="btnTop">Pianta</button>
+      <button id="btnWire">Spigoli</button>
+      <button id="btnReset">Reset</button>
+      <span id="status">caricamento…</span>
+    </div>
+
+    <aside id="info" class="panel">
+      <h2>Entità selezionata</h2>
+      <div id="details">Tocca una parete, il pavimento, una porta o una finestra.</div>
+    </aside>
+
+    <div id="hint" class="panel">Trascina per orbitare · rotella/pinch per zoom · tocca un elemento per leggerne i dati Termodel</div>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "format": "TERMODEL-PROJECT-BROWSER-CATALOG-V1",
+  "examples": [
+    {
+      "id": "pannelli-radianti",
+      "name": "Pannelli radianti",
+      "description": "Progetto reale di regressione con 6 circuiti radianti",
+      "project": "./examples/pannelli-radianti.tmdl.txt",
+      "executive": true,
+      "default": true,
+      "executiveSvg": "./examples/pannelli-radianti-esecutivo.svg",
+      "executiveProvenance": {
+        "kind": "consolidated-example",
+        "generator": "Termodel Service",
+        "spiralEngine": "Vittorio_revisionato",
+        "serviceCommit": "f73f2361977ffa887dd718931e7024e83df49fbc",
+        "consolidatedCommit": "250764471dc580d6206e4813ba9e2c8a2f952a09",
+        "generatedDate": "2026-10-02",
+        "workflowRun": "36979179620",
+        "svgSha256": "fe932dda57d10a8f0fdd2f3cb0eef0604aafacd78982c3e229c72fa338e57460"
+      }
+    },
+    {
+      "id": "quadrato-con-pannelli",
+      "name": "Quadrato con pannelli",
+      "description": "Quadrato 4×4 m con un tubo di ingresso ed esecutivo pannelli consolidato",
+      "geometry": "./examples/quadrato-con-pannelli.svg",
+      "executive": true,
+      "default": false,
+      "executiveSvg": "./examples/quadrato-con-pannelli-esecutivo.svg",
+      "executiveProvenance": {
+        "kind": "consolidated-example",
+        "generator": "Termodel Service",
+        "spiralEngine": "Vittorio_revisionato",
+        "serviceCommit": "f73f2361977ffa887dd718931e7024e83df49fbc",
+        "consolidatedCommit": "250764471dc580d6206e4813ba9e2c8a2f952a09",
+        "generatedDate": "2026-10-02",
+        "workflowRun": "36979179620",
+        "svgSha256": "bb1d34a2e9ef93692d687dec5a5c86b3591d5b0d38af23ca8ff3ecc401afe4ee"
+      }
+    }
+  ]
+}
