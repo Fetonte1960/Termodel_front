@@ -73,7 +73,7 @@ const TERMODEL_LOG_CATEGORIES = [
   'PontiAutomatici',
   'SpiraliDiego'
 ];
-const APP_VERSION = '1.43';
+const APP_VERSION = '1.44';
 const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
 const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
@@ -4724,7 +4724,7 @@ async function importAiFromMainForm(event) {
     window.alert(
       'Gli appunti contengono un XML, ma "Importa da AI" non accetta XML generico o XML Nazionale.\n\n' +
       'Per un risultato generato dall’AI usa un progetto Termodel corrente oppure TERMODEL-SVG-TEXT-V1.\n\n' +
-      'Se invece hai un XML Nazionale, usa File → Importa XML nazionale.'
+      'L’XML Nazionale appartiene a un flusso separato e non va incollato qui.'
     );
     return;
   }
@@ -4786,7 +4786,7 @@ async function importAiFromMainForm(event) {
     window.alert(
       'Gli appunti non contengono un formato importabile da AI.\n\n' +
       'Usa un progetto Termodel corrente oppure un payload TERMODEL-SVG-TEXT-V1. ' +
-      'Un XML Nazionale va importato da File → Importa XML nazionale.'
+      'Un XML Nazionale appartiene a un flusso separato e non va incollato in Importa da AI.'
     );
     return;
   }
