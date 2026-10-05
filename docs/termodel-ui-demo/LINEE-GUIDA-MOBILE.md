@@ -127,8 +127,8 @@ Il pulsante Help del gruppo deve spiegare il ciclo corretto:
 1. copia l'istruzione AI;
 2. apri ChatGPT, Gemini, DeepSeek o un altro assistente e incolla l'istruzione;
 3. descrivi il progetto o allega pianta/PDF;
-4. copia integralmente il risultato destinato a Termodel;
-5. torna in MyHome3D e usa **Importa progetto realizzato con AI dagli appunti**.
+4. se l'AI propone **Apri il progetto in Termodel**, tocca direttamente il link V1;
+5. in alternativa copia integralmente il risultato destinato a Termodel, torna in MyHome3D e usa **Importa progetto realizzato con AI dagli appunti**.
 
 Il Help deve ricordare che per una nuova geometria il formato previsto è `TERMODEL-SVG-TEXT-V1`, mentre un progetto Termodel completo corrente può usare `TERMODEL-PROJECT-TEXT-V1`. XML generico e XML Nazionale non vanno incollati in **Importa da AI**.
 
@@ -153,3 +153,19 @@ Nel menu **Esplora** della Home Mobile il comando **Importa progetto realizzato 
 Il comando riusa la stessa procedura di importazione già disponibile nel frontend Termodel Web: legge dagli appunti un progetto completo `TERMODEL-PROJECT-TEXT-V1` oppure, quando previsto dal flusso esistente, una pianta SVG restituita dall'AI. Non deve esistere una seconda logica di importazione dedicata al Mobile.
 
 Il comando deve essere raggiungibile anche quando è visualizzato il modello iniziale non esplorabile: in questo stato il menu **Esplora** resta apribile e permette sia di scegliere un esempio sia di importare il progetto AI dagli appunti.
+
+
+## Link AI V1 — apertura diretta
+
+Dalla versione frontend **1.48** Termodel/MyHome3D può ricevere un risultato AI direttamente nel fragment dell'URL, senza passare dagli appunti.
+
+Formati accettati:
+
+- `#ai64=<payload>` — formato preferito: payload completo codificato UTF-8 Base64URL senza padding;
+- `#ai=<payload>` — variante compatibile con payload codificato tramite `encodeURIComponent`.
+
+Il contenuto decodificato viene passato allo stesso importatore già usato da **Importa progetto realizzato con AI dagli appunti**: non esiste un secondo validatore.
+
+Dopo la lettura il fragment viene rimosso dalla barra degli indirizzi, così un refresh non ripete automaticamente l'importazione.
+
+Il blocco `TERMODEL-SVG-TEXT-V1` copiabile resta il fallback obbligatorio durante la fase sperimentale V1.
