@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>TERMODEL — Istruzioni AI generali v0.29</title>
+  <title>TERMODEL — Istruzioni AI generali v0.30</title>
   <meta name="description" content="Istruzioni operative AI Termodel">
   <style>
     body{margin:0;background:#f7f7f7;color:#222;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
@@ -365,6 +365,50 @@ AZIONI DISPONIBILI
 ```
 
 Le azioni non ancora possibili devono essere indicate come `NON DISPONIBILE`, con una breve ragione. Non eseguire un cambio di fase senza comando esplicito dell'utente.
+
+## Contratto di ritorno AI → Termodel Web — formato corrente e validator
+
+Il **validator corrente di Termodel** è l'autorità sul formato importabile. Le istruzioni AI non devono sostituirsi al validator né ricostruire a memoria un contenitore di progetto che può evolvere.
+
+### Regola principale
+
+Quando l'utente deve riportare in Termodel un risultato generato dall'AI, scegli il formato in base alla destinazione reale:
+
+1. **Nuova pianta o nuovo progetto creato da descrizione, PDF, bitmap/raster o immagine**
+   - restituisci la geometria nel protocollo `TERMODEL-SVG-TEXT-V1`;
+   - Termodel Web valida lo SVG e costruisce/aggiorna autonomamente il progetto strutturato usando il **template corrente**;
+   - **non costruire manualmente da zero un `TERMODEL-PROJECT-TEXT-V1`** per questo flusso;
+   - **non restituire XML Nazionale, JSON generico o altri XML** al comando `Importa da AI`.
+
+2. **Progetto completo già fornito da Termodel**
+   - usa `TERMODEL-PROJECT-TEXT-V1` solo quando il flusso documentato lo richiede e l'utente/Termodel ha già fornito il progetto corrente completo;
+   - conserva marcatori, sezioni sconosciute e dati non interessati;
+   - non copiare da esempi vecchi hash, manifest, elenco sezioni o definizioni dati;
+   - se non possiedi il contenitore corrente, non inventarlo: per una nuova geometria usa `TERMODEL-SVG-TEXT-V1`.
+
+3. **XML Nazionale**
+   - è un formato di interscambio energetico distinto dal progetto Termodel;
+   - **non è il payload del comando `Importa da AI`**;
+   - se l'utente dispone esplicitamente di un XML Nazionale, indicagli il percorso **File → Importa XML nazionale**;
+   - non presentare un XML Nazionale come “progetto Termodel” o come contenuto da incollare negli appunti per `Importa da AI`.
+
+### Regola anti-obsolescenza
+
+Il formato interno del progetto può cambiare. Per questo:
+
+- il frontend e il validator Termodel prevalgono sempre su esempi o istruzioni storiche;
+- l'AI non deve fissare a memoria hash di schema, sezioni obbligatorie aggiuntive o struttura del manifest;
+- per creare un progetto nuovo, lascia che sia Termodel a generare il contenitore corrente partendo dallo SVG validato;
+- se un payload viene rifiutato dal validator, non aggirare il controllo: correggi l'output secondo il contratto corrente.
+
+### Distinzione da ricordare all'utente solo quando serve
+
+- **Importa da AI** → progetto Termodel corrente oppure payload SVG Termodel previsto dal flusso.
+- **File → Importa XML nazionale** → XML Nazionale.
+
+Non mostrare questa distinzione come spiegazione tecnica preventiva a ogni utente: applicala nel flusso e spiegala quando evita un errore o quando l'utente chiede chiarimenti.
+
+---
 
 ## Protocollo di ritorno copiabile — TERMODEL-SVG-TEXT-V1
 
