@@ -2,7 +2,7 @@
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
 > Ultimo aggiornamento: 2026-10-05  
-> Frontend esaminato: **Termodel Web 1.45**
+> Frontend esaminato: **Termodel Web 1.46**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.45**.
+Versione frontend rilevata: **1.46**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.45**
-- CAD 2D: **Termodel Cad 2d Versione 1.45**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.46**
+- CAD 2D: **Termodel Cad 2d Versione 1.46**
 
 L'interfaccia Web PC è organizzata in:
 
@@ -78,7 +78,7 @@ Lo stato iniziale può essere in modalità esplorazione esempi: alcune funzioni 
 - **Salva con nome** — salva il progetto corrente scegliendo un nuovo nome.
 - **Copia progetto negli appunti** — copia il progetto completo nel formato di interscambio Termodel; richiede un progetto attivo.
 
-### Voci presenti nell'interfaccia ma senza collegamento operativo specifico rilevato nella v1.45
+### Voci presenti nell'interfaccia ma senza collegamento operativo specifico rilevato nella v1.46
 
 - **Carica progetto ZIP**
 - **Salva progetto ZIP**
@@ -86,7 +86,7 @@ Lo stato iniziale può essere in modalità esplorazione esempi: alcune funzioni 
 - **Esporta XML nazionale**
 - **Esporta BIM (ifc)**
 
-Queste voci sono visibili nel menu HTML, ma nella v1.45 non hanno un identificatore o un handler dedicato rilevato in `app.js`. Non descriverle all'utente come già operative senza una nuova verifica del sorgente.
+Queste voci sono visibili nel menu HTML, ma nella v1.46 non hanno un identificatore o un handler dedicato rilevato in `app.js`. Non descriverle all'utente come già operative senza una nuova verifica del sorgente.
 
 ---
 
@@ -106,7 +106,7 @@ Le seguenti voci aprono `ArchivioWeb` tramite `data-archive`:
 
 Se non esiste ancora un progetto completo, Termodel propone prima di creare o importare un progetto.
 
-### Voci presenti ma non collegate direttamente nella v1.45
+### Voci presenti ma non collegate direttamente nella v1.46
 
 - **Visualizza/Edita disegni di input nel CAD**
 - **Archivio dati climatici**
@@ -127,7 +127,7 @@ Per entrare nel CAD usare il comando operativo **Edita nel Cad** della barra inf
 
 ## Calcoli
 
-- **Visualizza risultati dell'ultimo calcolo** — voce presente nell'interfaccia; nella v1.45 non risulta un handler dedicato associato a questo pulsante del menu.
+- **Visualizza risultati dell'ultimo calcolo** — voce presente nell'interfaccia; nella v1.46 non risulta un handler dedicato associato a questo pulsante del menu.
 
 Le elaborazioni server e gli esecutivi vengono comunque richiamati da altri comandi operativi del CAD e del modello.
 
@@ -178,8 +178,9 @@ Sono presenti tre schede:
 Comandi principali:
 
 - **Gestione Piani** — apre l'archivio Piani.
-- **Istruisci AI** — copia/prepara il collegamento dell'AI alle istruzioni Termodel e apre la guida visibile.
-- **Importa da AI** — importa dagli appunti un progetto Termodel corrente oppure una pianta restituita dall'AI come SVG / `TERMODEL-SVG-TEXT-V1`. Un XML generico o XML Nazionale non è un payload valido per questo comando; dalla v1.45 viene mostrato un messaggio esplicito invece del generico errore di progetto non valido.
+- **Copia istruzione AI** — copia negli appunti il bootstrap breve ufficiale che rimanda a `https://www.termodel.it/ai/`; nella v1.46 non apre automaticamente una finestra.
+- **?** — apre l'Help del flusso AI, con la stessa sequenza operativa usata in MyHome3D: copia istruzione → chat AI → copia risultato → Importa da AI.
+- **Importa da AI** — importa dagli appunti un progetto Termodel corrente oppure una pianta restituita dall'AI come SVG / `TERMODEL-SVG-TEXT-V1`. Un XML generico o XML Nazionale non è un payload valido per questo comando; dalla v1.46 viene mostrato un messaggio esplicito invece del generico errore di progetto non valido.
 - **Edita nel Cad** — entra nel CAD 2D Web; se manca un progetto, apre prima il flusso di creazione/importazione.
 - **Aggiorna Modello** — rigenera/aggiorna la vista del modello.
 - **Mostra Filtri Grafici** — abilita la visualizzazione del pannello filtri grafici nella versione desktop.
@@ -303,7 +304,7 @@ Su schermi stretti l'archivio diventa a pieno schermo, con tab orizzontali scorr
 
 ## Contratto corrente di importazione dagli appunti
 
-Per **Importa da AI** il sorgente v1.45 distingue:
+Per **Importa da AI** il sorgente v1.46 distingue:
 
 - progetto completo corrente `TERMODEL-PROJECT-TEXT-V1`;
 - SVG Termodel o busta `TERMODEL-SVG-TEXT-V1`;
@@ -311,7 +312,7 @@ Per **Importa da AI** il sorgente v1.45 distingue:
 
 Per una nuova geometria generata dall'AI il percorso robusto è `TERMODEL-SVG-TEXT-V1`: Termodel valida lo SVG e crea il progetto strutturato usando il template corrente. L'AI non deve ricostruire a memoria un contenitore progetto completo, perché manifest, archivi e definizioni possono evolvere.
 
-La voce **Importa XML nazionale** resta visibile nel menu File ma, nella v1.45 verificata, non risulta collegata a un handler operativo dedicato. Non presentarla quindi come funzione Web disponibile senza una nuova verifica.
+La voce **Importa XML nazionale** resta visibile nel menu File ma, nella v1.46 verificata, non risulta collegata a un handler operativo dedicato. Non presentarla quindi come funzione Web disponibile senza una nuova verifica.
 
 La finestra dedicata al flusso raster/AI contiene:
 
@@ -369,7 +370,7 @@ La finestra di esportazione SVG comprende:
 
 ## Attivazione effettiva
 
-Nel sorgente v1.45 la modalità Mobile dedicata viene riconosciuta automaticamente tramite user agent **Android**.
+Nel sorgente v1.46 la modalità Mobile dedicata viene riconosciuta automaticamente tramite user agent **Android**.
 
 Il codice usa:
 
