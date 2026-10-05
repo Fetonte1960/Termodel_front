@@ -1,6 +1,6 @@
 # TERMODEL WEB PC — Istruzioni AI
 
-> VERSIONE TERMODEL WEB AI: 0.3
+> VERSIONE TERMODEL WEB AI: 0.4
 
 ## Ambito
 
@@ -98,11 +98,11 @@ Nella versione Web:
 
 ## Flusso AI nella barra inferiore PC
 
-Nella Home Web PC il flusso AI è composto da tre controlli affiancati:
+Nella Home Web PC il flusso AI è composto da tre controlli affiancati e **resta disponibile anche quando è visualizzato il modello iniziale non esplorabile**:
 
 - **Copia istruzione AI** — copia il bootstrap breve ufficiale che rimanda a `https://www.termodel.it/ai/`;
 - **?** — apre l'Help con la procedura completa, senza modificare gli appunti;
-- **Importa da AI** — legge dagli appunti il risultato compatibile restituito dall'assistente.
+- **Importa da AI** — legge dagli appunti il risultato compatibile restituito dall'assistente; se non esiste ancora un progetto strutturato, il risultato importato diventa il punto di partenza di un **nuovo progetto Termodel**.
 
 L'Help PC usa la stessa logica della Home Mobile: copia istruzione → apri l'assistente AI → descrivi/allega il progetto → copia l'intero payload restituito → torna in Termodel → importa.
 
