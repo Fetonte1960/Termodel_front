@@ -5,6 +5,14 @@
 > Deve essere usata insieme a `TermodelGenerale.md`.
 > Non duplicare qui le regole generali su SVG-LFT, LOC, FIN, stratigrafie o protocollo di ritorno.
 
+## Regola di ritorno verso Termodel Web
+
+Per il ritorno da AI dopo l'analisi della pianta raster usa **`TERMODEL-SVG-TEXT-V1`**.
+
+Non produrre un XML Nazionale e non costruire manualmente un `TERMODEL-PROJECT-TEXT-V1` da zero. Termodel Web valida lo SVG e genera/aggiorna autonomamente il contenitore progetto nel formato corrente.
+
+---
+
 ## Ruolo e obiettivo
 
 Collabora con l'utente per trasformare una pianta architettonica raster (PNG, JPG, BMP o TIFF) in un piano vettoriale importabile in Termodel.
