@@ -11,9 +11,8 @@ browser e server.
 Non sostituisce:
 
 - `PROJECT-SUMMARY.md`, che resta il Summary della linea Web JavaScript;
-- `Server/Termodelwebservice/PROJECT-SUMMARY-SERVICE.md`, che resta il Summary
-  della linea Core/WebService;
-- `SorgentiTermodel/Library/`, che resta il riferimento dei sorgenti Desktop.
+- la documentazione di continuità Core/WebService e i sorgenti Desktop, che
+  restano mantenuti esclusivamente nel repository privato di sviluppo.
 
 Quando frontend e server devono concordare endpoint, formati, sequenze,
 versionamento o comportamento della comunicazione, **questo documento è il
@@ -793,7 +792,7 @@ La procedura completa, incluse le istruzioni per l'utente e per ogni nuova
 chat, è autorevole in:
 
 ```text
-Server/Termodelwebservice/docs/SERVICE-SNAPSHOT-DIAGNOSTIC.md
+[documentazione privata Service]/docs/SERVICE-SNAPSHOT-DIAGNOSTIC.md
 ```
 
 Il collegamento reale Render → GitHub → lettura AI è stato verificato il
@@ -1019,11 +1018,9 @@ Regole di consumo frontend:
 - leggere nuovamente `model3d` per lo stesso `projectId` non deve
   provocare una nuova elaborazione.
 
-Le fonti implementative correnti del formato sono
-`SorgentiTermodel/Work/Web/DrawBimJson.cs`,
-`Server/Termodelwebservice/src/Termodel.Core/Model3D/TermodelWebModel.cs` e il
-renderer di `docs/termodel-ui-demo/app.js`. Il contratto resta comunque il
-riferimento comune fra frontend e server.
+Le fonti implementative Desktop/Core sono mantenute nel repository privato;
+il renderer browser è in `docs/termodel-ui-demo/app.js`. Il contratto resta
+comunque il riferimento comune fra frontend e server.
 
 ---
 
@@ -1143,9 +1140,8 @@ deseleziona i layer annotativi evidenti e abilita le curve. Se l'utente cambia
 manualmente layer o opzioni grafiche, il frontend passa al profilo `manual`
 e il Service rispetta esattamente la selezione.
 
-Regression fixture reale consolidata:
-`Server/Termodelwebservice/tests/fixtures/Farmacia.dxf.gz.b64`. È la copia
-lossless gzip/base64 del DXF originale SHA-256
+Una regression fixture reale consolidata è mantenuta nel repository privato
+del Service. L'impronta SHA-256 del DXF originale resta
 `81b7e14c361b0b5de94a877c715091b77a42f599c6a757ca1fc2906251496adc`.
 Il regression smoke ricostruisce il file byte-per-byte e verifica che il
 profilo architettonico applichi i layer `0`, `01-SEZIONI` e
@@ -1261,7 +1257,7 @@ Il Service crea una GitHub Issue e restituisce, a creazione riuscita:
 {
   "status": "created",
   "issueNumber": 123,
-  "issueUrl": "https://github.com/Fetonte1960/Termodel/issues/123"
+  "issueUrl": "https://github.com/<owner>/<repository>/issues/123"
 }
 ```
 
@@ -1325,11 +1321,7 @@ Stato: **ESEGUITO** — 21 settembre 2026.
 Riferimenti usati:
 
 - `docs/infotermodelGPT.html`;
-- `SorgentiTermodel/Library/leggidxf/CadGPT.xaml.cs`;
-- `SorgentiTermodel/Library/leggidxf/ScriptCad.cs`;
-- `SorgentiTermodel/Library/MainWindow.xaml`;
-- `Server/Termodelwebservice/src/Termodel.Core/CopiedFromTermodel/Leggidxf/LeggiDxf.cs`;
-- `Server/Termodelwebservice/src/Termodel.Core/NetDxfCompat/SvgDxfReader.cs`.
+- i riferimenti implementativi Desktop/Core, mantenuti esclusivamente nel repository privato.
 
 Termodel Web v0.77 implementa la modalità CAD specifica per
 `Piani.Tipo=Copertura`:
