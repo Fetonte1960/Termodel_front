@@ -1,8 +1,8 @@
 # TERMODEL — Funzioni, tasti e menu
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
-> Ultimo aggiornamento: 2026-10-04  
-> Frontend esaminato: **Termodel Web 1.40**
+> Ultimo aggiornamento: 2026-10-05  
+> Frontend esaminato: **Termodel Web 1.44**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.40**.
+Versione frontend rilevata: **1.44**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.40**
-- CAD 2D: **Termodel Cad 2d Versione 1.40**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.44**
+- CAD 2D: **Termodel Cad 2d Versione 1.44**
 
 L'interfaccia Web PC è organizzata in:
 
@@ -78,7 +78,7 @@ Lo stato iniziale può essere in modalità esplorazione esempi: alcune funzioni 
 - **Salva con nome** — salva il progetto corrente scegliendo un nuovo nome.
 - **Copia progetto negli appunti** — copia il progetto completo nel formato di interscambio Termodel; richiede un progetto attivo.
 
-### Voci presenti nell'interfaccia ma senza collegamento operativo specifico rilevato nella v1.40
+### Voci presenti nell'interfaccia ma senza collegamento operativo specifico rilevato nella v1.44
 
 - **Carica progetto ZIP**
 - **Salva progetto ZIP**
@@ -86,7 +86,7 @@ Lo stato iniziale può essere in modalità esplorazione esempi: alcune funzioni 
 - **Esporta XML nazionale**
 - **Esporta BIM (ifc)**
 
-Queste voci sono visibili nel menu HTML, ma nella v1.40 non hanno un identificatore o un handler dedicato rilevato in `app.js`. Non descriverle all'utente come già operative senza una nuova verifica del sorgente.
+Queste voci sono visibili nel menu HTML, ma nella v1.44 non hanno un identificatore o un handler dedicato rilevato in `app.js`. Non descriverle all'utente come già operative senza una nuova verifica del sorgente.
 
 ---
 
@@ -106,7 +106,7 @@ Le seguenti voci aprono `ArchivioWeb` tramite `data-archive`:
 
 Se non esiste ancora un progetto completo, Termodel propone prima di creare o importare un progetto.
 
-### Voci presenti ma non collegate direttamente nella v1.40
+### Voci presenti ma non collegate direttamente nella v1.44
 
 - **Visualizza/Edita disegni di input nel CAD**
 - **Archivio dati climatici**
@@ -127,7 +127,7 @@ Per entrare nel CAD usare il comando operativo **Edita nel Cad** della barra inf
 
 ## Calcoli
 
-- **Visualizza risultati dell'ultimo calcolo** — voce presente nell'interfaccia; nella v1.40 non risulta un handler dedicato associato a questo pulsante del menu.
+- **Visualizza risultati dell'ultimo calcolo** — voce presente nell'interfaccia; nella v1.44 non risulta un handler dedicato associato a questo pulsante del menu.
 
 Le elaborazioni server e gli esecutivi vengono comunque richiamati da altri comandi operativi del CAD e del modello.
 
@@ -156,7 +156,7 @@ Funzioni operative rilevate:
   - GeneraModello
   - Performance
   - PontiAutomatici
-  - spiralidiego
+  - SpiraliDiego
 - **Copia log negli appunti** — copia il log quando disponibile.
 
 La finestra **Help Termodel Web** contiene anche **Istruisci AI per Termodel Web**.
@@ -179,7 +179,7 @@ Comandi principali:
 
 - **Gestione Piani** — apre l'archivio Piani.
 - **Istruisci AI** — copia/prepara il collegamento dell'AI alle istruzioni Termodel e apre la guida visibile.
-- **Importa da AI** — importa dagli appunti un progetto o una pianta restituita dall'AI.
+- **Importa da AI** — importa dagli appunti un progetto Termodel corrente oppure una pianta restituita dall'AI come SVG / `TERMODEL-SVG-TEXT-V1`. Un XML generico o XML Nazionale non è un payload valido per questo comando; dalla v1.44 viene mostrato un messaggio esplicito invece del generico errore di progetto non valido.
 - **Edita nel Cad** — entra nel CAD 2D Web; se manca un progetto, apre prima il flusso di creazione/importazione.
 - **Aggiorna Modello** — rigenera/aggiorna la vista del modello.
 - **Mostra Filtri Grafici** — abilita la visualizzazione del pannello filtri grafici nella versione desktop.
@@ -301,6 +301,18 @@ Su schermi stretti l'archivio diventa a pieno schermo, con tab orizzontali scorr
 
 # 9. Funzioni AI e importazione pianta
 
+## Contratto corrente di importazione dagli appunti
+
+Per **Importa da AI** il sorgente v1.44 distingue:
+
+- progetto completo corrente `TERMODEL-PROJECT-TEXT-V1`;
+- SVG Termodel o busta `TERMODEL-SVG-TEXT-V1`;
+- XML generico / XML Nazionale, che viene rifiutato con un messaggio specifico.
+
+Per una nuova geometria generata dall'AI il percorso robusto è `TERMODEL-SVG-TEXT-V1`: Termodel valida lo SVG e crea il progetto strutturato usando il template corrente. L'AI non deve ricostruire a memoria un contenitore progetto completo, perché manifest, archivi e definizioni possono evolvere.
+
+La voce **Importa XML nazionale** resta visibile nel menu File ma, nella v1.44 verificata, non risulta collegata a un handler operativo dedicato. Non presentarla quindi come funzione Web disponibile senza una nuova verifica.
+
 La finestra dedicata al flusso raster/AI contiene:
 
 - **Scegli pianta...**
@@ -357,7 +369,7 @@ La finestra di esportazione SVG comprende:
 
 ## Attivazione effettiva
 
-Nel sorgente v1.40 la modalità Mobile dedicata viene riconosciuta automaticamente tramite user agent **Android**.
+Nel sorgente v1.44 la modalità Mobile dedicata viene riconosciuta automaticamente tramite user agent **Android**.
 
 Il codice usa:
 
@@ -384,6 +396,7 @@ Comandi principali:
 
 Apre un minipannello con:
 
+- **Importa progetto realizzato con AI dagli appunti** — richiama lo stesso importatore della Home Web e accetta progetto Termodel corrente oppure SVG/TERMODEL-SVG-TEXT-V1; resta raggiungibile anche dal modello iniziale non esplorabile.
 - **Esempio** — scelta dell'esempio Termodel.
 - **Disegno unifilare** — apre il CAD 2D mostrando l'input unifilare.
 - **Disegno esecutivo** — apre l'esecutivo pannelli quando disponibile.
@@ -392,7 +405,7 @@ Se l'esempio non supporta una delle viste, il comando relativo viene disabilitat
 
 ### Filtri
 
-**Filtri** è indipendente da Esplora ed è sempre disponibile.
+**Filtri** è indipendente da Esplora ed è sempre disponibile, anche sul modello iniziale non esplorabile.
 
 La finestra contiene quattro gruppi:
 
