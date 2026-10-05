@@ -1,6 +1,6 @@
 # TERMODEL WEB PC — Istruzioni AI
 
-> VERSIONE TERMODEL WEB AI: 0.1
+> VERSIONE TERMODEL WEB AI: 0.2
 
 ## Ambito
 
@@ -95,6 +95,22 @@ Nella versione Web:
 - i **disegni esecutivi** sono elaborati derivati e non sostituiscono l'input;
 - il progetto completo può essere trasportato nel formato `TERMODEL-PROJECT-TEXT-V1` quando il flusso lo richiede.
 
+
+## Importazione dei risultati AI — regola corrente
+
+Il comando **Importa da AI** non è un importatore XML generico.
+
+Accetta:
+- un progetto completo nel formato corrente `TERMODEL-PROJECT-TEXT-V1`, quando il progetto è stato fornito da Termodel nel flusso previsto;
+- un payload `TERMODEL-SVG-TEXT-V1` o SVG compatibile nei flussi di creazione/modifica geometrica.
+
+Per una **nuova pianta/progetto da descrizione o immagine**, preferisci sempre il ritorno SVG: Termodel Web usa il proprio template corrente e il proprio validator per costruire il progetto strutturato. Non fabbricare manualmente un file progetto completo da esempi storici.
+
+Un **XML Nazionale** è separato: va gestito con **File → Importa XML nazionale** e non deve essere consegnato come contenuto da incollare in **Importa da AI**.
+
+Se il validator rifiuta un payload, il controllo non va aggirato: correggi il formato dell'output secondo il contratto corrente del frontend.
+
+---
 ## Comportamento dell'AI
 
 - Mantieni le risposte brevi durante il lavoro operativo.
