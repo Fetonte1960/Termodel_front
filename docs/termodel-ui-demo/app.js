@@ -4609,7 +4609,7 @@ const TERMODEL_GENERAL_PROMPT_URL = './TermodelGenerale.md';
 const RASTER_PROMPT_URL = './CreaPianoTermodelDaRaster.md';
 const TERMODEL_AI_INDEX_URL = 'https://www.termodel.it/termodel-ui-demo/IndiceAI.html?v=0.25';
 const TERMODEL_WEB_AI_URL = 'https://www.termodel.it/termodel-ui-demo/TermodelWeb.html?v=0.1';
-const MYHOME3D_AI_INSTRUCTION_URL = './MyHome3D.md?v=0.25';
+const MYHOME3D_AI_INSTRUCTION_URL = './MyHome3D.md?v=0.26';
 
 const instructAiButton = document.getElementById('instructAiButton');
 const importAiButton = document.getElementById('importAiButton');
