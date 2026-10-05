@@ -82,7 +82,7 @@ Il menu **Esplora** contiene in alto un gruppo dedicato all'AI:
 - **Copia istruzione AI negli appunti** — copia il breve messaggio ufficiale che rimanda sempre a `https://www.termodel.it/ai/`;
 - **Importa progetto realizzato con AI dagli appunti** — importa il risultato restituito dall'assistente;
 - **? / Help AI** — spiega passo passo il ciclo copia → chat AI → risultato → importazione;
-- dalla versione frontend **1.48**, se l'assistente restituisce **Apri il progetto in Termodel**, il link V1 può aprire e importare direttamente lo stesso payload senza passare dagli appunti.
+- dalla versione frontend **1.48**, se l'assistente restituisce **Apri il progetto in Termodel**, il link V1 può aprire e importare direttamente la nuova geometria senza passare dagli appunti; per le geometrie piccole l'assistente deve preferire questo link quando è entro 6000 caratteri e la codifica è stata verificata.
 
 Può inoltre mostrare, quando disponibili:
 - scelta dell'esempio;
