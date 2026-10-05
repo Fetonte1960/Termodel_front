@@ -73,7 +73,7 @@ const TERMODEL_LOG_CATEGORIES = [
   'PontiAutomatici',
   'SpiraliDiego'
 ];
-const APP_VERSION = '1.45';
+const APP_VERSION = '1.46';
 const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
 const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
@@ -4612,10 +4612,14 @@ const TERMODEL_WEB_AI_URL = 'https://www.termodel.it/termodel-ui-demo/TermodelWe
 const MYHOME3D_AI_INSTRUCTION_URL = './MyHome3D.md?v=0.26';
 
 const instructAiButton = document.getElementById('instructAiButton');
+const aiFlowHelpButton = document.getElementById('aiFlowHelpButton');
 const importAiButton = document.getElementById('importAiButton');
 const aiInstructModal = document.getElementById('aiInstructModal');
 const aiInstructClose = document.getElementById('aiInstructClose');
 const aiInstructCloseBottom = document.getElementById('aiInstructCloseBottom');
+const aiFlowHelpModal = document.getElementById('aiFlowHelpModal');
+const aiFlowHelpClose = document.getElementById('aiFlowHelpClose');
+const aiFlowHelpCloseBottom = document.getElementById('aiFlowHelpCloseBottom');
 const webHelpModal = document.getElementById('webHelpModal');
 const webHelpClose = document.getElementById('webHelpClose');
 const webHelpCloseBottom = document.getElementById('webHelpCloseBottom');
@@ -4720,6 +4724,19 @@ function closeAiInstructDialog() {
   if (!aiInstructModal) return;
   aiInstructModal.classList.remove('visible');
   aiInstructModal.setAttribute('aria-hidden', 'true');
+}
+
+function openAiFlowHelpDialog() {
+  if (!aiFlowHelpModal) return;
+  aiFlowHelpModal.classList.add('visible');
+  aiFlowHelpModal.setAttribute('aria-hidden', 'false');
+  aiFlowHelpClose?.focus();
+}
+
+function closeAiFlowHelpDialog() {
+  if (!aiFlowHelpModal) return;
+  aiFlowHelpModal.classList.remove('visible');
+  aiFlowHelpModal.setAttribute('aria-hidden', 'true');
 }
 
 function openProjectStartDialog(context = {}) {
@@ -4952,7 +4969,19 @@ webHelpInstructAi?.addEventListener('click', async event => {
 });
 
 if (instructAiButton)
-  instructAiButton.addEventListener('click', instructAiFromMainForm);
+  instructAiButton.addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const copied = await copyTermodelAiBootstrap({ openDialog: false });
+    if (!copied)
+      window.alert('Impossibile copiare le istruzioni AI negli appunti.');
+  });
+if (aiFlowHelpButton)
+  aiFlowHelpButton.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    openAiFlowHelpDialog();
+  });
 if (importAiButton)
   importAiButton.addEventListener('click', importAiFromMainForm);
 if (aiInstructClose)
@@ -4962,6 +4991,14 @@ if (aiInstructCloseBottom)
 if (aiInstructModal)
   aiInstructModal.addEventListener('click', (event) => {
     if (event.target === aiInstructModal) closeAiInstructDialog();
+  });
+if (aiFlowHelpClose)
+  aiFlowHelpClose.addEventListener('click', closeAiFlowHelpDialog);
+if (aiFlowHelpCloseBottom)
+  aiFlowHelpCloseBottom.addEventListener('click', closeAiFlowHelpDialog);
+if (aiFlowHelpModal)
+  aiFlowHelpModal.addEventListener('click', event => {
+    if (event.target === aiFlowHelpModal) closeAiFlowHelpDialog();
   });
 
 const rasterAiModal = document.getElementById('rasterAiModal');
