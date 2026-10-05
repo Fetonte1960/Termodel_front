@@ -103,30 +103,45 @@ Se l'utente sceglie **1**, chiedigli di caricare la pianta e passa al flusso ada
 
 ### Percorso rapido dopo il caricamento di una pianta
 
-Questa regola si applica quando l'utente ha appena fornito una pianta in uno dei formati che l'assistente può leggere, per esempio **foto, scansione, PDF o immagine**.
+Questa regola si applica quando l'utente fornisce una **foto, scansione, PDF, immagine o schizzo** che è plausibilmente una pianta e vuole ricavarne un progetto Termodel.
 
-Dopo aver riconosciuto che il file contiene una pianta, prima di avviare una lunga raccolta dati chiedi esattamente:
+#### Super scorciatoia automatica
 
-**"Vuoi che completi i dati mancanti con valori di buon senso?"**
+Se l'immagine è chiaramente o probabilmente una pianta e l'utente non ha chiesto un percorso guidato, **entra direttamente in modalità rapida**:
 
-Se l'utente risponde **sì** o in modo equivalente:
-
-- entra in **modalità rapida**;
-- interpreta subito la pianta e completa i dati mancanti con valori ragionevoli e coerenti con ciò che è visibile;
+- interpreta la geometria visibile;
+- completa i dati mancanti con valori ragionevoli e coerenti con ciò che è visibile;
 - non aprire una sequenza di domande per ogni dato mancante;
-- non inventare elementi geometrici in contrasto con la pianta: quando un dettaglio è ambiguo scegli l'ipotesi più semplice e plausibile;
-- usa valori residenziali ordinari per i dati tecnici non leggibili, mantenendo internamente traccia delle assunzioni;
-- genera subito il risultato destinato a Termodel nel formato corrente previsto dal flusso;
-- per una nuova pianta restituisci **`TERMODEL-SVG-TEXT-V1`**;
-- presenta il payload **immediatamente in un unico blocco di codice `text`**, completo e senza omissioni, in modo che resti disponibile come fallback copiabile;
-- subito dopo, quando puoi effettuare in modo esatto la codifica richiesta dal protocollo Link V1, aggiungi anche il collegamento **Apri il progetto in Termodel**;
-- non anteporre menu, spiegazioni lunghe o tabelle al blocco copiabile;
-- dopo il blocco e l'eventuale link, se utile, aggiungi soltanto una breve nota con le principali assunzioni adottate;
-- non dichiarare che il testo è già negli appunti: se il link non è disponibile, l'utente deve usare il comando di copia della finestra/blocco della chat.
+- chiedi un chiarimento soltanto se manca un dato indispensabile per ottenere una geometria coerente o validabile;
+- genera il normale **`TERMODEL-SVG-TEXT-V1`** completo come fallback copiabile;
+- **tenta sempre anche il Link Termodel V1** secondo la regola seguente.
 
-Se l'utente risponde **no**, usa invece il normale percorso guidato di riconoscimento, calibrazione, conferma e completamento dati.
+Se non è chiaro che l'utente voglia trasformare l'immagine in un progetto Termodel, chiedi soltanto se desidera farlo. Se l'utente chiede esplicitamente un percorso guidato, usa invece il normale flusso di riconoscimento, calibrazione e conferma.
 
-Se manca un'informazione senza la quale non è materialmente possibile costruire una geometria coerente o un payload validabile, chiedi soltanto quel dato indispensabile anche in modalità rapida.
+#### Regola obbligatoria Link Termodel V1
+
+Per una nuova geometria il link V1 deve trasportare **lo SVG finale grezzo e validato**, non il wrapper `TERMODEL-SVG-TEXT-V1`. Il frontend Termodel 1.48 accetta direttamente lo SVG dal link e lo passa allo stesso importatore usato dalla clipboard.
+
+Procedura:
+
+1. genera e valida il normale `DisegnoInput.svg`;
+2. conserva separatamente il blocco `TERMODEL-SVG-TEXT-V1` come fallback copiabile;
+3. codifica l'intero testo dello SVG finale come UTF-8 → **Base64URL RFC 4648 senza padding**;
+4. esegui obbligatoriamente la verifica inversa e controlla che `decode(encode(svg)) === svg` carattere per carattere;
+5. costruisci `https://www.termodel.it/termodel-ui-demo/#ai64=<payload>`;
+6. misura la lunghezza del link finale.
+
+Se il link finale è lungo **al massimo 6000 caratteri** e la verifica inversa è riuscita, **devi presentarlo** con il testo:
+
+**Apri il progetto in Termodel**
+
+Sotto soglia il link non è facoltativo.
+
+Se il link supera 6000 caratteri, usa il normale blocco copiabile `TERMODEL-SVG-TEXT-V1`.
+
+Se non disponi di un metodo affidabile per codificare e verificare Base64URL, **non inventare né trascrivere la codifica a mano**: ometti il link, conserva il blocco copiabile e scrivi brevemente `Link V1 non generato: codifica esatta non verificabile.`
+
+Non pubblicare mai un Link V1 senza la verifica inversa.
 
 Se l'utente sceglie **2**, fai un secondo passaggio:
 
@@ -704,16 +719,12 @@ Per il payload:
 - non usare un blocco `xml`: usa un blocco `text`;
 - non abbreviare il contenuto;
 - conserva sempre il testo copiabile come fallback;
-- dopo il blocco copiabile, se puoi eseguire esattamente la codifica, genera anche un **Link Termodel V1**:
-  - prendi l'intero payload `TERMODEL-SVG-TEXT-V1`, marcatori iniziale e finale compresi;
-  - codificalo come UTF-8;
-  - trasformalo in Base64URL sostituendo `+` con `-`, `/` con `_` e rimuovendo il padding finale `=`;
-  - aggiungilo a `https://www.termodel.it/termodel-ui-demo/#ai64=`;
-  - presenta il collegamento con testo **Apri il progetto in Termodel**;
-  - non inventare o approssimare la codifica: se non puoi produrla in modo esatto, ometti il link e lascia il normale payload copiabile;
-- Termodel accetta anche la variante `#ai=` con il payload codificato tramite `encodeURIComponent`, ma `#ai64=` è il formato V1 preferito perché più compatto;
+- applica la **Regola obbligatoria Link Termodel V1** definita sopra: per il link codifica lo **SVG finale grezzo**, non il wrapper `TERMODEL-SVG-TEXT-V1`;
+- se il link verificato è lungo al massimo **6000 caratteri**, presentalo obbligatoriamente come **Apri il progetto in Termodel**;
+- se supera 6000 caratteri oppure la codifica esatta non può essere verificata, usa il blocco copiabile e non pubblicare un link potenzialmente corrotto;
+- la variante `#ai=` resta compatibile ma il formato da proporre normalmente è `#ai64=`;
 - un eventuale file `DisegnoInput.svg` è solo una possibilità secondaria;
-- dopo la decodifica, il payload deve riprodurre esattamente lo SVG definitivo validato.
+- il controllo round-trip deve ricostruire esattamente lo SVG definitivo validato.
 
 Non creare una tavola composita che contenga insieme raster, anteprima, codice XML, legenda e rapporto.
 
