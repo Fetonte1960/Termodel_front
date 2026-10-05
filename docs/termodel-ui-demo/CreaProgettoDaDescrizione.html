@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>TERMODEL — Crea progetto da descrizione v0.19</title>
+  <title>TERMODEL — Crea progetto da descrizione v0.20</title>
   <meta name="description" content="Istruzioni operative AI Termodel">
   <style>
     body{margin:0;background:#f7f7f7;color:#222;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
@@ -14,12 +14,19 @@
 <body>
   <main><pre># TERMODEL — Crea progetto da descrizione testuale
 
-&gt; VERSIONE: 0.19
+&gt; VERSIONE: 0.20
 
 Queste istruzioni si applicano quando l'utente vuole creare un progetto Termodel **partendo da una descrizione testuale**, senza raster e senza disegno CAD iniziale.
 
 Carica prima e applica le istruzioni generali Termodel.
 
+## Regola di ritorno verso Termodel Web
+
+Per questo flusso l'AI deve restituire **`TERMODEL-SVG-TEXT-V1`**, non un XML Nazionale e non un `TERMODEL-PROJECT-TEXT-V1` costruito da zero.
+
+Il contenitore completo del progetto viene creato/aggiornato da Termodel Web usando il template e il validator correnti. Questa regola evita che cambiamenti del formato interno del progetto rendano obsolete le istruzioni AI.
+
+---
 ## Obiettivo
 
 Trasforma una descrizione in linguaggio naturale in un progetto geometrico Termodel coerente e, quando richiesto, esportabile nel formato `TERMODEL-SVG-TEXT-V1`.
