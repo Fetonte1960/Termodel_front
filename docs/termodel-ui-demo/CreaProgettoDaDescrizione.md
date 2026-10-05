@@ -1,6 +1,6 @@
 # TERMODEL — Crea progetto da descrizione testuale
 
-> VERSIONE: 0.19
+> VERSIONE: 0.20
 
 Queste istruzioni si applicano quando l'utente vuole creare un progetto Termodel **partendo da una descrizione testuale**, senza raster e senza disegno CAD iniziale.
 
