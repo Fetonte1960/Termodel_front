@@ -1,6 +1,6 @@
 # TERMODEL WEB PC — Istruzioni AI
 
-> VERSIONE TERMODEL WEB AI: 0.2
+> VERSIONE TERMODEL WEB AI: 0.3
 
 ## Ambito
 
@@ -95,6 +95,20 @@ Nella versione Web:
 - i **disegni esecutivi** sono elaborati derivati e non sostituiscono l'input;
 - il progetto completo può essere trasportato nel formato `TERMODEL-PROJECT-TEXT-V1` quando il flusso lo richiede.
 
+
+## Flusso AI nella barra inferiore PC
+
+Nella Home Web PC il flusso AI è composto da tre controlli affiancati:
+
+- **Copia istruzione AI** — copia il bootstrap breve ufficiale che rimanda a `https://www.termodel.it/ai/`;
+- **?** — apre l'Help con la procedura completa, senza modificare gli appunti;
+- **Importa da AI** — legge dagli appunti il risultato compatibile restituito dall'assistente.
+
+L'Help PC usa la stessa logica della Home Mobile: copia istruzione → apri l'assistente AI → descrivi/allega il progetto → copia l'intero payload restituito → torna in Termodel → importa.
+
+Per nuove geometrie il formato previsto è `TERMODEL-SVG-TEXT-V1`; un progetto Termodel completo corrente può usare `TERMODEL-PROJECT-TEXT-V1`. XML generico o XML Nazionale non devono essere incollati in **Importa da AI**.
+
+---
 
 ## Importazione dei risultati AI — regola corrente
 
