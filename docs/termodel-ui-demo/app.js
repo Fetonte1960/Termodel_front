@@ -73,7 +73,7 @@ const TERMODEL_LOG_CATEGORIES = [
   'PontiAutomatici',
   'SpiraliDiego'
 ];
-const APP_VERSION = '1.47';
+const APP_VERSION = '1.48';
 const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
 const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
@@ -4849,76 +4849,142 @@ async function instructAiFromMainForm(event) {
     window.alert('Impossibile copiare le istruzioni AI negli appunti.');
 }
 
-async function importAiFromMainForm(event) {
-  event?.preventDefault();
-  event?.stopPropagation();
+const TERMODEL_AI_LINK_HASH_PREFIX = '#ai=';
+const TERMODEL_AI_LINK_HASH_BASE64_PREFIX = '#ai64=';
+
+function decodeTermodelAiLinkBase64Url(encoded) {
+  const source = String(encoded || '').trim();
+  if (!source)
+    throw new Error('Payload del link AI vuoto.');
+
+  let base64 = source.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4)
+    base64 += '=';
+
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+}
+
+function readTermodelAiLinkPayload() {
+  const hash = String(window.location.hash || '');
+  if (!hash) return '';
+
+  if (hash.startsWith(TERMODEL_AI_LINK_HASH_BASE64_PREFIX)) {
+    const encoded = hash.slice(TERMODEL_AI_LINK_HASH_BASE64_PREFIX.length);
+    try {
+      return decodeTermodelAiLinkBase64Url(encoded);
+    } catch (error) {
+      throw new Error('Link AI Termodel non valido: payload Base64URL illeggibile. ' + error.message);
+    }
+  }
+
+  if (hash.startsWith(TERMODEL_AI_LINK_HASH_PREFIX)) {
+    const encoded = hash.slice(TERMODEL_AI_LINK_HASH_PREFIX.length);
+    if (!encoded)
+      throw new Error('Link AI Termodel non valido: payload mancante.');
+    try {
+      return decodeURIComponent(encoded);
+    } catch (error) {
+      throw new Error('Link AI Termodel non valido: codifica URL illeggibile. ' + error.message);
+    }
+  }
+
+  return '';
+}
+
+function clearTermodelAiLinkHash() {
+  if (
+    !window.location.hash.startsWith(TERMODEL_AI_LINK_HASH_PREFIX) &&
+    !window.location.hash.startsWith(TERMODEL_AI_LINK_HASH_BASE64_PREFIX)
+  ) return;
+
+  const cleanUrl = window.location.pathname + window.location.search;
+  window.history.replaceState(window.history.state, document.title, cleanUrl);
+}
+
+async function importAiText(text, { source = 'clipboard' } = {}) {
+  const sourceIsLink = source === 'link';
+  const sourceLabel = sourceIsLink ? 'link AI' : 'appunti';
+  const value = String(text || '');
 
   const startingFromInitialModel =
     initialModelExplorationLocked && !structuredProjectActive;
 
-  if (startingFromInitialModel)
-    setMainAiStatus('Nuovo progetto da AI · lettura degli appunti...');
-
-  let text = '';
-  try {
-    if (!navigator.clipboard?.readText)
-      throw new Error('Clipboard non disponibile');
-    text = await navigator.clipboard.readText();
-  } catch (_) {
-    window.alert("Nella clipboard non c'è un progetto MyHome3D.");
-    return;
+  if (startingFromInitialModel) {
+    setMainAiStatus(
+      sourceIsLink
+        ? 'Nuovo progetto da AI · lettura del link...'
+        : 'Nuovo progetto da AI · lettura degli appunti...'
+    );
   }
 
-  if (!text.trim()) {
-    window.alert("Nella clipboard non c'è un progetto MyHome3D.");
-    return;
+  if (!value.trim()) {
+    window.alert(
+      sourceIsLink
+        ? 'Il link AI non contiene un progetto Termodel.'
+        : "Nella clipboard non c'è un progetto MyHome3D."
+    );
+    return false;
   }
 
-  const clipboardUpper = text.toUpperCase();
-  const containsTermodelSvgTransport = clipboardUpper.includes('[TERMODEL-SVG-TEXT-V1]');
-  const containsSvg = /<svg\b/i.test(text);
+  const sourceUpper = value.toUpperCase();
+  const containsTermodelSvgTransport = sourceUpper.includes('[TERMODEL-SVG-TEXT-V1]');
+  const containsSvg = /<svg\b/i.test(value);
   const looksLikeGenericXml =
     !containsTermodelSvgTransport &&
     !containsSvg &&
     (
-      /<\?xml\b/i.test(text) ||
-      /<\/?[A-Za-z_][A-Za-z0-9_.:-]*(?:\s|>)/.test(text)
+      /<\?xml\b/i.test(value) ||
+      /<\/?[A-Za-z_][A-Za-z0-9_.:-]*(?:\s|>)/.test(value)
     );
 
-  if (!isTermodelProjectText(text) && looksLikeGenericXml) {
+  if (!isTermodelProjectText(value) && looksLikeGenericXml) {
     window.alert(
-      'Gli appunti contengono un XML, ma "Importa da AI" non accetta XML generico o XML Nazionale.\n\n' +
+      'Il ' + sourceLabel + ' contiene un XML, ma "Importa da AI" non accetta XML generico o XML Nazionale.\n\n' +
       'Per un risultato generato dall’AI usa un progetto Termodel corrente oppure TERMODEL-SVG-TEXT-V1.\n\n' +
-      'L’XML Nazionale appartiene a un flusso separato e non va incollato qui.'
+      'L’XML Nazionale appartiene a un flusso separato.'
     );
-    return;
+    return false;
   }
 
   let imported = false;
 
-  if (isTermodelProjectText(text)) {
+  if (isTermodelProjectText(value)) {
     try {
-      const project = await loadProjectTextIntoFrontend(text, {
+      const project = await loadProjectTextIntoFrontend(value, {
         fileName: '',
         buildPreview: true
       });
       imported = true;
 
-      setMainAiStatus(`✓ Nuovo progetto importato da AI: ${project.projectName} · editing attivo`);
+      setMainAiStatus(
+        sourceIsLink
+          ? `✓ Progetto aperto dal link AI: ${project.projectName} · editing attivo`
+          : `✓ Nuovo progetto importato da AI: ${project.projectName} · editing attivo`
+      );
     } catch (error) {
       window.alert('Progetto Termodel non importato: ' + error.message);
-      return;
+      return false;
     }
   } else {
     const hadStructuredProject = structuredProjectActive;
-    imported = processSvgText(text);
+    imported = processSvgText(value);
 
     if (imported) {
       if (hadStructuredProject) {
         setStructuredProjectState(true);
-        setMainAiStatus('✓ Pianta SVG aggiornata nel progetto strutturato esistente · editing attivo');
+        setMainAiStatus(
+          sourceIsLink
+            ? '✓ Pianta SVG ricevuta dal link AI e aggiornata nel progetto · editing attivo'
+            : '✓ Pianta SVG aggiornata nel progetto strutturato esistente · editing attivo'
+        );
       } else {
-        setMainAiStatus('Pianta SVG importata · creazione progetto Termodel strutturato locale...');
+        setMainAiStatus(
+          sourceIsLink
+            ? 'Pianta SVG ricevuta dal link AI · creazione progetto Termodel strutturato locale...'
+            : 'Pianta SVG importata · creazione progetto Termodel strutturato locale...'
+        );
 
         try {
           const project = await createStructuredProjectFromSvg(validatedSvg);
@@ -4932,7 +4998,9 @@ async function importAiFromMainForm(event) {
           rasterSvgText.value = validatedSvg;
 
           setMainAiStatus(
-            `✓ Nuovo progetto Termodel creato da AI: ${project.projectName} · geometria assegnata al piano ${cadCurrentPlane()} · archivi e CAD attivi`
+            sourceIsLink
+              ? `✓ Nuovo progetto Termodel aperto dal link AI: ${project.projectName} · geometria assegnata al piano ${cadCurrentPlane()} · archivi e CAD attivi`
+              : `✓ Nuovo progetto Termodel creato da AI: ${project.projectName} · geometria assegnata al piano ${cadCurrentPlane()} · archivi e CAD attivi`
           );
         } catch (error) {
           setStructuredProjectState(false);
@@ -4949,15 +5017,54 @@ async function importAiFromMainForm(event) {
 
   if (!imported) {
     window.alert(
-      'Gli appunti non contengono un formato importabile da AI.\n\n' +
+      'Il ' + sourceLabel + ' non contiene un formato importabile da AI.\n\n' +
       'Usa un progetto Termodel corrente oppure un payload TERMODEL-SVG-TEXT-V1. ' +
-      'Un XML Nazionale appartiene a un flusso separato e non va incollato in Importa da AI.'
+      'Un XML Nazionale appartiene a un flusso separato.'
     );
-    return;
+    return false;
   }
 
   activateModelPage();
   requestAnimationFrame(resize);
+  return true;
+}
+
+async function importAiFromMainForm(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+
+  let text = '';
+  try {
+    if (!navigator.clipboard?.readText)
+      throw new Error('Clipboard non disponibile');
+    text = await navigator.clipboard.readText();
+  } catch (_) {
+    window.alert("Nella clipboard non c'è un progetto MyHome3D.");
+    return false;
+  }
+
+  return importAiText(text, { source: 'clipboard' });
+}
+
+async function importAiFromLocationHash() {
+  let text = '';
+  try {
+    text = readTermodelAiLinkPayload();
+  } catch (error) {
+    clearTermodelAiLinkHash();
+    console.error('Link AI Termodel non leggibile:', error);
+    window.alert(error.message);
+    return false;
+  }
+
+  if (!text) return false;
+
+  // Il fragment non viene inviato al server. Dopo averlo letto lo eliminiamo
+  // anche dalla barra indirizzi, così un refresh non ripete l'importazione.
+  clearTermodelAiLinkHash();
+  setMainAiStatus('Progetto AI rilevato nel link · importazione in corso...');
+
+  return importAiText(text, { source: 'link' });
 }
 
 helpOpenWebHelp?.addEventListener('click', event => {
@@ -11245,4 +11352,7 @@ renderer.setAnimationLoop(() => {
 
 resize();
 completeTermodelMobileBoot();
-loadModel();
+void (async () => {
+  await loadModel();
+  await importAiFromLocationHash();
+})();
