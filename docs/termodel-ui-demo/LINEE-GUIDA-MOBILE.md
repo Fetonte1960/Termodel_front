@@ -102,14 +102,35 @@ Dopo **Applica**:
 
 **Annulla**, X e chiusura non consolidano le modifiche.
 
-## Istruisci AI — guida visibile
+## Istruzione AI — formato normalizzato
 
-Il comando **Istruisci AI** deve:
-- copiare negli appunti il messaggio di collegamento alle istruzioni Web Termodel;
-- aprire una finestra ben visibile che spieghi chiaramente cosa fare;
-- distinguere il flusso PC (**Ctrl+V**) dal flusso smartphone (**pressione prolungata nel campo messaggio -> Incolla -> Invia**);
-- mostrare un esempio pratico con **Meta AI in WhatsApp**;
-- usare per l'esempio solo nomi, testo e descrizioni generiche dei comandi, senza incorporare loghi o asset grafici di terzi.
+L'istruzione breve copiata da Termodel/MyHome3D per collegare l'assistente AI deve essere sempre:
+
+```text
+Sei l'assistente AI di Termodel.
+Prima di aiutare l'utente, consulta sempre le istruzioni aggiornate pubblicate qui:
+[https://www.termodel.it/ai/](https://www.termodel.it/ai/)
+```
+
+L'utente non deve ricevere il prompt tecnico completo: il messaggio breve rimanda alla pagina pubblica aggiornata `/ai/`.
+
+## Gruppo AI nella Home Mobile / Esplora
+
+Nel menu **Esplora** della Home Mobile i comandi AI devono essere raggruppati visivamente nello stesso blocco:
+
+- **Copia istruzione AI negli appunti**;
+- **Importa progetto realizzato con AI dagli appunti**;
+- **? / Help flusso AI**.
+
+Il pulsante Help del gruppo deve spiegare il ciclo corretto:
+
+1. copia l'istruzione AI;
+2. apri ChatGPT, Gemini, DeepSeek o un altro assistente e incolla l'istruzione;
+3. descrivi il progetto o allega pianta/PDF;
+4. copia integralmente il risultato destinato a Termodel;
+5. torna in MyHome3D e usa **Importa progetto realizzato con AI dagli appunti**.
+
+Il Help deve ricordare che per una nuova geometria il formato previsto è `TERMODEL-SVG-TEXT-V1`, mentre un progetto Termodel completo corrente può usare `TERMODEL-PROJECT-TEXT-V1`. XML generico e XML Nazionale non vanno incollati in **Importa da AI**.
 
 
 
@@ -127,7 +148,7 @@ Il formato interno del progetto può evolvere: per una nuova geometria l'AI non 
 
 ## Importazione progetto AI dalla Home Mobile
 
-Nel menu **Esplora** della Home Mobile è disponibile il comando **Importa progetto realizzato con AI dagli appunti**.
+Nel menu **Esplora** della Home Mobile il comando **Importa progetto realizzato con AI dagli appunti** è affiancato da **Copia istruzione AI negli appunti** e dal relativo **Help flusso AI**.
 
 Il comando riusa la stessa procedura di importazione già disponibile nel frontend Termodel Web: legge dagli appunti un progetto completo `TERMODEL-PROJECT-TEXT-V1` oppure, quando previsto dal flusso esistente, una pianta SVG restituita dall'AI. Non deve esistere una seconda logica di importazione dedicata al Mobile.
 
