@@ -106,7 +106,7 @@ Accetta:
 
 Per una **nuova pianta/progetto da descrizione o immagine**, preferisci sempre il ritorno SVG: Termodel Web usa il proprio template corrente e il proprio validator per costruire il progetto strutturato. Non fabbricare manualmente un file progetto completo da esempi storici.
 
-Un **XML Nazionale** è separato: va gestito con **File → Importa XML nazionale** e non deve essere consegnato come contenuto da incollare in **Importa da AI**.
+Un **XML Nazionale** è un flusso separato e non deve essere consegnato come contenuto da incollare in **Importa da AI**. Prima di indicare un comando di importazione XML nella Web App, verifica che sia realmente collegato nella versione corrente e non soltanto visibile nel menu.
 
 Se il validator rifiuta un payload, il controllo non va aggirato: correggi il formato dell'output secondo il contratto corrente del frontend.
 
