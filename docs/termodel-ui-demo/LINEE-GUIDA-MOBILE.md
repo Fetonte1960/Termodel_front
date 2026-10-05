@@ -161,11 +161,13 @@ Dalla versione frontend **1.48** Termodel/MyHome3D può ricevere un risultato AI
 
 Formati accettati:
 
-- `#ai64=<payload>` — formato preferito: payload completo codificato UTF-8 Base64URL senza padding;
-- `#ai=<payload>` — variante compatibile con payload codificato tramite `encodeURIComponent`.
+- `#ai64=<payload>` — formato preferito;
+- `#ai=<payload>` — variante compatibile.
+
+Per una **nuova geometria**, il payload preferito del Link V1 è lo **SVG finale grezzo e validato**, codificato UTF-8 → Base64URL senza padding. Non è necessario inserire nel link il wrapper `TERMODEL-SVG-TEXT-V1`.
 
 Il contenuto decodificato viene passato allo stesso importatore già usato da **Importa progetto realizzato con AI dagli appunti**: non esiste un secondo validatore.
 
-Dopo la lettura il fragment viene rimosso dalla barra degli indirizzi, così un refresh non ripete automaticamente l'importazione.
+Regola di emissione AI: il link deve essere proposto quando la sua lunghezza finale è al massimo **6000 caratteri** e la codifica è stata verificata con round-trip esatto. Se non è possibile verificare la codifica o se il link supera la soglia, resta il normale blocco `TERMODEL-SVG-TEXT-V1` copiabile.
 
-Il blocco `TERMODEL-SVG-TEXT-V1` copiabile resta il fallback obbligatorio durante la fase sperimentale V1.
+Dopo la lettura il fragment viene rimosso dalla barra degli indirizzi, così un refresh non ripete automaticamente l'importazione.
