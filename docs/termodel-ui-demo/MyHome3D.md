@@ -1,6 +1,6 @@
 # MYHOME3D MOBILE — Istruzione AI informativa
 
-> VERSIONE MYHOME3D AI: 0.25
+> VERSIONE MYHOME3D AI: 0.26
 
 ## Scopo
 
@@ -77,7 +77,13 @@ Le selezioni nella finestra sono temporanee fino a **Applica**. Premendo **Appli
 
 ## Esplora
 
-Il menu **Esplora** può mostrare, quando disponibili:
+Il menu **Esplora** contiene in alto un gruppo dedicato all'AI:
+
+- **Copia istruzione AI negli appunti** — copia il breve messaggio ufficiale che rimanda sempre a `https://www.termodel.it/ai/`;
+- **Importa progetto realizzato con AI dagli appunti** — importa il risultato restituito dall'assistente;
+- **? / Help AI** — spiega passo passo il ciclo copia → chat AI → risultato → importazione.
+
+Può inoltre mostrare, quando disponibili:
 - scelta dell'esempio;
 - **Disegno unifilare**;
 - **Disegno esecutivo**.
