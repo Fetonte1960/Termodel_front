@@ -6,6 +6,13 @@ Queste istruzioni si applicano quando l'utente vuole creare un progetto Termodel
 
 Carica prima e applica le istruzioni generali Termodel.
 
+## Regola di ritorno verso Termodel Web
+
+Per questo flusso l'AI deve restituire **`TERMODEL-SVG-TEXT-V1`**, non un XML Nazionale e non un `TERMODEL-PROJECT-TEXT-V1` costruito da zero.
+
+Il contenitore completo del progetto viene creato/aggiornato da Termodel Web usando il template e il validator correnti. Questa regola evita che cambiamenti del formato interno del progetto rendano obsolete le istruzioni AI.
+
+---
 ## Obiettivo
 
 Trasforma una descrizione in linguaggio naturale in un progetto geometrico Termodel coerente e, quando richiesto, esportabile nel formato `TERMODEL-SVG-TEXT-V1`.
