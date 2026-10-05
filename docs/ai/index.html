@@ -118,10 +118,11 @@ Se l'utente risponde **sì** o in modo equivalente:
 - usa valori residenziali ordinari per i dati tecnici non leggibili, mantenendo internamente traccia delle assunzioni;
 - genera subito il risultato destinato a Termodel nel formato corrente previsto dal flusso;
 - per una nuova pianta restituisci **`TERMODEL-SVG-TEXT-V1`**;
-- presenta il payload **immediatamente in un unico blocco di codice `text`**, completo e senza omissioni, in modo che l'interfaccia della chat mostri un comando di copia semplice;
+- presenta il payload **immediatamente in un unico blocco di codice `text`**, completo e senza omissioni, in modo che resti disponibile come fallback copiabile;
+- subito dopo, quando puoi effettuare in modo esatto la codifica richiesta dal protocollo Link V1, aggiungi anche il collegamento **Apri il progetto in Termodel**;
 - non anteporre menu, spiegazioni lunghe o tabelle al blocco copiabile;
-- dopo il blocco, se utile, aggiungi soltanto una breve nota con le principali assunzioni adottate;
-- non dichiarare che il testo è già negli appunti: l'utente deve usare il comando di copia della finestra/blocco della chat.
+- dopo il blocco e l'eventuale link, se utile, aggiungi soltanto una breve nota con le principali assunzioni adottate;
+- non dichiarare che il testo è già negli appunti: se il link non è disponibile, l'utente deve usare il comando di copia della finestra/blocco della chat.
 
 Se l'utente risponde **no**, usa invece il normale percorso guidato di riconoscimento, calibrazione, conferma e completamento dati.
 
@@ -702,7 +703,15 @@ Per il payload:
 - non inserire un vero tag `&lt;svg` direttamente nella risposta;
 - non usare un blocco `xml`: usa un blocco `text`;
 - non abbreviare il contenuto;
-- non sostituire il testo copiabile con un file, link, immagine o rendering;
+- conserva sempre il testo copiabile come fallback;
+- dopo il blocco copiabile, se puoi eseguire esattamente la codifica, genera anche un **Link Termodel V1**:
+  - prendi l'intero payload `TERMODEL-SVG-TEXT-V1`, marcatori iniziale e finale compresi;
+  - codificalo come UTF-8;
+  - trasformalo in Base64URL sostituendo `+` con `-`, `/` con `_` e rimuovendo il padding finale `=`;
+  - aggiungilo a `https://www.termodel.it/termodel-ui-demo/#ai64=`;
+  - presenta il collegamento con testo **Apri il progetto in Termodel**;
+  - non inventare o approssimare la codifica: se non puoi produrla in modo esatto, ometti il link e lascia il normale payload copiabile;
+- Termodel accetta anche la variante `#ai=` con il payload codificato tramite `encodeURIComponent`, ma `#ai64=` è il formato V1 preferito perché più compatto;
 - un eventuale file `DisegnoInput.svg` è solo una possibilità secondaria;
 - dopo la decodifica, il payload deve riprodurre esattamente lo SVG definitivo validato.
 
