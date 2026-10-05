@@ -2311,7 +2311,8 @@
 
     <div class="bottom-bar">
       <button type="button" data-archive="Piani">Gestione Piani</button>
-      <button type="button" id="instructAiButton" class="ai-main-button" title="Copia negli appunti le istruzioni minime per collegare l'AI a Termodel">Istruisci AI</button>
+      <button type="button" id="instructAiButton" class="ai-main-button" title="Copia negli appunti l'istruzione AI ufficiale di Termodel">Copia istruzione AI</button>
+      <button type="button" id="aiFlowHelpButton" class="ai-main-button" title="Spiega il flusso corretto con l'AI" aria-label="Help flusso AI">?</button>
       <button type="button" id="importAiButton" class="ai-main-button" title="Importa direttamente dagli appunti il progetto restituito dall'AI">Importa da AI</button>
       <button type="button" data-action="Edita nel Cad">Edita nel Cad</button>
       <button type="button" id="resetView">Aggiorna Modello</button>
@@ -2350,6 +2351,32 @@
       </div>
       <footer class="ai-instruct-foot">
         <button id="webHelpCloseBottom" type="button">Chiudi</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <div id="aiFlowHelpModal" class="ai-instruct-modal" aria-hidden="true">
+    <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="aiFlowHelpTitle">
+      <header class="ai-instruct-head">
+        <h2 id="aiFlowHelpTitle">Usare l'AI con Termodel</h2>
+        <button id="aiFlowHelpClose" class="ai-instruct-close" type="button" aria-label="Chiudi Help AI">×</button>
+      </header>
+      <div class="ai-instruct-body">
+        <p class="ai-instruct-lead">Il flusso corretto usa i due comandi AI della barra inferiore.</p>
+        <ol>
+          <li>Premi <strong>Copia istruzione AI</strong>.</li>
+          <li>Apri ChatGPT, Gemini, DeepSeek o la tua AI e incolla l'istruzione.</li>
+          <li>Descrivi il progetto oppure allega la pianta/PDF che vuoi elaborare.</li>
+          <li>Quando l'AI restituisce il risultato per Termodel, copia negli appunti <strong>l'intero payload</strong>.</li>
+          <li>Torna in Termodel e premi <strong>Importa da AI</strong>.</li>
+        </ol>
+        <p><strong>Formato:</strong> per una nuova geometria l'AI deve restituire <code>TERMODEL-SVG-TEXT-V1</code>. Un progetto Termodel completo corrente può usare <code>TERMODEL-PROJECT-TEXT-V1</code>.</p>
+        <p><strong>Non incollare XML generico o XML Nazionale</strong> in Importa da AI: appartengono a flussi diversi.</p>
+        <p>L'istruzione copiata è volutamente breve e rimanda sempre alle istruzioni aggiornate pubblicate su <code>https://www.termodel.it/ai/</code>.</p>
+      </div>
+      <footer class="ai-instruct-foot">
+        <button id="aiFlowHelpCloseBottom" type="button">Chiudi</button>
       </footer>
     </section>
   </div>
