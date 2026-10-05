@@ -73,7 +73,7 @@ const TERMODEL_LOG_CATEGORIES = [
   'PontiAutomatici',
   'SpiraliDiego'
 ];
-const APP_VERSION = '1.46';
+const APP_VERSION = '1.47';
 const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
 const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
@@ -4643,7 +4643,10 @@ function shouldBypassInitialModelDesktopGate(control) {
 
   if (control === newProjectButton ||
       control === openProjectButton ||
-      control === openProjectFileInput)
+      control === openProjectFileInput ||
+      control === instructAiButton ||
+      control === aiFlowHelpButton ||
+      control === importAiButton)
     return true;
 
   if (control.closest?.('#helpMenu'))
@@ -4850,6 +4853,12 @@ async function importAiFromMainForm(event) {
   event?.preventDefault();
   event?.stopPropagation();
 
+  const startingFromInitialModel =
+    initialModelExplorationLocked && !structuredProjectActive;
+
+  if (startingFromInitialModel)
+    setMainAiStatus('Nuovo progetto da AI · lettura degli appunti...');
+
   let text = '';
   try {
     if (!navigator.clipboard?.readText)
@@ -4895,7 +4904,7 @@ async function importAiFromMainForm(event) {
       });
       imported = true;
 
-      setMainAiStatus(`✓ Progetto completo importato: ${project.projectName} · editing attivo`);
+      setMainAiStatus(`✓ Nuovo progetto importato da AI: ${project.projectName} · editing attivo`);
     } catch (error) {
       window.alert('Progetto Termodel non importato: ' + error.message);
       return;
@@ -4923,7 +4932,7 @@ async function importAiFromMainForm(event) {
           rasterSvgText.value = validatedSvg;
 
           setMainAiStatus(
-            `✓ Progetto strutturato locale creato: ${project.projectName} · geometria assegnata al piano ${cadCurrentPlane()} · archivi e CAD attivi`
+            `✓ Nuovo progetto Termodel creato da AI: ${project.projectName} · geometria assegnata al piano ${cadCurrentPlane()} · archivi e CAD attivi`
           );
         } catch (error) {
           setStructuredProjectState(false);
