@@ -73,7 +73,7 @@ const TERMODEL_LOG_CATEGORIES = [
   'PontiAutomatici',
   'SpiraliDiego'
 ];
-const APP_VERSION = '1.44';
+const APP_VERSION = '1.45';
 const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
 const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
@@ -1853,6 +1853,45 @@ function installAndroidExploreStyles() {
       background: linear-gradient(#fff,#e7e7e7);
       font-weight: 600;
     }
+    .android-ai-flow-group {
+      display: grid;
+      grid-template-columns: 1fr 42px;
+      gap: 5px;
+      padding: 6px;
+      border: 1px solid #9aa5ae;
+      border-radius: 6px;
+      background: #eef5f9;
+    }
+    .android-ai-flow-group .android-ai-flow-copy,
+    .android-ai-flow-group .android-ai-flow-import {
+      grid-column: 1 / -1;
+    }
+    .android-ai-flow-title {
+      align-self: center;
+      padding-left: 2px;
+      color: #35424c;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .android-ai-flow-help {
+      min-height: 34px;
+      border: 1px solid #7f8790;
+      border-radius: 5px;
+      background: linear-gradient(#fff,#e7e7e7);
+      color: #111;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .android-ai-flow-feedback {
+      grid-column: 1 / -1;
+      min-height: 0;
+      color: #31556f;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .android-ai-flow-feedback:empty {
+      display: none;
+    }
     .android-example-progress {
       position: absolute;
       left: 50%;
@@ -2166,6 +2205,72 @@ function installAndroidExploreStyles() {
   document.head.appendChild(style);
 }
 
+let androidAiFlowHelpModal = null;
+
+function createAndroidAiFlowHelpDialog() {
+  if (!TERMODEL_ANDROID_DEVICE)
+    return null;
+
+  if (androidAiFlowHelpModal)
+    return androidAiFlowHelpModal;
+
+  const modal = document.createElement('div');
+  modal.id = 'androidAiFlowHelpModal';
+  modal.className = 'android-help-modal';
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = `
+    <section class="android-help-dialog" role="dialog" aria-modal="true"
+      aria-labelledby="androidAiFlowHelpTitle">
+      <header class="android-help-head">
+        <strong id="androidAiFlowHelpTitle">Usare l'AI con Termodel</strong>
+        <button type="button" class="android-help-close" aria-label="Chiudi Help AI">×</button>
+      </header>
+      <div class="android-help-body">
+        <p>Il flusso corretto usa due comandi dello stesso gruppo <strong>AI</strong>.</p>
+        <ol>
+          <li>Premi <strong>Copia istruzione AI negli appunti</strong>.</li>
+          <li>Apri ChatGPT, Gemini, DeepSeek o la tua AI e incolla l'istruzione.</li>
+          <li>Descrivi il progetto oppure allega la pianta/PDF che vuoi elaborare.</li>
+          <li>Quando l'AI restituisce il risultato per Termodel, copia negli appunti <strong>l'intero payload</strong>.</li>
+          <li>Torna in MyHome3D e premi <strong>Importa progetto realizzato con AI dagli appunti</strong>.</li>
+        </ol>
+        <p><strong>Formato:</strong> per una nuova geometria l'AI deve restituire <code>TERMODEL-SVG-TEXT-V1</code>. Un progetto Termodel completo corrente può usare <code>TERMODEL-PROJECT-TEXT-V1</code>.</p>
+        <p><strong>Non incollare XML generico o XML Nazionale</strong> in Importa da AI: appartengono a flussi diversi.</p>
+        <p>L'istruzione copiata è volutamente breve: rimanda sempre alle istruzioni aggiornate pubblicate su <code>https://www.termodel.it/ai/</code>.</p>
+      </div>
+    </section>
+  `;
+
+  document.body.appendChild(modal);
+  modal.querySelector('.android-help-close')?.addEventListener('click', closeAndroidAiFlowHelpDialog);
+  modal.addEventListener('click', event => {
+    if (event.target === modal)
+      closeAndroidAiFlowHelpDialog();
+  });
+
+  androidAiFlowHelpModal = modal;
+  return modal;
+}
+
+function openAndroidAiFlowHelpDialog() {
+  const modal = createAndroidAiFlowHelpDialog();
+  if (!modal)
+    return;
+
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
+  modal.querySelector('.android-help-close')?.focus();
+}
+
+function closeAndroidAiFlowHelpDialog() {
+  if (!androidAiFlowHelpModal)
+    return;
+
+  androidAiFlowHelpModal.hidden = true;
+  androidAiFlowHelpModal.setAttribute('aria-hidden', 'true');
+}
+
 function createAndroidExploreBox() {
   if (!TERMODEL_ANDROID_DEVICE || !modelPage)
     return null;
@@ -2193,10 +2298,20 @@ function createAndroidExploreBox() {
       </svg>
     </button>
     <div id="androidExploreMenu" class="android-explore-menu" hidden>
-      <button id="androidExploreImportAi" class="android-explore-action" type="button"
-        title="Legge dagli appunti un progetto TERMODEL-PROJECT-TEXT-V1 o una pianta SVG restituita dall'AI">
-        Importa progetto realizzato con AI dagli appunti
-      </button>
+      <div class="android-ai-flow-group" aria-label="Flusso AI Termodel">
+        <div class="android-ai-flow-title">AI</div>
+        <button id="androidExploreAiHelp" class="android-ai-flow-help" type="button"
+          aria-label="Spiega come usare l'AI con Termodel" title="Help flusso AI">?</button>
+        <button id="androidExploreCopyAi" class="android-explore-action android-ai-flow-copy" type="button"
+          title="Copia negli appunti l'istruzione AI ufficiale di Termodel">
+          Copia istruzione AI negli appunti
+        </button>
+        <button id="androidExploreImportAi" class="android-explore-action android-ai-flow-import" type="button"
+          title="Legge dagli appunti un progetto TERMODEL-PROJECT-TEXT-V1 o una pianta TERMODEL-SVG-TEXT-V1 restituita dall'AI">
+          Importa progetto realizzato con AI dagli appunti
+        </button>
+        <div id="androidExploreAiFeedback" class="android-ai-flow-feedback" aria-live="polite"></div>
+      </div>
       <label class="android-explore-field">
         <span>Esempio</span>
         <select id="androidExploreExample" class="android-project-plane"
@@ -2218,7 +2333,10 @@ function createAndroidExploreBox() {
   const help = box.querySelector('#androidHelp3d');
   const desktopToggle = box.querySelector('#androidFullDesktop');
   const menu = box.querySelector('#androidExploreMenu');
+  const copyAiInstruction = box.querySelector('#androidExploreCopyAi');
   const importAiClipboard = box.querySelector('#androidExploreImportAi');
+  const aiFlowHelp = box.querySelector('#androidExploreAiHelp');
+  const aiFlowFeedback = box.querySelector('#androidExploreAiFeedback');
   const exampleSelect = box.querySelector('#androidExploreExample');
   const singleLine = box.querySelector('#androidExploreSingleLine');
   const executive = box.querySelector('#androidExploreExecutive');
@@ -2240,6 +2358,22 @@ function createAndroidExploreBox() {
       await populateAndroidExploreExamples(exampleSelect, singleLine);
 
     setOpen(menu.hidden);
+  });
+
+  copyAiInstruction.addEventListener('click', async event => {
+    event.stopPropagation();
+    const copied = await copyTermodelAiBootstrap({ openDialog: false });
+    if (aiFlowFeedback) {
+      aiFlowFeedback.textContent = copied
+        ? '✓ Istruzione AI copiata. Ora apri la tua AI e incollala.'
+        : '⚠ Copia non riuscita. Verifica i permessi degli appunti.';
+    }
+  });
+
+  aiFlowHelp.addEventListener('click', event => {
+    event.stopPropagation();
+    setOpen(false);
+    openAndroidAiFlowHelpDialog();
   });
 
   importAiClipboard.addEventListener('click', async event => {
@@ -4554,9 +4688,9 @@ const projectStartImportAi = document.getElementById('projectStartImportAi');
 const newProjectButton = document.getElementById('newProjectButton');
 let projectStartContext = { target: 'cad', archiveName: '' };
 
-const TERMODEL_AI_BOOTSTRAP = `Lavora con Termodel Web PC.
-Apri e segui le istruzioni AI specifiche e aggiornate della versione Web pubblicate qui:
-${TERMODEL_WEB_AI_URL}`;
+const TERMODEL_AI_BOOTSTRAP = `Sei l'assistente AI di Termodel.
+Prima di aiutare l'utente, consulta sempre le istruzioni aggiornate pubblicate qui:
+[https://www.termodel.it/ai/](https://www.termodel.it/ai/)`;
 
 function setMainAiStatus(message) {
   if (status) status.textContent = message;
@@ -4675,19 +4809,24 @@ async function startBlankProjectFromCad() {
   }
 }
 
+async function copyTermodelAiBootstrap({ openDialog = false } = {}) {
+  const copied = await copyTextToClipboard(TERMODEL_AI_BOOTSTRAP, 'l’istruzione AI Termodel');
+  if (!copied)
+    return false;
+
+  setMainAiStatus('✓ Istruzione AI Termodel copiata negli appunti');
+  if (openDialog)
+    openAiInstructDialog();
+  return true;
+}
+
 async function instructAiFromMainForm(event) {
   event?.preventDefault();
   event?.stopPropagation();
 
-  try {
-    if (!navigator.clipboard?.writeText)
-      throw new Error('Clipboard non disponibile');
-    await navigator.clipboard.writeText(TERMODEL_AI_BOOTSTRAP);
-    setMainAiStatus('✓ Istruzioni AI copiate negli appunti');
-    openAiInstructDialog();
-  } catch (_) {
+  const copied = await copyTermodelAiBootstrap({ openDialog: true });
+  if (!copied)
     window.alert('Impossibile copiare le istruzioni AI negli appunti.');
-  }
 }
 
 async function importAiFromMainForm(event) {
