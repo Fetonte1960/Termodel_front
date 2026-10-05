@@ -1,6 +1,6 @@
-<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Termodel Web PC — Istruzioni AI v0.1</title><meta name="description" content="Istruzioni AI specifiche per Termodel Web PC"><style>body{margin:0;background:#f7f7f7;color:#222;font-family:system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:1100px;margin:0 auto;padding:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;padding:20px;background:#fff;border:1px solid #ccc;line-height:1.45;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}</style></head><body><main><pre># TERMODEL WEB PC — Istruzioni AI
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Termodel Web PC — Istruzioni AI v0.2</title><meta name="description" content="Istruzioni AI specifiche per Termodel Web PC"><style>body{margin:0;background:#f7f7f7;color:#222;font-family:system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:1100px;margin:0 auto;padding:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;padding:20px;background:#fff;border:1px solid #ccc;line-height:1.45;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}</style></head><body><main><pre># TERMODEL WEB PC — Istruzioni AI
 
-&gt; VERSIONE TERMODEL WEB AI: 0.1
+&gt; VERSIONE TERMODEL WEB AI: 0.2
 
 ## Ambito
 
@@ -95,6 +95,22 @@ Nella versione Web:
 - i **disegni esecutivi** sono elaborati derivati e non sostituiscono l'input;
 - il progetto completo può essere trasportato nel formato `TERMODEL-PROJECT-TEXT-V1` quando il flusso lo richiede.
 
+
+## Importazione dei risultati AI — regola corrente
+
+Il comando **Importa da AI** non è un importatore XML generico.
+
+Accetta:
+- un progetto completo nel formato corrente `TERMODEL-PROJECT-TEXT-V1`, quando il progetto è stato fornito da Termodel nel flusso previsto;
+- un payload `TERMODEL-SVG-TEXT-V1` o SVG compatibile nei flussi di creazione/modifica geometrica.
+
+Per una **nuova pianta/progetto da descrizione o immagine**, preferisci sempre il ritorno SVG: Termodel Web usa il proprio template corrente e il proprio validator per costruire il progetto strutturato. Non fabbricare manualmente un file progetto completo da esempi storici.
+
+Un **XML Nazionale** è separato: va gestito con **File → Importa XML nazionale** e non deve essere consegnato come contenuto da incollare in **Importa da AI**.
+
+Se il validator rifiuta un payload, il controllo non va aggirato: correggi il formato dell'output secondo il contratto corrente del frontend.
+
+---
 ## Comportamento dell'AI
 
 - Mantieni le risposte brevi durante il lavoro operativo.
