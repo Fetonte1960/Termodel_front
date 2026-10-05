@@ -73,7 +73,7 @@ const TERMODEL_LOG_CATEGORIES = [
   'PontiAutomatici',
   'SpiraliDiego'
 ];
-const APP_VERSION = '1.42';
+const APP_VERSION = '1.43';
 const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
 const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
@@ -4709,6 +4709,26 @@ async function importAiFromMainForm(event) {
     return;
   }
 
+  const clipboardUpper = text.toUpperCase();
+  const containsTermodelSvgTransport = clipboardUpper.includes('[TERMODEL-SVG-TEXT-V1]');
+  const containsSvg = /<svg\b/i.test(text);
+  const looksLikeGenericXml =
+    !containsTermodelSvgTransport &&
+    !containsSvg &&
+    (
+      /<\?xml\b/i.test(text) ||
+      /<\/?[A-Za-z_][A-Za-z0-9_.:-]*(?:\s|>)/.test(text)
+    );
+
+  if (!isTermodelProjectText(text) && looksLikeGenericXml) {
+    window.alert(
+      'Gli appunti contengono un XML, ma "Importa da AI" non accetta XML generico o XML Nazionale.\n\n' +
+      'Per un risultato generato dall’AI usa un progetto Termodel corrente oppure TERMODEL-SVG-TEXT-V1.\n\n' +
+      'Se invece hai un XML Nazionale, usa File → Importa XML nazionale.'
+    );
+    return;
+  }
+
   let imported = false;
 
   if (isTermodelProjectText(text)) {
@@ -4763,7 +4783,11 @@ async function importAiFromMainForm(event) {
   }
 
   if (!imported) {
-    window.alert("Nella clipboard non c'è un progetto MyHome3D.");
+    window.alert(
+      'Gli appunti non contengono un formato importabile da AI.\n\n' +
+      'Usa un progetto Termodel corrente oppure un payload TERMODEL-SVG-TEXT-V1. ' +
+      'Un XML Nazionale va importato da File → Importa XML nazionale.'
+    );
     return;
   }
 
