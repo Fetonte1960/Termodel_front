@@ -2,7 +2,7 @@
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
 > Ultimo aggiornamento: 2026-10-05  
-> Frontend esaminato: **Termodel Web 1.47**
+> Frontend esaminato: **Termodel Web 1.48**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.47**.
+Versione frontend rilevata: **1.48**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.47**
-- CAD 2D: **Termodel Cad 2d Versione 1.47**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.48**
+- CAD 2D: **Termodel Cad 2d Versione 1.48**
 
 L'interfaccia Web PC è organizzata in:
 
@@ -179,8 +179,9 @@ Comandi principali:
 
 - **Gestione Piani** — apre l'archivio Piani.
 - **Copia istruzione AI** — copia negli appunti il bootstrap breve ufficiale che rimanda a `https://www.termodel.it/ai/`; nella v1.47 non apre automaticamente una finestra.
-- **?** — apre l'Help del flusso AI, con la stessa sequenza operativa usata in MyHome3D: copia istruzione → chat AI → copia risultato → Importa da AI.
+- **?** — apre l'Help del flusso AI. Dalla v1.48 il risultato può rientrare sia con il normale ciclo copia risultato → Importa da AI, sia tramite il Link AI V1 **Apri il progetto in Termodel**.
 - **Importa da AI** — importa dagli appunti un progetto Termodel corrente oppure una pianta restituita dall'AI come SVG / `TERMODEL-SVG-TEXT-V1`. Un XML generico o XML Nazionale non è un payload valido per questo comando; dalla v1.47 viene mostrato un messaggio esplicito invece del generico errore di progetto non valido.
+- **Link AI V1 (v1.48)** — all'avvio il frontend riconosce `#ai64=` (UTF-8 Base64URL senza padding) e `#ai=` (payload `encodeURIComponent`). Il contenuto decodificato viene passato allo stesso importatore usato dalla clipboard; dopo la lettura il fragment viene rimosso dall'URL per evitare una seconda importazione al refresh.
 - **Edita nel Cad** — entra nel CAD 2D Web; se manca un progetto, apre prima il flusso di creazione/importazione.
 - **Aggiorna Modello** — rigenera/aggiorna la vista del modello.
 - **Mostra Filtri Grafici** — abilita la visualizzazione del pannello filtri grafici nella versione desktop.
