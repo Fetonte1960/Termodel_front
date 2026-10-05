@@ -113,6 +113,18 @@ Il comando **Istruisci AI** deve:
 
 
 
+## Regola formati per l'importazione AI
+
+Il comando Mobile **Importa progetto realizzato con AI dagli appunti** usa lo stesso contratto del Web.
+
+- Nuova geometria generata dall'AI: `TERMODEL-SVG-TEXT-V1` / SVG previsto dal flusso.
+- Progetto completo: `TERMODEL-PROJECT-TEXT-V1` soltanto se proviene dal flusso Termodel corrente.
+- **XML Nazionale: non è un payload di Importa da AI.**
+
+Il formato interno del progetto può evolvere: per una nuova geometria l'AI non deve ricostruire a memoria il progetto completo; deve lasciare a Termodel la creazione del contenitore corrente e la validazione.
+
+---
+
 ## Importazione progetto AI dalla Home Mobile
 
 Nel menu **Esplora** della Home Mobile è disponibile il comando **Importa progetto realizzato con AI dagli appunti**.
