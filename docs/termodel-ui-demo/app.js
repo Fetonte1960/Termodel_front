@@ -2232,10 +2232,10 @@ function createAndroidAiFlowHelpDialog() {
           <li>Premi <strong>Copia istruzione AI negli appunti</strong>.</li>
           <li>Apri ChatGPT, Gemini, DeepSeek o la tua AI e incolla l'istruzione.</li>
           <li>Descrivi il progetto oppure allega la pianta/PDF che vuoi elaborare.</li>
-          <li>Quando l'AI restituisce il risultato per Termodel, copia negli appunti <strong>l'intero payload</strong>.</li>
-          <li>Torna in MyHome3D e premi <strong>Importa progetto realizzato con AI dagli appunti</strong>.</li>
+          <li>Quando l'AI restituisce <strong>Apri il progetto in Termodel</strong>, tocca direttamente quel link.</li>
+          <li>In alternativa copia negli appunti <strong>l'intero payload</strong>, torna in MyHome3D e premi <strong>Importa progetto realizzato con AI dagli appunti</strong>.</li>
         </ol>
-        <p><strong>Formato:</strong> per una nuova geometria l'AI deve restituire <code>TERMODEL-SVG-TEXT-V1</code>. Un progetto Termodel completo corrente può usare <code>TERMODEL-PROJECT-TEXT-V1</code>.</p>
+        <p><strong>Formato:</strong> per una nuova geometria l'AI deve restituire <code>TERMODEL-SVG-TEXT-V1</code>. Un progetto Termodel completo corrente può usare <code>TERMODEL-PROJECT-TEXT-V1</code>. Dalla versione 1.48 gli stessi dati possono arrivare anche tramite Link AI V1.</p>
         <p><strong>Non incollare XML generico o XML Nazionale</strong> in Importa da AI: appartengono a flussi diversi.</p>
         <p>L'istruzione copiata è volutamente breve: rimanda sempre alle istruzioni aggiornate pubblicate su <code>https://www.termodel.it/ai/</code>.</p>
       </div>
