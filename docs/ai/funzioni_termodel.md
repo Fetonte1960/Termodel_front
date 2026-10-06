@@ -2,7 +2,7 @@
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
 > Ultimo aggiornamento: 2026-10-05  
-> Frontend esaminato: **Termodel Web 1.48**
+> Frontend esaminato: **Termodel Web 1.49**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.48**.
+Versione frontend rilevata: **1.49**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.48**
-- CAD 2D: **Termodel Cad 2d Versione 1.48**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.49**
+- CAD 2D: **Termodel Cad 2d Versione 1.49**
 
 L'interfaccia Web PC è organizzata in:
 
@@ -268,6 +268,10 @@ Durante i comandi di disegno possono apparire:
 - **⟳ Rigenera pianta** — rigenera la pianta/modello derivato dopo le modifiche.
 - **⇩ Esporta pianta CAD (.DXF)** — esporta la pianta CAD quando la generazione richiesta è disponibile.
 - **↩ Torna al modello 3d** — rientra nella vista 3D; se necessario Termodel rigenera prima il modello.
+
+### Robustezza toolbar desktop — v1.49
+
+I pulsanti della toolbar CAD desktop mantengono le etichette su una sola riga e non vengono più compressi fino a far uscire il testo dal rettangolo. Con zoom browser o text scaling elevato, tra 761 e 1250 CSS px la toolbar passa automaticamente a due righe e il canvas viene abbassato di conseguenza.
 
 ---
 
