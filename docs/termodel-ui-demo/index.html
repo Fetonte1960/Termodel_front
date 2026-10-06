@@ -845,6 +845,9 @@
       cursor: pointer;
       user-select: none;
       list-style: none;
+      box-sizing: border-box;
+      white-space: nowrap;
+      line-height: 1.15;
     }
     .cad-tool-menu > summary::-webkit-details-marker { display: none; }
     .cad-tool-menu[open] > summary {
@@ -914,6 +917,14 @@
     .cad-toolbar button {
       height: 28px; border: 1px solid #888; border-radius: 0;
       background: linear-gradient(#fff,#dedede); padding: 2px 9px; color: #111;
+      box-sizing: border-box;
+      white-space: nowrap;
+      line-height: 1.15;
+    }
+    .cad-toolbar > button,
+    .cad-toolbar > .cad-tool-menu,
+    .cad-toolbar > .cad-toolbar-plane {
+      flex: 0 0 auto;
     }
     .cad-toolbar button:disabled { opacity: .5; cursor: default; }
     .cad-toolbar .cad-spacer { flex: 1 1 auto; }
@@ -929,8 +940,8 @@
       font-weight: 700;
     }
     .cad-toolbar .cad-status {
-      flex: 0 1 340px;
-      min-width: 120px;
+      flex: 1 1 120px;
+      min-width: 0;
       max-width: 340px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1297,6 +1308,29 @@
     .cad-swatch.internal { background: #d35400; }
     .cad-swatch.opening { background: #7b1fa2; }
     .cad-swatch.window { background: #00897b; }
+
+    /* CAD desktop con zoom browser/text scaling elevato:
+       i controlli restano leggibili e passano su due righe invece di
+       comprimere il testo fuori dai pulsanti. */
+    @media (max-width: 1250px) and (min-width: 761px) {
+      .cad-toolbar {
+        height: 76px;
+        flex-wrap: wrap;
+        gap: 4px 6px;
+        align-content: center;
+      }
+      .cad-canvas { top: 76px; }
+      .cad-properties { top: 76px; }
+      .cad-executive-provenance {
+        top: 84px;
+        right: 318px;
+        max-width: min(455px, calc(100% - 338px));
+      }
+      .cad-toolbar .cad-status,
+      .cad-toolbar .cad-spacer {
+        display: none;
+      }
+    }
 
     @media (max-width: 900px) {
       .cad-toolbar { height: 76px; }
@@ -2686,6 +2720,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"
           integrity="sha512-uD8O1KVrtd2ar9XaZntrb9ne07Btc7+uudbQpOMXa7UQcls1/uEU65bdxeIqncsuDk+ow1ioX33EBUf0c0SvMQ=="
           crossorigin="anonymous"></script>
-  <script type="module" src="./app.js?v=1.48"></script>
+  <script type="module" src="./app.js?v=1.49"></script>
 </body>
 </html>
