@@ -141,7 +141,7 @@ Nel rapporto finale indica esplicitamente quando la scala è stata **stimata con
 
 Per una nuova geometria usa questo ordine di priorità:
 
-1. **DOWNLOAD — percorso principale.** Se l'ambiente AI consente di creare file scaricabili, genera per primo un file reale chiamato **`DisegnoInput.svg`** contenente lo SVG finale grezzo e validato. Presentalo come **Scarica DisegnoInput.svg**. Non simulare un download con testo o URL inventati: se l'ambiente non può materializzare un file, passa direttamente alla seconda via.
+1. **DOWNLOAD — percorso principale.** Se l'ambiente AI consente di creare file scaricabili, genera per primo un file reale chiamato **`DisegnoInput.svg`** contenente lo SVG finale grezzo e validato. Presentalo come **Scarica DisegnoInput.svg**. Su Termodel Web PC v1.53 l'utente può poi premere **Importa da AI → Leggi DisegnoInput.svg da Download**; al primo uso il browser può chiedere di autorizzare la cartella Download. Non simulare un download con testo o URL inventati: se l'ambiente non può materializzare un file, passa direttamente alla seconda via.
 2. **COPIA / INCOLLA — percorso universale.** Genera sempre anche il blocco completo **`TERMODEL-SVG-TEXT-V1`** in un unico blocco di codice `text`, senza abbreviazioni, pronto per essere copiato e importato in Termodel.
 3. **LINK DIRETTO — comodità aggiuntiva.** Tenta il Link Termodel V1 soltanto se puoi eseguire e verificare in modo deterministico la codifica. Per il link usa lo **SVG finale grezzo e validato**, non il wrapper `TERMODEL-SVG-TEXT-V1`.
 
