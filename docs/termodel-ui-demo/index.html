@@ -2428,13 +2428,14 @@
         <button id="aiFlowHelpClose" class="ai-instruct-close" type="button" aria-label="Chiudi Help AI">×</button>
       </header>
       <div class="ai-instruct-body">
-        <p class="ai-instruct-lead">Il flusso corretto può partire direttamente da ChatGPT oppure usare gli appunti come alternativa.</p>
+        <p class="ai-instruct-lead">Il flusso corretto può partire direttamente da ChatGPT e rientrare in Termodel tramite file, appunti oppure link diretto.</p>
         <ol>
           <li>Premi <strong>Crea progetto con AI</strong>.</li>
           <li>Scegli <strong>Apri ChatGPT (consigliato)</strong> per aprire una nuova chat con la programmazione Termodel già inserita, oppure scegli la copia negli appunti per usare un'altra AI.</li>
           <li>Descrivi il progetto oppure allega la pianta/PDF che vuoi elaborare.</li>
-          <li>Quando l'AI restituisce il risultato, se compare <strong>Apri il progetto in Termodel</strong> puoi usare direttamente quel link.</li>
-          <li>In alternativa copia negli appunti <strong>l'intero payload</strong>, torna in Termodel e premi <strong>Importa da AI</strong>.</li>
+          <li>Se l'AI propone <strong>DisegnoInput.svg</strong> come download, scaricalo, torna in Termodel, premi <strong>Importa da AI</strong> e scegli <strong>Leggi DisegnoInput.svg da Download</strong>.</li>
+          <li>In alternativa usa <strong>Importa dagli appunti</strong> dopo aver copiato l'intero payload AI.</li>
+          <li>Se compare <strong>Apri il progetto in Termodel</strong>, puoi usare direttamente il Link AI V1.</li>
         </ol>
         <p>Se stai ancora vedendo il <strong>modello iniziale non esplorabile</strong>, i tre comandi AI restano disponibili: <strong>Importa da AI</strong> usa il risultato per creare il tuo nuovo progetto Termodel.</p>
         <p><strong>Formato:</strong> per una nuova geometria l'AI deve restituire <code>TERMODEL-SVG-TEXT-V1</code>. Un progetto Termodel completo corrente può usare <code>TERMODEL-PROJECT-TEXT-V1</code>. La versione 1.50 può ricevere questi dati anche da un link V1 nel fragment dell'URL.</p>
