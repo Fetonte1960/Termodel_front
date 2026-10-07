@@ -2,7 +2,7 @@
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
 > Ultimo aggiornamento: 2026-10-05  
-> Frontend esaminato: **Termodel Web 1.49**
+> Frontend esaminato: **Termodel Web 1.50**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.49**.
+Versione frontend rilevata: **1.50**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.49**
-- CAD 2D: **Termodel Cad 2d Versione 1.49**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.50**
+- CAD 2D: **Termodel Cad 2d Versione 1.50**
 
 L'interfaccia Web PC è organizzata in:
 
@@ -178,7 +178,7 @@ Sono presenti tre schede:
 Comandi principali:
 
 - **Gestione Piani** — apre l'archivio Piani.
-- **Copia istruzione AI** — copia negli appunti il bootstrap breve ufficiale che rimanda a `https://www.termodel.it/ai/`; nella v1.47 non apre automaticamente una finestra.
+- **Crea progetto con AI** — dalla v1.50 apre una finestra con due percorsi: **Apri ChatGPT (consigliato)**, che apre una nuova chat passando direttamente nel parametro la programmazione Termodel, oppure **Copia programmazione negli appunti**, che mantiene il flusso tradizionale per ChatGPT o altre AI.
 - **?** — apre l'Help del flusso AI. Dalla v1.48 il risultato può rientrare sia con il normale ciclo copia risultato → Importa da AI, sia tramite il Link AI V1 **Apri il progetto in Termodel**.
 - **Importa da AI** — importa dagli appunti un progetto Termodel corrente oppure una pianta restituita dall'AI come SVG / `TERMODEL-SVG-TEXT-V1`. Un XML generico o XML Nazionale non è un payload valido per questo comando; dalla v1.47 viene mostrato un messaggio esplicito invece del generico errore di progetto non valido.
 - **Link AI V1 (v1.48)** — all'avvio il frontend riconosce `#ai64=` e `#ai=`. Per una nuova geometria il formato preferito codifica direttamente lo SVG finale grezzo in UTF-8 Base64URL senza padding; il contenuto decodificato viene passato allo stesso importatore usato dalla clipboard. L'AI deve proporre il link quando il risultato finale non supera 6000 caratteri e il round-trip della codifica ricostruisce esattamente lo SVG; dopo la lettura il fragment viene rimosso dall'URL per evitare una seconda importazione al refresh.
