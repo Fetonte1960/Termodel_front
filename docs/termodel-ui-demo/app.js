@@ -4627,6 +4627,11 @@ const aiProjectChoiceClose = document.getElementById('aiProjectChoiceClose');
 const aiProjectChoiceCloseBottom = document.getElementById('aiProjectChoiceCloseBottom');
 const aiProjectOpenChatGpt = document.getElementById('aiProjectOpenChatGpt');
 const aiProjectCopyPrompt = document.getElementById('aiProjectCopyPrompt');
+const aiImportChoiceModal = document.getElementById('aiImportChoiceModal');
+const aiImportChoiceClose = document.getElementById('aiImportChoiceClose');
+const aiImportChoiceCloseBottom = document.getElementById('aiImportChoiceCloseBottom');
+const aiImportFromClipboardButton = document.getElementById('aiImportFromClipboard');
+const aiImportFromDownloadsButton = document.getElementById('aiImportFromDownloads');
 const aiInstructModal = document.getElementById('aiInstructModal');
 const aiInstructClose = document.getElementById('aiInstructClose');
 const aiInstructCloseBottom = document.getElementById('aiInstructCloseBottom');
@@ -4730,6 +4735,139 @@ function closeAiProjectChoiceDialog() {
   if (!aiProjectChoiceModal) return;
   aiProjectChoiceModal.classList.remove('visible');
   aiProjectChoiceModal.setAttribute('aria-hidden', 'true');
+}
+
+let aiImportChoiceResolve = null;
+let aiDownloadDirectoryHandle = null;
+
+function finishAiImportChoice(result = false) {
+  if (aiImportChoiceModal) {
+    aiImportChoiceModal.classList.remove('visible');
+    aiImportChoiceModal.setAttribute('aria-hidden', 'true');
+  }
+
+  const resolve = aiImportChoiceResolve;
+  aiImportChoiceResolve = null;
+  if (resolve) resolve(Boolean(result));
+}
+
+function openAiImportChoiceDialog() {
+  if (!aiImportChoiceModal)
+    return Promise.resolve(false);
+
+  if (aiImportChoiceResolve)
+    finishAiImportChoice(false);
+
+  document.querySelectorAll('.menu').forEach(menu => menu.classList.remove('open'));
+  aiImportChoiceModal.classList.add('visible');
+  aiImportChoiceModal.setAttribute('aria-hidden', 'false');
+  aiImportFromClipboardButton?.focus();
+
+  return new Promise(resolve => {
+    aiImportChoiceResolve = resolve;
+  });
+}
+
+async function getAiDownloadsDirectoryHandle() {
+  if (aiDownloadDirectoryHandle) {
+    try {
+      if (!aiDownloadDirectoryHandle.queryPermission)
+        return aiDownloadDirectoryHandle;
+
+      const permission = await aiDownloadDirectoryHandle.queryPermission({ mode: 'read' });
+      if (permission === 'granted')
+        return aiDownloadDirectoryHandle;
+
+      if (permission === 'prompt' && aiDownloadDirectoryHandle.requestPermission) {
+        const requested = await aiDownloadDirectoryHandle.requestPermission({ mode: 'read' });
+        if (requested === 'granted')
+          return aiDownloadDirectoryHandle;
+      }
+    } catch (_) {
+      // Se il browser invalida l'handle, riapriamo il selettore.
+    }
+    aiDownloadDirectoryHandle = null;
+  }
+
+  if (typeof window.showDirectoryPicker !== 'function')
+    throw new Error('ACCESSO_DOWNLOAD_NON_SUPPORTATO');
+
+  let handle;
+  try {
+    handle = await window.showDirectoryPicker({
+      id: 'termodel-ai-downloads',
+      mode: 'read',
+      startIn: 'downloads'
+    });
+  } catch (error) {
+    if (error?.name !== 'TypeError')
+      throw error;
+
+    // Fallback per implementazioni che non accettano ancora startIn/id.
+    handle = await window.showDirectoryPicker({ mode: 'read' });
+  }
+
+  aiDownloadDirectoryHandle = handle;
+  return handle;
+}
+
+async function importAiFromDownloads() {
+  let directoryHandle;
+  try {
+    directoryHandle = await getAiDownloadsDirectoryHandle();
+  } catch (error) {
+    if (error?.name === 'AbortError')
+      return false;
+
+    if (error?.message === 'ACCESSO_DOWNLOAD_NON_SUPPORTATO') {
+      window.alert(
+        'Questo browser non consente a Termodel di leggere direttamente la cartella Download.\n\n' +
+        'Usa Importa dagli appunti oppure apri Termodel con una versione recente di Chrome o Edge.'
+      );
+      return false;
+    }
+
+    console.error('Accesso alla cartella Download non riuscito:', error);
+    window.alert('Impossibile accedere alla cartella Download.\n\n' + (error?.message || error));
+    return false;
+  }
+
+  let fileHandle;
+  try {
+    fileHandle = await directoryHandle.getFileHandle('DisegnoInput.svg');
+  } catch (error) {
+    if (error?.name === 'NotFoundError') {
+      aiDownloadDirectoryHandle = null;
+      window.alert(
+        'DisegnoInput.svg non è stato trovato nella cartella selezionata.\n\n' +
+        'Scarica prima DisegnoInput.svg dalla chat AI e riprova scegliendo la cartella Download.'
+      );
+      return false;
+    }
+
+    console.error('Lettura DisegnoInput.svg non riuscita:', error);
+    window.alert('Impossibile leggere DisegnoInput.svg dalla cartella Download.\n\n' + (error?.message || error));
+    return false;
+  }
+
+  try {
+    const file = await fileHandle.getFile();
+    const text = await file.text();
+
+    if (!/<svg\b/i.test(text)) {
+      window.alert(
+        'Il file DisegnoInput.svg trovato in Download non contiene uno SVG valido da importare.'
+      );
+      return false;
+    }
+
+    setMainAiStatus('DisegnoInput.svg trovato in Download · importazione in corso...');
+    return await importAiText(text, { source: 'download' });
+  } catch (error) {
+    console.error('Importazione DisegnoInput.svg non riuscita:', error);
+    window.alert('DisegnoInput.svg non importato.\n\n' + (error?.message || error));
+    return false;
+  }
 }
 
 function buildChatGptTermodelUrl() {
@@ -4947,7 +5085,12 @@ function clearTermodelAiLinkHash() {
 
 async function importAiText(text, { source = 'clipboard' } = {}) {
   const sourceIsLink = source === 'link';
-  const sourceLabel = sourceIsLink ? 'link AI' : 'appunti';
+  const sourceIsDownload = source === 'download';
+  const sourceLabel = sourceIsLink
+    ? 'link AI'
+    : sourceIsDownload
+      ? 'file DisegnoInput.svg'
+      : 'contenuto degli appunti';
   const value = String(text || '');
 
   const startingFromInitialModel =
@@ -4957,7 +5100,9 @@ async function importAiText(text, { source = 'clipboard' } = {}) {
     setMainAiStatus(
       sourceIsLink
         ? 'Nuovo progetto da AI · lettura del link...'
-        : 'Nuovo progetto da AI · lettura degli appunti...'
+        : sourceIsDownload
+          ? 'Nuovo progetto da AI · lettura di DisegnoInput.svg da Download...'
+          : 'Nuovo progetto da AI · lettura degli appunti...'
     );
   }
 
@@ -4965,7 +5110,9 @@ async function importAiText(text, { source = 'clipboard' } = {}) {
     window.alert(
       sourceIsLink
         ? 'Il link AI non contiene un progetto Termodel.'
-        : "Nella clipboard non c'è un progetto MyHome3D."
+        : sourceIsDownload
+          ? 'DisegnoInput.svg è vuoto.'
+          : "Nella clipboard non c'è un progetto MyHome3D."
     );
     return false;
   }
@@ -5071,10 +5218,7 @@ async function importAiText(text, { source = 'clipboard' } = {}) {
   return true;
 }
 
-async function importAiFromMainForm(event) {
-  event?.preventDefault();
-  event?.stopPropagation();
-
+async function importAiFromClipboard() {
   let text = '';
   try {
     if (!navigator.clipboard?.readText)
@@ -5086,6 +5230,12 @@ async function importAiFromMainForm(event) {
   }
 
   return importAiText(text, { source: 'clipboard' });
+}
+
+async function importAiFromMainForm(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  return openAiImportChoiceDialog();
 }
 
 async function importAiFromLocationHash() {
@@ -5136,6 +5286,28 @@ if (aiFlowHelpButton)
   });
 if (importAiButton)
   importAiButton.addEventListener('click', importAiFromMainForm);
+if (aiImportChoiceClose)
+  aiImportChoiceClose.addEventListener('click', () => finishAiImportChoice(false));
+if (aiImportChoiceCloseBottom)
+  aiImportChoiceCloseBottom.addEventListener('click', () => finishAiImportChoice(false));
+if (aiImportChoiceModal)
+  aiImportChoiceModal.addEventListener('click', event => {
+    if (event.target === aiImportChoiceModal) finishAiImportChoice(false);
+  });
+if (aiImportFromClipboardButton)
+  aiImportFromClipboardButton.addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const imported = await importAiFromClipboard();
+    if (imported) finishAiImportChoice(true);
+  });
+if (aiImportFromDownloadsButton)
+  aiImportFromDownloadsButton.addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const imported = await importAiFromDownloads();
+    if (imported) finishAiImportChoice(true);
+  });
 if (aiProjectChoiceClose)
   aiProjectChoiceClose.addEventListener('click', closeAiProjectChoiceDialog);
 if (aiProjectChoiceCloseBottom)
