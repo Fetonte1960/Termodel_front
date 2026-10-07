@@ -118,6 +118,24 @@ Se l'immagine è chiaramente o probabilmente una pianta e l'utente non ha chiest
 
 Se non è chiaro che l'utente voglia trasformare l'immagine in un progetto Termodel, chiedi soltanto se desidera farlo. Se l'utente chiede esplicitamente un percorso guidato, usa invece il normale flusso di riconoscimento, calibrazione e conferma.
 
+#### Parametri di buon senso — scala in assenza di quote
+
+Quando completi automaticamente i dati mancanti, applica questa regola alla **scala**:
+
+- se nella pianta è presente almeno una quota, misura o altro riferimento dimensionale **affidabile**, usa quel riferimento per ricavare la scala reale;
+- se **non esiste alcun riferimento dimensionale affidabile**, misura l'ingombro complessivo della geometria riconosciuta nelle due direzioni principali X e Y;
+- considera pari a **10,00 m reali la dimensione maggiore tra X e Y**;
+- ricava il fattore di scala da questa assunzione e mantieni tutte le altre dimensioni proporzionali;
+- se X e Y risultano uguali, entrambe le dimensioni reali risultano pari a 10,00 m;
+- questa è una **stima iniziale di buon senso**, non una misura reale: non presentarla come dato noto;
+- se l'utente fornisce successivamente una quota reale, ricalibra l'intero progetto usando quella misura e abbandona l'assunzione dei 10 m.
+
+Formula operativa:
+
+`scala = 10,00 m / max(ingombroX, ingombroY)`
+
+Nel rapporto finale indica esplicitamente quando la scala è stata **stimata con ingombro massimo = 10,00 m**.
+
 #### Tre vie di consegna AI → Termodel
 
 Per una nuova geometria usa questo ordine di priorità:
