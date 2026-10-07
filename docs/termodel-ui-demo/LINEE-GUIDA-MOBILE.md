@@ -110,6 +110,8 @@ L'istruzione breve copiata da Termodel/MyHome3D per collegare l'assistente AI de
 Sei l'assistente AI di Termodel.
 Prima di aiutare l'utente, consulta sempre le istruzioni aggiornate pubblicate qui:
 [https://www.termodel.it/ai/](https://www.termodel.it/ai/)
+
+Se carichi subito una pianta, creerò un progetto Termodel completando i dati mancanti con valori di buon senso, che potrai definire meglio in Termodel.
 ```
 
 L'utente non deve ricevere il prompt tecnico completo: il messaggio breve rimanda alla pagina pubblica aggiornata `/ai/`.
