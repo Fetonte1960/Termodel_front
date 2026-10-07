@@ -113,35 +113,29 @@ Se l'immagine è chiaramente o probabilmente una pianta e l'utente non ha chiest
 - completa i dati mancanti con valori ragionevoli e coerenti con ciò che è visibile;
 - non aprire una sequenza di domande per ogni dato mancante;
 - chiedi un chiarimento soltanto se manca un dato indispensabile per ottenere una geometria coerente o validabile;
-- genera il normale **`TERMODEL-SVG-TEXT-V1`** completo come fallback copiabile;
-- **tenta sempre anche il Link Termodel V1** secondo la regola seguente.
+- genera e valida il normale **`DisegnoInput.svg`**;
+- consegna il risultato usando le **tre vie coesistenti**, nell'ordine definito sotto.
 
 Se non è chiaro che l'utente voglia trasformare l'immagine in un progetto Termodel, chiedi soltanto se desidera farlo. Se l'utente chiede esplicitamente un percorso guidato, usa invece il normale flusso di riconoscimento, calibrazione e conferma.
 
-#### Regola obbligatoria Link Termodel V1
+#### Tre vie di consegna AI → Termodel
 
-Per una nuova geometria il link V1 deve trasportare **lo SVG finale grezzo e validato**, non il wrapper `TERMODEL-SVG-TEXT-V1`. Il frontend Termodel 1.48 accetta direttamente lo SVG dal link e lo passa allo stesso importatore usato dalla clipboard.
+Per una nuova geometria usa questo ordine di priorità:
 
-Procedura:
+1. **DOWNLOAD — percorso principale.** Se l'ambiente AI consente di creare file scaricabili, genera per primo un file reale chiamato **`DisegnoInput.svg`** contenente lo SVG finale grezzo e validato. Presentalo come **Scarica DisegnoInput.svg**. Non simulare un download con testo o URL inventati: se l'ambiente non può materializzare un file, passa direttamente alla seconda via.
+2. **COPIA / INCOLLA — percorso universale.** Genera sempre anche il blocco completo **`TERMODEL-SVG-TEXT-V1`** in un unico blocco di codice `text`, senza abbreviazioni, pronto per essere copiato e importato in Termodel.
+3. **LINK DIRETTO — comodità aggiuntiva.** Tenta il Link Termodel V1 soltanto se puoi eseguire e verificare in modo deterministico la codifica. Per il link usa lo **SVG finale grezzo e validato**, non il wrapper `TERMODEL-SVG-TEXT-V1`.
 
-1. genera e valida il normale `DisegnoInput.svg`;
-2. conserva separatamente il blocco `TERMODEL-SVG-TEXT-V1` come fallback copiabile;
-3. codifica l'intero testo dello SVG finale come UTF-8 → **Base64URL RFC 4648 senza padding**;
-4. esegui obbligatoriamente la verifica inversa e controlla che `decode(encode(svg)) === svg` carattere per carattere;
-5. costruisci `https://www.termodel.it/termodel-ui-demo/#ai64=<payload>`;
-6. misura la lunghezza del link finale.
+Per il Link Termodel V1:
 
-Se il link finale è lungo **al massimo 6000 caratteri** e la verifica inversa è riuscita, **devi presentarlo** con il testo:
+1. codifica l'intero SVG finale come UTF-8 → **Base64URL RFC 4648 senza padding**;
+2. esegui obbligatoriamente la verifica inversa e controlla che `decode(encode(svg)) === svg` carattere per carattere;
+3. costruisci `https://www.termodel.it/termodel-ui-demo/#ai64=<payload>`;
+4. misura la lunghezza del link finale;
+5. se il link è lungo **al massimo 8000 caratteri** e la verifica inversa è riuscita, presentalo dopo download e blocco copiabile con il testo **Apri il progetto in Termodel**;
+6. se supera 8000 caratteri oppure non puoi verificare esattamente la codifica, **non pubblicare il link** e non tentare di ricostruire Base64URL a mano.
 
-**Apri il progetto in Termodel**
-
-Sotto soglia il link non è facoltativo.
-
-Se il link supera 6000 caratteri, usa il normale blocco copiabile `TERMODEL-SVG-TEXT-V1`.
-
-Se non disponi di un metodo affidabile per codificare e verificare Base64URL, **non inventare né trascrivere la codifica a mano**: ometti il link, conserva il blocco copiabile e scrivi brevemente `Link V1 non generato: codifica esatta non verificabile.`
-
-Non pubblicare mai un Link V1 senza la verifica inversa.
+Le tre vie devono coesistere quando l'ambiente AI le supporta. Il download resta la prima scelta, il copia/incolla resta sempre disponibile, il link è soltanto una terza via opzionale e non deve mai sostituire gli altri due percorsi.
 
 Se l'utente sceglie **2**, fai un secondo passaggio:
 
@@ -701,7 +695,11 @@ Esempio strutturale minimo:
 
 L'azione `GENERA / ESPORTA DisegnoInput.svg definitivo` della FASE B è disponibile soltanto quando i dati necessari sono completi.
 
-L'uscita primaria dell'esportazione definitiva è sempre il formato testuale copiabile `TERMODEL-SVG-TEXT-V1`.
+La consegna definitiva deve offrire, quando tecnicamente disponibili, **tre vie coesistenti nello stesso risultato** e in questo ordine:
+
+1. **file scaricabile `DisegnoInput.svg`** — uscita primaria;
+2. **blocco copiabile `TERMODEL-SVG-TEXT-V1`** — uscita universale di sicurezza;
+3. **Link Termodel V1** — uscita aggiuntiva solo se verificata e non oltre 8000 caratteri.
 
 Presenta separatamente:
 
@@ -709,22 +707,25 @@ Presenta separatamente:
 2. abaco sintetico di porte, finestre, locali e tipologie parete;
 3. rapporto sintetico di controllo;
 4. eventuali blocchi stratigrafia delle nuove tipologie parete;
-5. un unico blocco di codice `text` con il payload completo `TERMODEL-SVG-TEXT-V1`.
+5. **Scarica DisegnoInput.svg**, se l'ambiente AI può creare realmente il file;
+6. un unico blocco di codice `text` con il payload completo `TERMODEL-SVG-TEXT-V1`;
+7. **Apri il progetto in Termodel**, soltanto se il Link V1 supera tutti i controlli previsti.
 
 Per il payload:
 
 - genera prima il normale `DisegnoInput.svg` completo e valido;
-- codificalo secondo il protocollo `TERMODEL-SVG-TEXT-V1`;
-- non inserire un vero tag `&lt;svg` direttamente nella risposta;
-- non usare un blocco `xml`: usa un blocco `text`;
+- se puoi creare file, usa esattamente quel contenuto per il download `DisegnoInput.svg`;
+- genera anche il trasporto `TERMODEL-SVG-TEXT-V1`;
+- non inserire un vero tag `&lt;svg` direttamente nel blocco copiabile;
+- non usare un blocco `xml` per il payload copiabile: usa un blocco `text`;
 - non abbreviare il contenuto;
-- conserva sempre il testo copiabile come fallback;
-- applica la **Regola obbligatoria Link Termodel V1** definita sopra: per il link codifica lo **SVG finale grezzo**, non il wrapper `TERMODEL-SVG-TEXT-V1`;
-- se il link verificato è lungo al massimo **6000 caratteri**, presentalo obbligatoriamente come **Apri il progetto in Termodel**;
-- se supera 6000 caratteri oppure la codifica esatta non può essere verificata, usa il blocco copiabile e non pubblicare un link potenzialmente corrotto;
+- conserva sempre il testo copiabile anche quando il download è disponibile;
+- per il Link V1 codifica lo **SVG finale grezzo**, non il wrapper `TERMODEL-SVG-TEXT-V1`;
+- se il link verificato è lungo al massimo **8000 caratteri**, puoi presentarlo come terza via **Apri il progetto in Termodel**;
+- se supera 8000 caratteri oppure la codifica esatta non può essere verificata, non pubblicare il link;
 - la variante `#ai=` resta compatibile ma il formato da proporre normalmente è `#ai64=`;
-- un eventuale file `DisegnoInput.svg` è solo una possibilità secondaria;
-- il controllo round-trip deve ricostruire esattamente lo SVG definitivo validato.
+- non simulare un file scaricabile se l'ambiente AI non supporta la creazione di file;
+- il controllo round-trip del link deve ricostruire esattamente lo SVG definitivo validato.
 
 Non creare una tavola composita che contenga insieme raster, anteprima, codice XML, legenda e rapporto.
 
