@@ -2,7 +2,7 @@
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
 > Ultimo aggiornamento: 2026-10-05  
-> Frontend esaminato: **Termodel Web 1.51**
+> Frontend esaminato: **Termodel Web 1.52**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.51**.
+Versione frontend rilevata: **1.52**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.51**
-- CAD 2D: **Termodel Cad 2d Versione 1.51**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.52**
+- CAD 2D: **Termodel Cad 2d Versione 1.52**
 
 Dalla versione **1.51**, il numero di versione visualizzato non è più duplicato nell'HTML: `frontend-version.txt` è la fonte manuale unica; `index.html` usa quel valore per caricare `app.js`, e il runtime aggiorna automaticamente titolo della scheda e caption superiore.
 
@@ -180,7 +180,7 @@ Sono presenti tre schede:
 Comandi principali:
 
 - **Gestione Piani** — apre l'archivio Piani.
-- **Crea progetto con AI** — dalla v1.50 apre una finestra con due percorsi: **Apri ChatGPT (consigliato)**, che apre una nuova chat passando direttamente nel parametro la programmazione Termodel, oppure **Copia programmazione negli appunti**, che mantiene il flusso tradizionale per ChatGPT o altre AI.
+- **Crea progetto con AI** — dalla v1.50 apre una finestra con due percorsi: **Apri ChatGPT (consigliato)**, che apre una nuova chat passando direttamente nel parametro la programmazione Termodel, oppure **Copia programmazione negli appunti**, che mantiene il flusso tradizionale per ChatGPT o altre AI. Dalla v1.52 il bootstrap aggiunge anche l'invito esplicito a caricare subito una pianta: l'AI creerà il progetto Termodel completando i dati mancanti con valori di buon senso, affinabili poi in Termodel.
 - **?** — apre l'Help del flusso AI. La consegna AI corrente prevede tre vie coesistenti quando disponibili: **download di `DisegnoInput.svg` come prima scelta**, blocco `TERMODEL-SVG-TEXT-V1` per copia/incolla e Link AI V1 come terza comodità.
 - **Importa da AI** — importa dagli appunti un progetto Termodel corrente oppure una pianta restituita dall'AI come SVG / `TERMODEL-SVG-TEXT-V1`. Un XML generico o XML Nazionale non è un payload valido per questo comando; dalla v1.47 viene mostrato un messaggio esplicito invece del generico errore di progetto non valido. Il file `DisegnoInput.svg` scaricato dall'AI è inoltre compatibile con il flusso esistente **Apri SVG...**.
 - **Link AI V1 (v1.48)** — all'avvio il frontend riconosce `#ai64=` e `#ai=`. Per una nuova geometria il link codifica direttamente lo SVG finale grezzo in UTF-8 Base64URL senza padding; il contenuto decodificato viene passato allo stesso importatore usato dalla clipboard. Dal 2026-10-07 il link è una terza via opzionale: va mostrato soltanto quando il risultato finale non supera **8000 caratteri** e il round-trip della codifica ricostruisce esattamente lo SVG; dopo la lettura il fragment viene rimosso dall'URL per evitare una seconda importazione al refresh.
