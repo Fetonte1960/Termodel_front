@@ -73,7 +73,7 @@ const TERMODEL_LOG_CATEGORIES = [
   'PontiAutomatici',
   'SpiraliDiego'
 ];
-const APP_VERSION = '1.49';
+const APP_VERSION = '1.50';
 const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
 const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
@@ -4614,6 +4614,11 @@ const MYHOME3D_AI_INSTRUCTION_URL = './MyHome3D.md?v=0.26';
 const instructAiButton = document.getElementById('instructAiButton');
 const aiFlowHelpButton = document.getElementById('aiFlowHelpButton');
 const importAiButton = document.getElementById('importAiButton');
+const aiProjectChoiceModal = document.getElementById('aiProjectChoiceModal');
+const aiProjectChoiceClose = document.getElementById('aiProjectChoiceClose');
+const aiProjectChoiceCloseBottom = document.getElementById('aiProjectChoiceCloseBottom');
+const aiProjectOpenChatGpt = document.getElementById('aiProjectOpenChatGpt');
+const aiProjectCopyPrompt = document.getElementById('aiProjectCopyPrompt');
 const aiInstructModal = document.getElementById('aiInstructModal');
 const aiInstructClose = document.getElementById('aiInstructClose');
 const aiInstructCloseBottom = document.getElementById('aiInstructCloseBottom');
@@ -4701,6 +4706,35 @@ Prima di aiutare l'utente, consulta sempre le istruzioni aggiornate pubblicate q
 
 function setMainAiStatus(message) {
   if (status) status.textContent = message;
+}
+
+function openAiProjectChoiceDialog() {
+  if (!aiProjectChoiceModal) return;
+  document.querySelectorAll('.menu').forEach(menu => menu.classList.remove('open'));
+  aiProjectChoiceModal.classList.add('visible');
+  aiProjectChoiceModal.setAttribute('aria-hidden', 'false');
+  aiProjectOpenChatGpt?.focus();
+}
+
+function closeAiProjectChoiceDialog() {
+  if (!aiProjectChoiceModal) return;
+  aiProjectChoiceModal.classList.remove('visible');
+  aiProjectChoiceModal.setAttribute('aria-hidden', 'true');
+}
+
+function buildChatGptTermodelUrl() {
+  return 'https://chatgpt.com/?q=' + encodeURIComponent(TERMODEL_AI_BOOTSTRAP);
+}
+
+function openChatGptWithTermodelBootstrap() {
+  const target = buildChatGptTermodelUrl();
+  const opened = window.open(target, '_blank', 'noopener');
+  if (!opened) {
+    window.alert('Il browser ha bloccato l’apertura di ChatGPT. Consenti i popup per Termodel oppure usa la copia negli appunti.');
+    return false;
+  }
+  setMainAiStatus('✓ ChatGPT aperto con la programmazione Termodel');
+  return true;
 }
 
 function openWebHelpDialog() {
@@ -4843,10 +4877,7 @@ async function copyTermodelAiBootstrap({ openDialog = false } = {}) {
 async function instructAiFromMainForm(event) {
   event?.preventDefault();
   event?.stopPropagation();
-
-  const copied = await copyTermodelAiBootstrap({ openDialog: true });
-  if (!copied)
-    window.alert('Impossibile copiare le istruzioni AI negli appunti.');
+  openAiProjectChoiceDialog();
 }
 
 const TERMODEL_AI_LINK_HASH_PREFIX = '#ai=';
@@ -5085,13 +5116,7 @@ webHelpInstructAi?.addEventListener('click', async event => {
 });
 
 if (instructAiButton)
-  instructAiButton.addEventListener('click', async event => {
-    event.preventDefault();
-    event.stopPropagation();
-    const copied = await copyTermodelAiBootstrap({ openDialog: false });
-    if (!copied)
-      window.alert('Impossibile copiare le istruzioni AI negli appunti.');
-  });
+  instructAiButton.addEventListener('click', instructAiFromMainForm);
 if (aiFlowHelpButton)
   aiFlowHelpButton.addEventListener('click', event => {
     event.preventDefault();
@@ -5100,6 +5125,32 @@ if (aiFlowHelpButton)
   });
 if (importAiButton)
   importAiButton.addEventListener('click', importAiFromMainForm);
+if (aiProjectChoiceClose)
+  aiProjectChoiceClose.addEventListener('click', closeAiProjectChoiceDialog);
+if (aiProjectChoiceCloseBottom)
+  aiProjectChoiceCloseBottom.addEventListener('click', closeAiProjectChoiceDialog);
+if (aiProjectChoiceModal)
+  aiProjectChoiceModal.addEventListener('click', event => {
+    if (event.target === aiProjectChoiceModal) closeAiProjectChoiceDialog();
+  });
+if (aiProjectOpenChatGpt)
+  aiProjectOpenChatGpt.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (openChatGptWithTermodelBootstrap())
+      closeAiProjectChoiceDialog();
+  });
+if (aiProjectCopyPrompt)
+  aiProjectCopyPrompt.addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const copied = await copyTermodelAiBootstrap({ openDialog: true });
+    if (!copied) {
+      window.alert('Impossibile copiare la programmazione AI negli appunti.');
+      return;
+    }
+    closeAiProjectChoiceDialog();
+  });
 if (aiInstructClose)
   aiInstructClose.addEventListener('click', closeAiInstructDialog);
 if (aiInstructCloseBottom)
