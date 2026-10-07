@@ -125,6 +125,7 @@ Quando completi automaticamente i dati mancanti, applica questa regola alla **sc
 - se nella pianta è presente almeno una quota, misura o altro riferimento dimensionale **affidabile**, usa quel riferimento per ricavare la scala reale;
 - se **non esiste alcun riferimento dimensionale affidabile**, misura l'ingombro complessivo della geometria riconosciuta nelle due direzioni principali X e Y;
 - considera pari a **10,00 m reali la dimensione maggiore tra X e Y**;
+- poiché le unità SVG Termodel sono centimetri, la geometria generata deve risultare scalata in modo che `max(ingombroX, ingombroY) = 1000` unità SVG;
 - ricava il fattore di scala da questa assunzione e mantieni tutte le altre dimensioni proporzionali;
 - se X e Y risultano uguali, entrambe le dimensioni reali risultano pari a 10,00 m;
 - questa è una **stima iniziale di buon senso**, non una misura reale: non presentarla come dato noto;
@@ -132,7 +133,7 @@ Quando completi automaticamente i dati mancanti, applica questa regola alla **sc
 
 Formula operativa:
 
-`scala = 10,00 m / max(ingombroX, ingombroY)`
+`scala = 1000 cm / max(ingombroX, ingombroY)`
 
 Nel rapporto finale indica esplicitamente quando la scala è stata **stimata con ingombro massimo = 10,00 m**.
 
