@@ -2,7 +2,7 @@
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
 > Ultimo aggiornamento: 2026-10-05  
-> Frontend esaminato: **Termodel Web 1.50**
+> Frontend esaminato: **Termodel Web 1.51**
 
 ## Scopo
 
@@ -44,12 +44,14 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.50**.
+Versione frontend rilevata: **1.51**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.50**
-- CAD 2D: **Termodel Cad 2d Versione 1.50**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.51**
+- CAD 2D: **Termodel Cad 2d Versione 1.51**
+
+Dalla versione **1.51**, il numero di versione visualizzato non è più duplicato nell'HTML: `frontend-version.txt` è la fonte manuale unica; `index.html` usa quel valore per caricare `app.js`, e il runtime aggiorna automaticamente titolo della scheda e caption superiore.
 
 L'interfaccia Web PC è organizzata in:
 
