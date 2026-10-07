@@ -355,6 +355,37 @@
       border-top: 1px solid #aaa;
       background: #e8e8e8;
     }
+    .ai-project-choice-actions {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+      margin-top:16px;
+    }
+    .ai-project-choice-actions button {
+      min-height:74px;
+      padding:12px 14px;
+      border:1px solid #8b99a8;
+      border-radius:6px;
+      background:linear-gradient(#ffffff,#e8edf2);
+      cursor:pointer;
+      font-weight:700;
+      text-align:left;
+      line-height:1.3;
+    }
+    .ai-project-choice-actions button.primary {
+      border-color:#46799e;
+      background:linear-gradient(#eef9ff,#cfe8f6);
+    }
+    .ai-project-choice-actions button small {
+      display:block;
+      margin-top:5px;
+      color:#56616c;
+      font-weight:400;
+    }
+    @media (max-width:760px) {
+      .ai-project-choice-actions { grid-template-columns:1fr; }
+    }
+
     .project-start-copy {
       margin:0 0 12px;
       color:#34495e;
@@ -2345,7 +2376,7 @@
 
     <div class="bottom-bar">
       <button type="button" data-archive="Piani">Gestione Piani</button>
-      <button type="button" id="instructAiButton" class="ai-main-button" title="Copia negli appunti l'istruzione AI ufficiale di Termodel">Copia istruzione AI</button>
+      <button type="button" id="instructAiButton" class="ai-main-button" title="Scegli come avviare l'AI per creare un progetto Termodel">Crea progetto con AI</button>
       <button type="button" id="aiFlowHelpButton" class="ai-main-button" title="Spiega il flusso corretto con l'AI" aria-label="Help flusso AI">?</button>
       <button type="button" id="importAiButton" class="ai-main-button" title="Importa dagli appunti il risultato AI; se non esiste ancora un progetto, ne crea uno nuovo">Importa da AI</button>
       <button type="button" data-action="Edita nel Cad">Edita nel Cad</button>
@@ -2397,21 +2428,47 @@
         <button id="aiFlowHelpClose" class="ai-instruct-close" type="button" aria-label="Chiudi Help AI">×</button>
       </header>
       <div class="ai-instruct-body">
-        <p class="ai-instruct-lead">Il flusso corretto usa i due comandi AI della barra inferiore.</p>
+        <p class="ai-instruct-lead">Il flusso corretto può partire direttamente da ChatGPT oppure usare gli appunti come alternativa.</p>
         <ol>
-          <li>Premi <strong>Copia istruzione AI</strong>.</li>
-          <li>Apri ChatGPT, Gemini, DeepSeek o la tua AI e incolla l'istruzione.</li>
+          <li>Premi <strong>Crea progetto con AI</strong>.</li>
+          <li>Scegli <strong>Apri ChatGPT (consigliato)</strong> per aprire una nuova chat con la programmazione Termodel già inserita, oppure scegli la copia negli appunti per usare un'altra AI.</li>
           <li>Descrivi il progetto oppure allega la pianta/PDF che vuoi elaborare.</li>
           <li>Quando l'AI restituisce il risultato, se compare <strong>Apri il progetto in Termodel</strong> puoi usare direttamente quel link.</li>
           <li>In alternativa copia negli appunti <strong>l'intero payload</strong>, torna in Termodel e premi <strong>Importa da AI</strong>.</li>
         </ol>
         <p>Se stai ancora vedendo il <strong>modello iniziale non esplorabile</strong>, i tre comandi AI restano disponibili: <strong>Importa da AI</strong> usa il risultato per creare il tuo nuovo progetto Termodel.</p>
-        <p><strong>Formato:</strong> per una nuova geometria l'AI deve restituire <code>TERMODEL-SVG-TEXT-V1</code>. Un progetto Termodel completo corrente può usare <code>TERMODEL-PROJECT-TEXT-V1</code>. La versione 1.48 può ricevere questi dati anche da un link V1 nel fragment dell'URL.</p>
+        <p><strong>Formato:</strong> per una nuova geometria l'AI deve restituire <code>TERMODEL-SVG-TEXT-V1</code>. Un progetto Termodel completo corrente può usare <code>TERMODEL-PROJECT-TEXT-V1</code>. La versione 1.50 può ricevere questi dati anche da un link V1 nel fragment dell'URL.</p>
         <p><strong>Non incollare XML generico o XML Nazionale</strong> in Importa da AI: appartengono a flussi diversi.</p>
         <p>L'istruzione copiata è volutamente breve e rimanda sempre alle istruzioni aggiornate pubblicate su <code>https://www.termodel.it/ai/</code>.</p>
       </div>
       <footer class="ai-instruct-foot">
         <button id="aiFlowHelpCloseBottom" type="button">Chiudi</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <div id="aiProjectChoiceModal" class="ai-instruct-modal" aria-hidden="true">
+    <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="aiProjectChoiceTitle">
+      <header class="ai-instruct-head">
+        <h2 id="aiProjectChoiceTitle">Crea progetto con AI</h2>
+        <button id="aiProjectChoiceClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+      <div class="ai-instruct-body">
+        <p class="ai-instruct-lead">Scegli come avviare l'assistente AI per Termodel.</p>
+        <div class="ai-project-choice-actions">
+          <button id="aiProjectOpenChatGpt" class="primary" type="button">
+            Apri ChatGPT (consigliato)
+            <small>Apre una nuova chat con la programmazione Termodel già inserita, senza usare gli appunti.</small>
+          </button>
+          <button id="aiProjectCopyPrompt" type="button">
+            Copia programmazione negli appunti
+            <small>Usa il metodo tradizionale per incollare la programmazione in ChatGPT o in un'altra AI.</small>
+          </button>
+        </div>
+      </div>
+      <footer class="ai-instruct-foot">
+        <button id="aiProjectChoiceCloseBottom" type="button">Annulla</button>
       </footer>
     </section>
   </div>
@@ -2720,6 +2777,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"
           integrity="sha512-uD8O1KVrtd2ar9XaZntrb9ne07Btc7+uudbQpOMXa7UQcls1/uEU65bdxeIqncsuDk+ow1ioX33EBUf0c0SvMQ=="
           crossorigin="anonymous"></script>
-  <script type="module" src="./app.js?v=1.49"></script>
+  <script type="module" src="./app.js?v=1.50"></script>
 </body>
 </html>
