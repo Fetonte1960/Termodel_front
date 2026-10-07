@@ -73,10 +73,18 @@ const TERMODEL_LOG_CATEGORIES = [
   'PontiAutomatici',
   'SpiraliDiego'
 ];
-const APP_VERSION = '1.50';
+const APP_VERSION = String(
+  globalThis.TERMODEL_FRONTEND_BOOT_VERSION ||
+  new URL(import.meta.url).searchParams.get('v') ||
+  'dev'
+).trim();
 const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
 const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
+
+document.title = `Termodel Web v${APP_VERSION} — Esempio pannelli radianti`;
+if (appTitleText)
+  appTitleText.textContent = APP_MAIN_TITLE;
 let termodelFrontendVersionCheckPromise = null;
 
 async function ensureLatestTermodelFrontend() {
