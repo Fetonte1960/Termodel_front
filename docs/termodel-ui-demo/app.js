@@ -4728,11 +4728,12 @@ function buildChatGptTermodelUrl() {
 
 function openChatGptWithTermodelBootstrap() {
   const target = buildChatGptTermodelUrl();
-  const opened = window.open(target, '_blank', 'noopener');
+  const opened = window.open(target, '_blank');
   if (!opened) {
     window.alert('Il browser ha bloccato l’apertura di ChatGPT. Consenti i popup per Termodel oppure usa la copia negli appunti.');
     return false;
   }
+  try { opened.opener = null; } catch (_) {}
   setMainAiStatus('✓ ChatGPT aperto con la programmazione Termodel');
   return true;
 }
