@@ -127,8 +127,9 @@ Il pulsante Help del gruppo deve spiegare il ciclo corretto:
 1. copia l'istruzione AI;
 2. apri ChatGPT, Gemini, DeepSeek o un altro assistente e incolla l'istruzione;
 3. descrivi il progetto o allega pianta/PDF;
-4. se l'AI propone **Apri il progetto in Termodel**, tocca direttamente il link V1;
-5. in alternativa copia integralmente il risultato destinato a Termodel, torna in MyHome3D e usa **Importa progetto realizzato con AI dagli appunti**.
+4. l'AI deve proporre **per primo il download di `DisegnoInput.svg`**, quando può creare realmente il file;
+5. deve fornire anche il blocco `TERMODEL-SVG-TEXT-V1` per il normale copia/incolla;
+6. se può costruire e verificare esattamente il Link V1 e questo non supera **8000 caratteri**, può aggiungere anche **Apri il progetto in Termodel** come terza via.
 
 Il Help deve ricordare che per una nuova geometria il formato previsto è `TERMODEL-SVG-TEXT-V1`, mentre un progetto Termodel completo corrente può usare `TERMODEL-PROJECT-TEXT-V1`. XML generico e XML Nazionale non vanno incollati in **Importa da AI**.
 
@@ -168,6 +169,6 @@ Per una **nuova geometria**, il payload preferito del Link V1 è lo **SVG finale
 
 Il contenuto decodificato viene passato allo stesso importatore già usato da **Importa progetto realizzato con AI dagli appunti**: non esiste un secondo validatore.
 
-Regola di emissione AI: il link deve essere proposto quando la sua lunghezza finale è al massimo **6000 caratteri** e la codifica è stata verificata con round-trip esatto. Se non è possibile verificare la codifica o se il link supera la soglia, resta il normale blocco `TERMODEL-SVG-TEXT-V1` copiabile.
+Regola di emissione AI: la consegna prioritaria è il file scaricabile **`DisegnoInput.svg`**, quando l'ambiente AI supporta realmente la creazione di file. Il blocco `TERMODEL-SVG-TEXT-V1` resta sempre la via universale di copia/incolla. Il Link V1 è una terza via opzionale e può essere proposto soltanto quando la sua lunghezza finale è al massimo **8000 caratteri** e la codifica è stata verificata con round-trip esatto. Se non è possibile verificare la codifica o se il link supera la soglia, non va pubblicato.
 
 Dopo la lettura il fragment viene rimosso dalla barra degli indirizzi, così un refresh non ripete automaticamente l'importazione.
