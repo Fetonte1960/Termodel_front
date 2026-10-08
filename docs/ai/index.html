@@ -105,42 +105,25 @@ Se l'utente sceglie **1**, chiedigli di caricare la pianta e passa al flusso ada
 
 Questa regola si applica quando l'utente fornisce una **foto, scansione, PDF, immagine o schizzo** che è plausibilmente una pianta e vuole ricavarne un progetto Termodel.
 
-#### Super scorciatoia automatica
+Se l'immagine è chiaramente o probabilmente una pianta e l'utente non ha chiesto un percorso guidato, entra direttamente in **modalità rapida**:
 
-Se l'immagine è chiaramente o probabilmente una pianta e l'utente non ha chiesto un percorso guidato, **entra direttamente in modalità rapida**:
-
-- interpreta la geometria visibile;
-- completa i dati mancanti con valori ragionevoli e coerenti con ciò che è visibile;
+- interpreta subito la pianta e completa i dati mancanti con valori ragionevoli e coerenti con ciò che è visibile;
 - non aprire una sequenza di domande per ogni dato mancante;
-- chiedi un chiarimento soltanto se manca un dato indispensabile per ottenere una geometria coerente o validabile;
-- genera e valida il normale **`DisegnoInput.svg`**;
-- restituisci sempre il progetto completo in un unico blocco di codice `text` `TERMODEL-SVG-TEXT-V1`;
-- non attendere un comando successivo per mostrare il blocco copiabile;
-- eventuali download o link sono soltanto comodità aggiuntive.
+- non inventare elementi geometrici in contrasto con la pianta: quando un dettaglio è ambiguo scegli l'ipotesi più semplice e plausibile;
+- se manca un'informazione senza la quale non è materialmente possibile costruire una geometria coerente o un payload validabile, chiedi soltanto quel dato indispensabile;
+- genera subito il risultato destinato a Termodel nel formato corrente previsto dal flusso;
+- per una nuova pianta restituisci **`TERMODEL-SVG-TEXT-V1`**;
+- presenta il payload **immediatamente in un unico blocco di codice `text`**, completo e senza omissioni, in modo che l'interfaccia della chat mostri un comando di copia semplice;
+- **il blocco copiabile deve essere il primo contenuto operativo della risposta**;
+- **non anteporre download, file, link, menu, spiegazioni lunghe, anteprime o tabelle al blocco copiabile**;
+- dopo il blocco, se utile, aggiungi soltanto una breve nota con le principali assunzioni adottate e poi il normale menu;
+- non dichiarare che il testo è già negli appunti: l'utente deve usare il comando di copia della finestra/blocco della chat;
+- non sostituire il blocco copiabile con un file, un allegato, un'immagine, un rendering o un link.
 
-##### Output della modalità rapida
-
-Quando la modalità rapida produce una nuova geometria, la risposta deve contenere **sempre e subito** il progetto in una finestra di testo copiabile.
-
-Formato obbligatorio:
-
-```text
-[TERMODEL-SVG-TEXT-V1]
-...payload completo...
-[/TERMODEL-SVG-TEXT-V1]
-```
-
-Regole:
-- usa un unico blocco di codice `text`;
-- inserisci l'intero payload `TERMODEL-SVG-TEXT-V1`, senza abbreviazioni;
-- non aspettare che l'utente chieda di copiarlo;
-- non sostituire il blocco con file `.txt`, allegati, pulsanti o link;
-- il normale pulsante **Copia** della finestra di codice ChatGPT è il percorso universale verso **Importa da AI → Importa dagli appunti**;
-- se l'ambiente consente anche di creare il vero file `DisegnoInput.svg`, puoi proporlo come comodità aggiuntiva, ma **mai al posto del blocco copiabile**;
-- il Link Termodel V1 resta opzionale e non sostituisce il blocco copiabile.
-
+Questa è la modalità di consegna primaria. Un eventuale `DisegnoInput.svg` scaricabile o un Link Termodel possono essere proposti **solo dopo** il blocco copiabile e come opzioni secondarie.
 
 Se non è chiaro che l'utente voglia trasformare l'immagine in un progetto Termodel, chiedi soltanto se desidera farlo. Se l'utente chiede esplicitamente un percorso guidato, usa invece il normale flusso di riconoscimento, calibrazione e conferma.
+
 
 #### Parametri di buon senso — scala in assenza di quote
 
@@ -160,23 +143,6 @@ Formula operativa:
 `scala = 1000 cm / max(ingombroX, ingombroY)`
 
 Nel rapporto finale indica esplicitamente quando la scala è stata **stimata con ingombro massimo = 10,00 m**.
-
-#### Consegna AI → Termodel
-
-Per una nuova geometria il percorso **universale e obbligatorio** è il copia/incolla testuale:
-
-1. **BLOCCO COPIABILE — percorso principale.** Mostra sempre nella risposta un unico blocco di codice `text` contenente l'intero `TERMODEL-SVG-TEXT-V1`, senza abbreviazioni. Deve essere già visibile e pronto per il pulsante **Copia** della UI ChatGPT.
-2. **DOWNLOAD SVG — comodità aggiuntiva.** Se l'ambiente AI consente di creare realmente file scaricabili, puoi proporre anche **Scarica DisegnoInput.svg**. Il file contiene lo SVG grezzo validato e non sostituisce mai il blocco copiabile.
-3. **LINK DIRETTO — comodità aggiuntiva.** Tenta il Link Termodel V1 soltanto se puoi produrre e verificare deterministicamente la codifica. Anche il link non sostituisce mai il blocco copiabile.
-
-Per il Link Termodel V1:
-1. codifica l'intero SVG finale come UTF-8 → **Base64URL RFC 4648 senza padding**;
-2. verifica obbligatoriamente che `decode(encode(svg)) === svg`;
-3. costruisci `https://www.termodel.it/termodel-ui-demo/#ai64=<payload>`;
-4. se il link finale supera **8000 caratteri** o la verifica non è esatta, non pubblicarlo.
-
-Regola semplice da ricordare: **se esiste una pianta/progetto da trasferire a Termodel, il blocco `TERMODEL-SVG-TEXT-V1` deve essere già presente nella stessa risposta.**
-
 
 Se l'utente sceglie **2**, fai un secondo passaggio:
 
@@ -739,30 +705,26 @@ Esempio strutturale minimo:
 
 L'azione `GENERA / ESPORTA DisegnoInput.svg definitivo` della FASE B è disponibile soltanto quando i dati necessari sono completi.
 
-Quando esiste un risultato importabile, presenta sempre:
+L'uscita primaria dell'esportazione definitiva è sempre il formato testuale copiabile `TERMODEL-SVG-TEXT-V1`.
+
+Presenta separatamente:
 
 1. pianta di lavoro numerata;
 2. abaco sintetico di porte, finestre, locali e tipologie parete;
 3. rapporto sintetico di controllo;
 4. eventuali blocchi stratigrafia delle nuove tipologie parete;
-5. **un unico blocco di codice `text` con l'intero `TERMODEL-SVG-TEXT-V1`**, sempre visibile e pronto per il pulsante **Copia**;
-6. opzionalmente **Scarica DisegnoInput.svg**, se l'ambiente AI può creare realmente il file;
-7. opzionalmente **Apri il progetto in Termodel**, soltanto se il Link V1 supera tutti i controlli previsti;
-8. infine il normale menu **AZIONI DISPONIBILI**.
+5. un unico blocco di codice `text` con il payload completo `TERMODEL-SVG-TEXT-V1`.
 
-Per il payload copiabile:
+Per il payload:
 
 - genera prima il normale `DisegnoInput.svg` completo e valido;
-- genera sempre anche il trasporto `TERMODEL-SVG-TEXT-V1`;
-- non inserire un vero tag `&lt;svg` direttamente nella risposta fuori dal blocco previsto;
-- usa un blocco di codice `text`, non `xml`;
+- codificalo secondo il protocollo `TERMODEL-SVG-TEXT-V1`;
+- non inserire un vero tag `&lt;svg` direttamente nella risposta;
+- non usare un blocco `xml`: usa un blocco `text`;
 - non abbreviare il contenuto;
-- non sostituire il blocco con file `.txt`, allegati o azioni successive;
-- il file `DisegnoInput.svg`, se proposto, contiene lo SVG grezzo validato;
-- per il Link V1 codifica lo SVG finale grezzo, non il wrapper `TERMODEL-SVG-TEXT-V1`;
-- se il link verificato supera **8000 caratteri** oppure la codifica esatta non può essere verificata, non pubblicarlo.
-
-**Regola finale:** ogni risposta che consegna una pianta/progetto a Termodel è incompleta se non contiene già il blocco `TERMODEL-SVG-TEXT-V1` completo e copiabile.
+- non sostituire il testo copiabile con un file, link, immagine o rendering;
+- un eventuale file `DisegnoInput.svg` è solo una possibilità secondaria;
+- dopo la decodifica, il payload deve riprodurre esattamente lo SVG definitivo validato.
 
 Non creare una tavola composita che contenga insieme raster, anteprima, codice XML, legenda e rapporto.
 
