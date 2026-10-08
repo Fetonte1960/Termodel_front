@@ -3706,13 +3706,19 @@ function ensureTermodelAssociationDialog() {
         padding: 0 16px;
         font-weight: 700;
       }
-      .termodel-association-apply {
+      .termodel-association-apply,
+      .termodel-association-apply-all {
         background: #1769aa;
         color: #fff;
         border: 1px solid #0e578f;
         border-radius: 5px;
       }
-      .termodel-association-apply:disabled {
+      .termodel-association-apply-all {
+        background: #4f5963;
+        border-color: #3e464e;
+      }
+      .termodel-association-apply:disabled,
+      .termodel-association-apply-all:disabled {
         opacity: .45;
       }
       @media (max-width: 700px) {
@@ -3743,13 +3749,14 @@ function ensureTermodelAssociationDialog() {
       </header>
       <div class="termodel-association-body">
         <p class="termodel-association-note">
-          Prima di Aggiorna Modello associa ogni elemento in sospeso a una voce dell'archivio Termodel.
-          Dopo ogni associazione l'elemento scompare dall'elenco di sinistra.
+          Seleziona uno o più elementi a sinistra e una voce archivio a destra.
+          Associa applica la voce ai selezionati; Associa tutti la applica a tutti gli elementi visibili,
+          selezionati o no. Dopo l'associazione gli elementi scompaiono dall'elenco di sinistra.
         </p>
         <div class="termodel-association-grid">
           <div class="termodel-association-column">
             <label for="termodelAssociationPending">Da associare</label>
-            <select id="termodelAssociationPending" size="10"></select>
+            <select id="termodelAssociationPending" size="10" multiple></select>
             <div id="termodelAssociationPendingDetails" class="termodel-association-details"></div>
           </div>
           <div class="termodel-association-column">
@@ -3761,6 +3768,7 @@ function ensureTermodelAssociationDialog() {
       </div>
       <footer class="termodel-association-foot">
         <button class="termodel-association-cancel" type="button">Annulla Aggiorna Modello</button>
+        <button class="termodel-association-apply-all" type="button" disabled>Associa tutti</button>
         <button class="termodel-association-apply" type="button" disabled>Associa</button>
       </footer>
     </section>
@@ -3772,21 +3780,57 @@ function ensureTermodelAssociationDialog() {
   const pendingSelect = modal.querySelector('#termodelAssociationPending');
   const archiveSelect = modal.querySelector('#termodelAssociationArchive');
   const applyButton = modal.querySelector('.termodel-association-apply');
+  const applyAllButton = modal.querySelector('.termodel-association-apply-all');
   const closeButton = modal.querySelector('.termodel-association-close');
   const cancelButton = modal.querySelector('.termodel-association-cancel');
 
-  const syncApplyButton = () => {
-    applyButton.disabled = !(pendingSelect.value && archiveSelect.value);
+  const selectedPendingItems = () =>
+    Array.from(pendingSelect.selectedOptions || [])
+      .map(option => termodelAssociationItemsByKey.get(cadText(option.value)))
+      .filter(Boolean);
+
+  const visiblePendingItems = () =>
+    Array.from(pendingSelect.options || [])
+      .map(option => termodelAssociationItemsByKey.get(cadText(option.value)))
+      .filter(Boolean);
+
+  const syncSelectionDetails = () => {
+    const selected = selectedPendingItems();
+    const visible = visiblePendingItems();
+    const details = modal.querySelector('#termodelAssociationPendingDetails');
+    if (!details) return;
+
+    if (!selected.length) {
+      details.textContent =
+        visible.length + ' elemento/i visibili · seleziona uno o più elementi.';
+    } else if (selected.length === 1) {
+      details.textContent =
+        selected[0].descrizione +
+        ' · ' + selected.length + ' selezionato · ' +
+        visible.length + ' elemento/i visibili';
+    } else {
+      details.textContent =
+        selected.length + ' elementi selezionati · ' +
+        visible.length + ' elemento/i visibili';
+    }
+  };
+
+  const syncApplyButtons = () => {
+    const archiveValue = cadText(archiveSelect.value);
+    applyButton.disabled = !(selectedPendingItems().length && archiveValue);
+    applyAllButton.disabled = !(visiblePendingItems().length && archiveValue);
   };
 
   pendingSelect.addEventListener('change', () => {
-    renderTermodelAssociationDialog(pendingSelect.value);
+    syncSelectionDetails();
+    syncApplyButtons();
   });
+
   archiveSelect.addEventListener('change', () => {
     const selected = cadText(archiveSelect.value);
     modal.querySelector('#termodelAssociationArchiveDetails').textContent =
       selected ? ('Voce selezionata: ' + selected) : 'Seleziona una voce dell\'archivio.';
-    syncApplyButton();
+    syncApplyButtons();
   });
 
   const cancel = () => finishTermodelAssociationDialog(false);
@@ -3796,33 +3840,48 @@ function ensureTermodelAssociationDialog() {
     if (event.target === modal) cancel();
   });
 
-  applyButton.addEventListener('click', () => {
-    const item = termodelAssociationItemsByKey.get(cadText(pendingSelect.value));
-    const archiveValue = cadText(archiveSelect.value);
-    if (!item || !archiveValue) return;
+  const associateItems = (items, archiveValue) => {
+    const targets = Array.from(items || []).filter(Boolean);
+    if (!targets.length || !archiveValue) return false;
 
     const before = cadSerializeWorkingSvg();
 
-    if (item.kind === 'wall') {
-      const wallState = cadStateFromLine(item.element);
-      wallState.tipoParete = archiveValue;
-      cadApplySemanticAttributes(item.element, wallState);
-    } else {
-      cadSetSymbolAttribute(item.element, 'TIPO', archiveValue);
-    }
+    targets.forEach(item => {
+      if (item.kind === 'wall') {
+        const wallState = cadStateFromLine(item.element);
+        wallState.tipoParete = archiveValue;
+        cadApplySemanticAttributes(item.element, wallState);
+      } else {
+        cadSetSymbolAttribute(item.element, 'TIPO', archiveValue);
+      }
+    });
 
     const after = cadSerializeWorkingSvg();
-    if (after !== before) {
-      cadUndoStack.push(before);
-      cadRedoStack = [];
-      validatedSvg = after;
-      if (rasterSvgText) rasterSvgText.value = after;
-      renderCadComparison();
-      cadUpdatePropertiesPanel();
-      cadUpdateControls();
-      cadSetStatus(item.id + ' associato a ' + archiveValue, 'dirty');
-    }
+    if (after === before) return false;
 
+    cadUndoStack.push(before);
+    cadRedoStack = [];
+    validatedSvg = after;
+    if (rasterSvgText) rasterSvgText.value = after;
+    renderCadComparison();
+    cadUpdatePropertiesPanel();
+    cadUpdateControls();
+    cadSetStatus(
+      targets.length + ' elemento/i associati a ' + archiveValue,
+      'dirty'
+    );
+    return true;
+  };
+
+  applyButton.addEventListener('click', () => {
+    const archiveValue = cadText(archiveSelect.value);
+    if (!associateItems(selectedPendingItems(), archiveValue)) return;
+    renderTermodelAssociationDialog();
+  });
+
+  applyAllButton.addEventListener('click', () => {
+    const archiveValue = cadText(archiveSelect.value);
+    if (!associateItems(visiblePendingItems(), archiveValue)) return;
     renderTermodelAssociationDialog();
   });
 
@@ -3849,12 +3908,17 @@ function renderTermodelAssociationDialog(preferredKey = '') {
   const previousKey =
     preferredKey ||
     cadText(pendingSelect.value);
-  const selectedKey = items.some(item => item.key === previousKey)
+  const selectedItem =
+    items.find(item => item.key === previousKey) ||
+    items[0];
+  const selectedKind = selectedItem.kind;
+  const visibleItems = items.filter(item => item.kind === selectedKind);
+  const selectedKey = visibleItems.some(item => item.key === previousKey)
     ? previousKey
-    : items[0].key;
+    : visibleItems[0].key;
 
   pendingSelect.replaceChildren();
-  items.forEach(item => {
+  visibleItems.forEach(item => {
     const option = document.createElement('option');
     option.value = item.key;
     option.textContent =
@@ -3863,31 +3927,41 @@ function renderTermodelAssociationDialog(preferredKey = '') {
       ' · Piano ' + item.piano;
     pendingSelect.appendChild(option);
   });
-  pendingSelect.value = selectedKey;
 
-  const selectedItem = termodelAssociationItemsByKey.get(selectedKey);
-  const archiveName = selectedItem?.kind === 'wall' ? 'Pareti' : 'Finestre';
+  if (pendingSelect.options.length)
+    pendingSelect.options[0].selected = true;
+  const preferredOption = Array.from(pendingSelect.options)
+    .find(option => option.value === selectedKey);
+  if (preferredOption)
+    preferredOption.selected = true;
+
+  const archiveName = selectedKind === 'wall' ? 'Pareti' : 'Finestre';
   archiveLabel.textContent = 'Archivio ' + archiveName;
 
   archiveSelect.replaceChildren();
-  termodelAssociationArchiveValues(selectedItem?.kind).forEach(value => {
+  termodelAssociationArchiveValues(selectedKind).forEach(value => {
     const option = document.createElement('option');
     option.value = value;
     option.textContent = value;
     archiveSelect.appendChild(option);
   });
 
-  pendingDetails.textContent = selectedItem
-    ? (selectedItem.descrizione + ' · ' + items.length + ' elemento/i ancora da associare')
-    : '';
+  const selectedCount = pendingSelect.selectedOptions.length;
+  pendingDetails.textContent =
+    selectedCount + ' selezionato/i · ' +
+    visibleItems.length + ' elemento/i ' + archiveName.toLowerCase() +
+    ' · ' + items.length + ' pendente/i totali';
 
+  const applyAllButton = modal.querySelector('.termodel-association-apply-all');
   if (!archiveSelect.options.length) {
     archiveDetails.textContent = 'Archivio ' + archiveName + ' privo di voci associabili.';
     applyButton.disabled = true;
+    applyAllButton.disabled = true;
   } else {
     archiveSelect.selectedIndex = 0;
     archiveDetails.textContent = 'Voce selezionata: ' + archiveSelect.value;
-    applyButton.disabled = false;
+    applyButton.disabled = selectedCount === 0;
+    applyAllButton.disabled = visibleItems.length === 0;
   }
 }
 
