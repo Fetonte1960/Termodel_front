@@ -114,9 +114,9 @@ Se l'immagine è chiaramente o probabilmente una pianta e l'utente non ha chiest
 - non aprire una sequenza di domande per ogni dato mancante;
 - chiedi un chiarimento soltanto se manca un dato indispensabile per ottenere una geometria coerente o validabile;
 - genera e valida il normale **`DisegnoInput.svg`**;
-- **non terminare la risposta dopo aver creato il download**;
-- nella stessa risposta finale mostra obbligatoriamente prima il download e subito dopo il blocco copia/incolla completo;
-- usa la struttura obbligatoria indicata qui sotto.
+- se il download è disponibile, presentalo;
+- poi riproponi il menu operativo con **1 — Copia la pianta negli appunti** come prima azione;
+- evita di mostrare automaticamente il contenuto tecnico se è disponibile una copia compatta.
 
 ##### Output della modalità rapida
 
@@ -171,7 +171,7 @@ Per il Link Termodel V1:
 2. esegui obbligatoriamente la verifica inversa e controlla che `decode(encode(svg)) === svg` carattere per carattere;
 3. costruisci `https://www.termodel.it/termodel-ui-demo/#ai64=<payload>`;
 4. misura la lunghezza del link finale;
-5. se il link è lungo **al massimo 8000 caratteri** e la verifica inversa è riuscita, presentalo dopo download e blocco copiabile con il testo **Apri il progetto in Termodel**;
+5. se il link è lungo **al massimo 8000 caratteri** e la verifica inversa è riuscita, presentalo dopo le opzioni di download/copia con il testo **Apri il progetto in Termodel**;
 6. se supera 8000 caratteri oppure non puoi verificare esattamente la codifica, **non pubblicare il link** e non tentare di ricostruire Base64URL a mano.
 
 Download e copia negli appunti devono restare entrambi disponibili, ma non è necessario mostrare automaticamente il payload tecnico nella stessa risposta. Il download può comparire come file; la copia deve comparire come **prima azione del menu** e usare la modalità compatta quando disponibile. Il link resta soltanto una terza via opzionale.
@@ -748,7 +748,7 @@ L'azione `GENERA / ESPORTA DisegnoInput.svg definitivo` della FASE B è disponib
 La consegna definitiva deve offrire, quando tecnicamente disponibili, **tre vie coesistenti nello stesso risultato** e in questo ordine:
 
 1. **file scaricabile `DisegnoInput.svg`** — uscita primaria;
-2. **blocco copiabile `TERMODEL-SVG-TEXT-V1`** — uscita universale di sicurezza;
+2. **Copia la pianta negli appunti** — prima azione del menu; usa il blocco `TERMODEL-SVG-TEXT-V1` soltanto come fallback quando serve;
 3. **Link Termodel V1** — uscita aggiuntiva solo se verificata e non oltre 8000 caratteri.
 
 Presenta separatamente:
