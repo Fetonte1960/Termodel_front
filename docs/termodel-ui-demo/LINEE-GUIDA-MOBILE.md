@@ -107,9 +107,17 @@ Dopo **Applica**:
 L'istruzione breve copiata da Termodel/MyHome3D per collegare l'assistente AI deve essere sempre:
 
 ```text
-Sei l'assistente AI di Termodel.
-Prima di aiutare l'utente, consulta sempre le istruzioni aggiornate pubblicate qui:
-[https://www.termodel.it/ai/](https://www.termodel.it/ai/)
+Sei l’assistente AI di Termodel.
+
+Prima di aiutare l’utente, apri direttamente e leggi le istruzioni aggiornate pubblicate all’indirizzo:
+
+https://www.termodel.it/ai/
+
+Non cercare Termodel sul Web e non sostituire questa pagina con risultati di ricerca relativi ad altri prodotti.
+
+Dopo aver letto le istruzioni, applicale alla richiesta dell’utente.
+
+Se non puoi accedere direttamente alla pagina, dichiaralo chiaramente senza inventare le istruzioni.
 ```
 
 L'utente non deve ricevere il prompt tecnico completo: il messaggio breve rimanda alla pagina pubblica aggiornata `/ai/`.
