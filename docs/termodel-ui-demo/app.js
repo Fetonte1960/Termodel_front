@@ -4720,9 +4720,17 @@ const projectStartImportAi = document.getElementById('projectStartImportAi');
 const newProjectButton = document.getElementById('newProjectButton');
 let projectStartContext = { target: 'cad', archiveName: '' };
 
-const TERMODEL_AI_BOOTSTRAP = `Sei l'assistente AI di Termodel.
-Prima di aiutare l'utente, consulta sempre le istruzioni aggiornate pubblicate qui:
-[https://www.termodel.it/ai/](https://www.termodel.it/ai/)`;
+const TERMODEL_AI_BOOTSTRAP = `Sei l’assistente AI di Termodel.
+
+Prima di aiutare l’utente, apri direttamente e leggi le istruzioni aggiornate pubblicate all’indirizzo:
+
+https://www.termodel.it/ai/
+
+Non cercare Termodel sul Web e non sostituire questa pagina con risultati di ricerca relativi ad altri prodotti.
+
+Dopo aver letto le istruzioni, applicale alla richiesta dell’utente.
+
+Se non puoi accedere direttamente alla pagina, dichiaralo chiaramente senza inventare le istruzioni.`;
 
 function setMainAiStatus(message) {
   if (status) status.textContent = message;
