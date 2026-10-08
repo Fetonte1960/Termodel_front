@@ -4905,21 +4905,22 @@ function buildChatGptTermodelUrl() {
 }
 
 function openChatGptWithTermodelBootstrap() {
-  // In vista affiancata il pannello filtri toglierebbe spazio al modello.
-  // Se è aperto lo chiudiamo prima di lanciare ChatGPT.
-  if (filtersCheck?.checked) {
-    filtersCheck.checked = false;
-    setFilterPanelVisibility(false);
-  }
-
   const target = buildChatGptTermodelUrl();
   const opened = window.open(target, '_blank');
   if (!opened) {
     window.alert('Il browser ha bloccato l’apertura di ChatGPT. Consenti i popup per Termodel oppure usa la copia negli appunti.');
     return false;
   }
+
+  // In vista affiancata il pannello filtri toglierebbe spazio al modello.
+  // Lo chiudiamo soltanto dopo che l'apertura di ChatGPT è riuscita.
+  if (filtersCheck?.checked) {
+    filtersCheck.checked = false;
+    setFilterPanelVisibility(false);
+  }
+
   try { opened.opener = null; } catch (_) {}
-  setMainAiStatus('✓ ChatGPT aperto con la programmazione Termodel');
+  setMainAiStatus('✓ ChatGPT aperto con la programmazione Termodel · trascina la scheda a destra per affiancarla');
   return true;
 }
 
