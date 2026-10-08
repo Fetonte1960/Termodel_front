@@ -78,11 +78,15 @@ const APP_VERSION = String(
   new URL(import.meta.url).searchParams.get('v') ||
   'dev'
 ).trim();
-const APP_MAIN_TITLE = `Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v${APP_VERSION}`;
-const APP_CAD_TITLE = `Termodel Cad 2d Versione ${APP_VERSION}`;
+function buildTermodelCaption(area) {
+  const normalizedArea = String(area || '').trim();
+  return `Termodel V:${APP_VERSION}${normalizedArea ? ` — ${normalizedArea}` : ''}`;
+}
+const APP_MAIN_TITLE = buildTermodelCaption('Web');
+const APP_CAD_TITLE = buildTermodelCaption('CAD 2D');
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
 
-document.title = `Termodel Web v${APP_VERSION} — Esempio pannelli radianti`;
+document.title = APP_MAIN_TITLE;
 if (appTitleText)
   appTitleText.textContent = APP_MAIN_TITLE;
 let termodelFrontendVersionCheckPromise = null;
