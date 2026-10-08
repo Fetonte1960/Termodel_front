@@ -2,7 +2,7 @@
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
 > Ultimo aggiornamento: 2026-10-07  
-> Frontend esaminato: **Termodel Web 1.53**
+> Frontend esaminato: **Termodel Web 1.54**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.53**.
+Versione frontend rilevata: **1.54**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.53**
-- CAD 2D: **Termodel Cad 2d Versione 1.53**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.54**
+- CAD 2D: **Termodel Cad 2d Versione 1.54**
 
 Dalla versione **1.51**, il numero di versione visualizzato non è più duplicato nell'HTML: `frontend-version.txt` è la fonte manuale unica; `index.html` usa quel valore per caricare `app.js`, e il runtime aggiorna automaticamente titolo della scheda e caption superiore.
 
@@ -180,13 +180,13 @@ Sono presenti tre schede:
 Comandi principali:
 
 - **Gestione Piani** — apre l'archivio Piani.
-- **Crea progetto con AI** — dalla v1.50 apre una finestra con due percorsi: **Apri ChatGPT (consigliato)**, che apre una nuova chat passando direttamente nel parametro la programmazione Termodel, oppure **Copia programmazione negli appunti**, che mantiene il flusso tradizionale per ChatGPT o altre AI. Dalla v1.52 il bootstrap aggiunge anche l'invito esplicito a caricare subito una pianta: l'AI creerà il progetto Termodel completando i dati mancanti con valori di buon senso, affinabili poi in Termodel.
+- **Crea progetto con AI** — dalla v1.50 apre una finestra con due percorsi: **Apri ChatGPT (consigliato)** oppure **Copia programmazione negli appunti**. Dalla v1.54, scegliendo **Apri ChatGPT**, Termodel mostra prima una breve finestra animata che suggerisce di trascinare la nuova scheda ChatGPT verso il lato destro di Chrome per usare Termodel e ChatGPT affiancati; solo il pulsante finale **Apri ChatGPT** apre la nuova scheda con il bootstrap Termodel. Dopo un'apertura riuscita, se **Mostra Filtri Grafici** era attivo, Termodel lo disattiva automaticamente per lasciare più spazio alla vista affiancata. Il percorso copia programmazione resta invariato. Dalla v1.52 il bootstrap invita anche a caricare subito una pianta: l'AI creerà il progetto Termodel completando i dati mancanti con valori di buon senso, affinabili poi in Termodel.
 - **?** — apre l'Help del flusso AI. La consegna AI corrente prevede tre vie coesistenti quando disponibili: **download di `DisegnoInput.svg` come prima scelta**, blocco `TERMODEL-SVG-TEXT-V1` per copia/incolla e Link AI V1 come terza comodità.
 - **Importa da AI** — dalla v1.53 non legge più immediatamente gli appunti: apre una finestra con due percorsi. **Importa dagli appunti** mantiene esattamente il comportamento precedente e accetta progetto Termodel corrente oppure SVG / `TERMODEL-SVG-TEXT-V1`. **Leggi DisegnoInput.svg da Download** usa l'accesso alla cartella locale autorizzato dal browser, cerca esclusivamente `DisegnoInput.svg` e passa il suo contenuto allo stesso importatore/validator SVG già esistente. Al primo uso Chrome/Edge richiedono all'utente di selezionare/autorizzare la cartella Download; l'handle viene riutilizzato durante la sessione. Se il browser non supporta l'accesso diretto alla cartella, resta disponibile il percorso dagli appunti. XML generico e XML Nazionale non sono payload validi per questo comando.
 - **Link AI V1 (v1.48)** — all'avvio il frontend riconosce `#ai64=` e `#ai=`. Per una nuova geometria il link codifica direttamente lo SVG finale grezzo in UTF-8 Base64URL senza padding; il contenuto decodificato viene passato allo stesso importatore usato dalla clipboard. Dal 2026-10-07 il link è una terza via opzionale: va mostrato soltanto quando il risultato finale non supera **8000 caratteri** e il round-trip della codifica ricostruisce esattamente lo SVG; dopo la lettura il fragment viene rimosso dall'URL per evitare una seconda importazione al refresh.
 - **Edita nel Cad** — entra nel CAD 2D Web; se manca un progetto, apre prima il flusso di creazione/importazione.
 - **Aggiorna Modello** — rigenera/aggiorna la vista del modello.
-- **Mostra Filtri Grafici** — abilita la visualizzazione del pannello filtri grafici nella versione desktop.
+- **Mostra Filtri Grafici** — abilita la visualizzazione del pannello filtri grafici nella versione desktop. Dalla v1.54 il checkbox resta utilizzabile anche quando è ancora caricato il modello iniziale non esplorabile; inoltre viene disattivato automaticamente dopo l'apertura riuscita di ChatGPT dal percorso guidato, così la vista Termodel occupa più spazio nell'affiancamento.
 
 ---
 
