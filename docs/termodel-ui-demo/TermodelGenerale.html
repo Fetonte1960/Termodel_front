@@ -527,10 +527,11 @@ Per ogni istanza `FIN` o `PON`:
 3. consolida questa descrizione direttamente nel simbolo SVG mediante l'attributo standard:
    `data-termodel-descrizione="..."`;
 4. mantieni separata la descrizione libera dal collegamento formale all'archivio;
-5. se esiste già una corrispondenza certa e confermata, valorizza `TIPO` con l'esatto `DescBreve` dell'archivio;
-6. se la corrispondenza non è ancora definita, usa nel flusso Web `TIPO,Da associare` e **non inventare nomi di archivio**;
-7. il CAD Web userà descrizione semantica + campi standard del simbolo per proporre o completare l'associazione alla voce corretta dell'archivio;
-8. dopo l'associazione, `TIPO` diventa il collegamento formale all'archivio, mentre `data-termodel-descrizione` resta nel simbolo come informazione semantica e tracciabilità.
+5. per un blocco `FIN`, `TIPO` si collega a `Finestre.DescBreve`; se la corrispondenza non è ancora definita usa `TIPO,Da associare`;
+6. per un blocco `FIN`, `PORTA` è un collegamento distinto: usa `Struttura trasparente` per una normale finestra/portafinestra trasparente; per una porta o superficie opaca usa l'esatto `Pareti.DescBreve`; se nel flusso Web questo secondo collegamento non è ancora definito usa `PORTA,Da associare`;
+7. per un blocco `PON`, `TIPO` si collega a `Ponti.DescBreve` e può usare `TIPO,Da associare` finché il mapping non è definito;
+8. non inventare nomi di archivio: il CAD Web userà descrizione semantica + campi standard del simbolo per completare le associazioni pendenti prima di `Aggiorna Modello`;
+9. dopo l'associazione, i campi formali diventano i valori esatti previsti dagli archivi, mentre `data-termodel-descrizione` resta nel simbolo come informazione semantica e tracciabilità.
 
 La descrizione semantica **non è un campo del database** e non crea automaticamente nuove righe negli archivi.
 
