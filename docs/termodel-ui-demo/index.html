@@ -386,6 +386,163 @@
       .ai-project-choice-actions { grid-template-columns:1fr; }
     }
 
+    .ai-split-guide-window {
+      width:min(680px,96vw);
+    }
+    .ai-split-guide-copy {
+      margin:0 0 12px;
+      color:#34495e;
+      font-size:14px;
+      line-height:1.5;
+    }
+    .ai-split-demo {
+      position:relative;
+      height:220px;
+      overflow:hidden;
+      border:1px solid #9aa7b3;
+      border-radius:9px;
+      background:#eef2f5;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.85);
+    }
+    .ai-split-browserbar {
+      position:relative;
+      height:42px;
+      border-bottom:1px solid #aab4bd;
+      background:linear-gradient(#f8fafc,#e2e7eb);
+    }
+    .ai-split-tab {
+      position:absolute;
+      top:8px;
+      height:27px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:0 10px;
+      border:1px solid #9ea9b2;
+      border-bottom-color:#7f8b94;
+      border-radius:7px 7px 3px 3px;
+      background:#fff;
+      font-weight:700;
+      white-space:nowrap;
+      box-shadow:0 2px 4px rgba(0,0,0,.08);
+    }
+    .ai-split-tab-termodel {
+      left:12px;
+      width:190px;
+    }
+    .ai-split-tab-chat {
+      left:220px;
+      width:150px;
+      animation:termodelChatTabDrag 3.2s ease-in-out infinite;
+      z-index:2;
+    }
+    .ai-split-tab-dot {
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:#6c7f90;
+      flex:0 0 auto;
+    }
+    .ai-split-stage {
+      position:absolute;
+      inset:42px 0 0;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:6px;
+      padding:8px;
+    }
+    .ai-split-pane {
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid #c1c8ce;
+      border-radius:5px;
+      background:#fff;
+      color:#52606d;
+      font-weight:700;
+      letter-spacing:.02em;
+    }
+    .ai-split-pane:first-child::before {
+      content:"";
+      position:absolute;
+      inset:10px;
+      border:1px solid #d6dce1;
+      background:
+        linear-gradient(90deg,transparent 69%,rgba(80,110,135,.08) 70%),
+        linear-gradient(#f8fafb,#eef2f4);
+    }
+    .ai-split-pane span {
+      position:relative;
+      z-index:1;
+      padding:5px 8px;
+      border-radius:4px;
+      background:rgba(255,255,255,.88);
+    }
+    .ai-split-pane-chat {
+      opacity:.42;
+      animation:termodelChatPaneReveal 3.2s ease-in-out infinite;
+    }
+    .ai-split-drag-arrow {
+      position:absolute;
+      top:11px;
+      right:74px;
+      z-index:3;
+      font-size:20px;
+      font-weight:900;
+      color:#315f80;
+      animation:termodelChatArrowPulse 3.2s ease-in-out infinite;
+      pointer-events:none;
+    }
+    .ai-split-guide-note {
+      margin:12px 0 0;
+      padding:9px 11px;
+      border:1px solid #c5ccd3;
+      border-radius:5px;
+      background:#f8fafc;
+      color:#52606d;
+      line-height:1.4;
+    }
+    .ai-split-guide-actions {
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+    }
+    .ai-split-guide-actions button.primary {
+      border-color:#46799e;
+      background:linear-gradient(#eef9ff,#cfe8f6);
+    }
+    @keyframes termodelChatTabDrag {
+      0%,18% { transform:translateX(0); }
+      55%,78% { transform:translateX(235px); }
+      100% { transform:translateX(0); }
+    }
+    @keyframes termodelChatPaneReveal {
+      0%,28% { opacity:.3; transform:scale(.98); }
+      55%,78% { opacity:1; transform:scale(1); }
+      100% { opacity:.3; transform:scale(.98); }
+    }
+    @keyframes termodelChatArrowPulse {
+      0%,18% { opacity:0; transform:translateX(-22px); }
+      42%,68% { opacity:1; transform:translateX(0); }
+      82%,100% { opacity:0; transform:translateX(10px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ai-split-tab-chat,
+      .ai-split-pane-chat,
+      .ai-split-drag-arrow { animation:none; }
+      .ai-split-tab-chat { transform:translateX(235px); }
+      .ai-split-pane-chat { opacity:1; transform:none; }
+      .ai-split-drag-arrow { opacity:1; transform:none; }
+    }
+    @media (max-width:620px) {
+      .ai-split-demo { height:190px; }
+      .ai-split-tab-termodel { width:150px; }
+      .ai-split-tab-chat { left:170px; width:125px; animation:none; }
+      .ai-split-drag-arrow { display:none; }
+      .ai-split-pane-chat { opacity:1; animation:none; }
+    }
+
     .project-start-copy {
       margin:0 0 12px;
       color:#34495e;
@@ -2431,7 +2588,7 @@
         <p class="ai-instruct-lead">Il flusso corretto può partire direttamente da ChatGPT e rientrare in Termodel tramite file, appunti oppure link diretto.</p>
         <ol>
           <li>Premi <strong>Crea progetto con AI</strong>.</li>
-          <li>Scegli <strong>Apri ChatGPT (consigliato)</strong> per aprire una nuova chat con la programmazione Termodel già inserita, oppure scegli la copia negli appunti per usare un'altra AI.</li>
+          <li>Scegli <strong>Apri ChatGPT (consigliato)</strong>: Termodel mostra prima un breve suggerimento animato per usare le due schede affiancate in Chrome, poi apre la nuova chat con la programmazione già inserita. In alternativa scegli la copia negli appunti per usare un'altra AI.</li>
           <li>Descrivi il progetto oppure allega la pianta/PDF che vuoi elaborare.</li>
           <li>Se l'AI propone <strong>DisegnoInput.svg</strong> come download, scaricalo, torna in Termodel, premi <strong>Importa da AI</strong> e scegli <strong>Leggi DisegnoInput.svg da Download</strong>.</li>
           <li>In alternativa usa <strong>Importa dagli appunti</strong> dopo aver copiato l'intero payload AI.</li>
@@ -2460,7 +2617,7 @@
         <div class="ai-project-choice-actions">
           <button id="aiProjectOpenChatGpt" class="primary" type="button">
             Apri ChatGPT (consigliato)
-            <small>Apre una nuova chat con la programmazione Termodel già inserita, senza usare gli appunti.</small>
+            <small>Prima mostra il suggerimento per usare Termodel e ChatGPT affiancati in Chrome, poi apre la nuova chat.</small>
           </button>
           <button id="aiProjectCopyPrompt" type="button">
             Copia programmazione negli appunti
@@ -2470,6 +2627,39 @@
       </div>
       <footer class="ai-instruct-foot">
         <button id="aiProjectChoiceCloseBottom" type="button">Annulla</button>
+      </footer>
+    </section>
+  </div>
+
+
+  <div id="aiSplitGuideModal" class="ai-instruct-modal" aria-hidden="true">
+    <section class="ai-instruct-window ai-split-guide-window" role="dialog" aria-modal="true" aria-labelledby="aiSplitGuideTitle">
+      <header class="ai-instruct-head">
+        <h2 id="aiSplitGuideTitle">Termodel + ChatGPT affiancati</h2>
+        <button id="aiSplitGuideClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+      <div class="ai-instruct-body">
+        <p class="ai-split-guide-copy">
+          Per lavorare in modo più comodo, dopo l'apertura di ChatGPT trascina la sua scheda verso il lato destro della finestra Chrome e rilasciala quando compare l'affiancamento.
+        </p>
+        <div class="ai-split-demo" aria-label="Animazione: la scheda ChatGPT viene trascinata a destra accanto a Termodel">
+          <div class="ai-split-browserbar">
+            <div class="ai-split-tab ai-split-tab-termodel"><span class="ai-split-tab-dot"></span>Termodel</div>
+            <div class="ai-split-tab ai-split-tab-chat"><span class="ai-split-tab-dot"></span>ChatGPT</div>
+            <div class="ai-split-drag-arrow" aria-hidden="true">→</div>
+          </div>
+          <div class="ai-split-stage">
+            <div class="ai-split-pane"><span>Termodel</span></div>
+            <div class="ai-split-pane ai-split-pane-chat"><span>ChatGPT</span></div>
+          </div>
+        </div>
+        <div class="ai-split-guide-note">
+          <strong>Consiglio:</strong> Termodel chiuderà automaticamente il pannello <strong>Filtri Grafici</strong>, se aperto, per lasciare più spazio alla vista affiancata.
+        </div>
+      </div>
+      <footer class="ai-instruct-foot ai-split-guide-actions">
+        <button id="aiSplitGuideBack" type="button">Indietro</button>
+        <button id="aiSplitGuideOpen" class="primary" type="button">Apri ChatGPT</button>
       </footer>
     </section>
   </div>
