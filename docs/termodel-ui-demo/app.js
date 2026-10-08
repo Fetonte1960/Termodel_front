@@ -3543,6 +3543,375 @@ function setStructuredProjectState(enabled) {
     syncInitialModelDesktopGateControls();
 }
 
+const TERMODEL_PENDING_ASSOCIATION_VALUE = 'Da associare';
+let termodelAssociationDialog = null;
+let termodelAssociationDialogResolver = null;
+let termodelAssociationItemsByKey = new Map();
+
+function termodelAssociationIsPending(value) {
+  return cadText(value).toLocaleLowerCase('it-IT') ===
+    TERMODEL_PENDING_ASSOCIATION_VALUE.toLocaleLowerCase('it-IT');
+}
+
+function termodelPendingAssociationItems() {
+  if (!cadWorkingDoc) return [];
+
+  const items = [];
+
+  Array.from(cadWorkingDoc.querySelectorAll('g#calpestabile > line')).forEach((line, index) => {
+    const id = cadText(line.id);
+    const isWall = /^[EW]\d+/i.test(id) ||
+      line.hasAttribute('data-termodel-tipo-parete');
+    if (!isWall) return;
+
+    const tipoParete = cadText(line.getAttribute('data-termodel-tipo-parete'));
+    if (!termodelAssociationIsPending(tipoParete)) return;
+
+    const piano = cadText(line.getAttribute('data-termodel-piano')) || 'Unico';
+    const descrizione =
+      cadText(line.getAttribute('data-termodel-descrizione')) ||
+      ('Parete ' + (id || (index + 1)));
+
+    items.push({
+      key: 'wall:' + piano + ':' + (id || index),
+      kind: 'wall',
+      id: id || ('Parete ' + (index + 1)),
+      piano,
+      descrizione,
+      element: line
+    });
+  });
+
+  Array.from(cadWorkingDoc.querySelectorAll('g#calpestabile > text')).forEach((symbol, index) => {
+    if (cadSymbolBlockType(symbol) !== 'FIN') return;
+    if (!termodelAssociationIsPending(cadSymbolAttribute(symbol, 'TIPO'))) return;
+
+    const id = cadText(symbol.id) || ('Finestra ' + (index + 1));
+    const piano = cadText(symbol.getAttribute('data-termodel-piano')) || 'Unico';
+    const semantic = cadText(symbol.getAttribute('data-termodel-descrizione'));
+    const porta = cadSymbolAttribute(symbol, 'PORTA');
+    const larghezza = cadSymbolAttribute(symbol, 'LARGHEZZA');
+    const altezza = cadSymbolAttribute(symbol, 'ALTEZZA');
+    const fallback = [
+      porta || 'Finestra',
+      larghezza ? ('L ' + larghezza + ' cm') : '',
+      altezza ? ('H ' + altezza + ' cm') : ''
+    ].filter(Boolean).join(' · ');
+
+    items.push({
+      key: 'window:' + piano + ':' + id,
+      kind: 'window',
+      id,
+      piano,
+      descrizione: semantic || fallback || id,
+      element: symbol
+    });
+  });
+
+  return items;
+}
+
+function termodelAssociationArchiveValues(kind) {
+  const archiveName = kind === 'wall' ? 'Pareti' : 'Finestre';
+  return cadArchiveRecords(archiveName)
+    .map(record => cadText(record?.DescBreve))
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index)
+    .sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+}
+
+function ensureTermodelAssociationDialog() {
+  if (termodelAssociationDialog) return termodelAssociationDialog;
+
+  if (!document.getElementById('termodelAssociationStyles')) {
+    const style = document.createElement('style');
+    style.id = 'termodelAssociationStyles';
+    style.textContent = `
+      .termodel-association-modal[hidden] { display: none !important; }
+      .termodel-association-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1200;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        background: rgba(0,0,0,.46);
+      }
+      .termodel-association-dialog {
+        width: min(900px, calc(100vw - 24px));
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+        background: #fff;
+        color: #1d232a;
+        border: 1px solid #747d87;
+        border-radius: 8px;
+        box-shadow: 0 14px 40px rgba(0,0,0,.28);
+        font-family: "Segoe UI", Arial, sans-serif;
+      }
+      .termodel-association-head,
+      .termodel-association-foot {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: #eef1f4;
+      }
+      .termodel-association-head {
+        justify-content: space-between;
+        border-bottom: 1px solid #c6ccd2;
+      }
+      .termodel-association-head strong { font-size: 18px; }
+      .termodel-association-close {
+        min-width: 42px;
+        min-height: 38px;
+        font-size: 20px;
+      }
+      .termodel-association-body { padding: 14px; }
+      .termodel-association-note {
+        margin: 0 0 12px;
+        line-height: 1.35;
+      }
+      .termodel-association-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 14px;
+      }
+      .termodel-association-column {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+      }
+      .termodel-association-column label { font-weight: 700; }
+      .termodel-association-column select {
+        width: 100%;
+        min-height: 250px;
+        font: inherit;
+      }
+      .termodel-association-details {
+        min-height: 48px;
+        padding: 8px;
+        border: 1px solid #d0d5da;
+        border-radius: 5px;
+        background: #fafbfc;
+        overflow-wrap: anywhere;
+      }
+      .termodel-association-foot {
+        justify-content: flex-end;
+        border-top: 1px solid #c6ccd2;
+      }
+      .termodel-association-foot button {
+        min-height: 40px;
+        padding: 0 16px;
+        font-weight: 700;
+      }
+      .termodel-association-apply {
+        background: #1769aa;
+        color: #fff;
+        border: 1px solid #0e578f;
+        border-radius: 5px;
+      }
+      .termodel-association-apply:disabled {
+        opacity: .45;
+      }
+      @media (max-width: 700px) {
+        .termodel-association-modal { padding: 6px; }
+        .termodel-association-dialog {
+          width: calc(100vw - 12px);
+          max-height: calc(100vh - 12px);
+        }
+        .termodel-association-grid { grid-template-columns: 1fr; }
+        .termodel-association-column select { min-height: 155px; }
+        .termodel-association-foot { flex-wrap: wrap; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const modal = document.createElement('div');
+  modal.id = 'termodelAssociationModal';
+  modal.className = 'termodel-association-modal';
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = `
+    <section class="termodel-association-dialog" role="dialog" aria-modal="true"
+      aria-labelledby="termodelAssociationTitle">
+      <header class="termodel-association-head">
+        <strong id="termodelAssociationTitle">Associa elementi importati da AI</strong>
+        <button class="termodel-association-close" type="button" aria-label="Annulla Aggiorna Modello">×</button>
+      </header>
+      <div class="termodel-association-body">
+        <p class="termodel-association-note">
+          Prima di Aggiorna Modello associa ogni elemento in sospeso a una voce dell'archivio Termodel.
+          Dopo ogni associazione l'elemento scompare dall'elenco di sinistra.
+        </p>
+        <div class="termodel-association-grid">
+          <div class="termodel-association-column">
+            <label for="termodelAssociationPending">Da associare</label>
+            <select id="termodelAssociationPending" size="10"></select>
+            <div id="termodelAssociationPendingDetails" class="termodel-association-details"></div>
+          </div>
+          <div class="termodel-association-column">
+            <label id="termodelAssociationArchiveLabel" for="termodelAssociationArchive">Archivio</label>
+            <select id="termodelAssociationArchive" size="10"></select>
+            <div id="termodelAssociationArchiveDetails" class="termodel-association-details"></div>
+          </div>
+        </div>
+      </div>
+      <footer class="termodel-association-foot">
+        <button class="termodel-association-cancel" type="button">Annulla Aggiorna Modello</button>
+        <button class="termodel-association-apply" type="button" disabled>Associa</button>
+      </footer>
+    </section>
+  `;
+
+  document.body.appendChild(modal);
+  termodelAssociationDialog = modal;
+
+  const pendingSelect = modal.querySelector('#termodelAssociationPending');
+  const archiveSelect = modal.querySelector('#termodelAssociationArchive');
+  const applyButton = modal.querySelector('.termodel-association-apply');
+  const closeButton = modal.querySelector('.termodel-association-close');
+  const cancelButton = modal.querySelector('.termodel-association-cancel');
+
+  const syncApplyButton = () => {
+    applyButton.disabled = !(pendingSelect.value && archiveSelect.value);
+  };
+
+  pendingSelect.addEventListener('change', () => {
+    renderTermodelAssociationDialog(pendingSelect.value);
+  });
+  archiveSelect.addEventListener('change', () => {
+    const selected = cadText(archiveSelect.value);
+    modal.querySelector('#termodelAssociationArchiveDetails').textContent =
+      selected ? ('Voce selezionata: ' + selected) : 'Seleziona una voce dell\'archivio.';
+    syncApplyButton();
+  });
+
+  const cancel = () => finishTermodelAssociationDialog(false);
+  closeButton.addEventListener('click', cancel);
+  cancelButton.addEventListener('click', cancel);
+  modal.addEventListener('click', event => {
+    if (event.target === modal) cancel();
+  });
+
+  applyButton.addEventListener('click', () => {
+    const item = termodelAssociationItemsByKey.get(cadText(pendingSelect.value));
+    const archiveValue = cadText(archiveSelect.value);
+    if (!item || !archiveValue) return;
+
+    const before = cadSerializeWorkingSvg();
+
+    if (item.kind === 'wall')
+      item.element.setAttribute('data-termodel-tipo-parete', archiveValue);
+    else
+      cadSetSymbolAttribute(item.element, 'TIPO', archiveValue);
+
+    const after = cadSerializeWorkingSvg();
+    if (after !== before) {
+      cadUndoStack.push(before);
+      cadRedoStack = [];
+      validatedSvg = after;
+      if (rasterSvgText) rasterSvgText.value = after;
+      renderCadComparison();
+      cadUpdatePropertiesPanel();
+      cadUpdateControls();
+      cadSetStatus(item.id + ' associato a ' + archiveValue, 'dirty');
+    }
+
+    renderTermodelAssociationDialog();
+  });
+
+  return modal;
+}
+
+function renderTermodelAssociationDialog(preferredKey = '') {
+  const modal = ensureTermodelAssociationDialog();
+  const pendingSelect = modal.querySelector('#termodelAssociationPending');
+  const archiveSelect = modal.querySelector('#termodelAssociationArchive');
+  const pendingDetails = modal.querySelector('#termodelAssociationPendingDetails');
+  const archiveDetails = modal.querySelector('#termodelAssociationArchiveDetails');
+  const archiveLabel = modal.querySelector('#termodelAssociationArchiveLabel');
+  const applyButton = modal.querySelector('.termodel-association-apply');
+
+  const items = termodelPendingAssociationItems();
+  termodelAssociationItemsByKey = new Map(items.map(item => [item.key, item]));
+
+  if (!items.length) {
+    finishTermodelAssociationDialog(true);
+    return;
+  }
+
+  const previousKey =
+    preferredKey ||
+    cadText(pendingSelect.value);
+  const selectedKey = items.some(item => item.key === previousKey)
+    ? previousKey
+    : items[0].key;
+
+  pendingSelect.replaceChildren();
+  items.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.key;
+    option.textContent =
+      (item.kind === 'wall' ? 'Parete ' : 'Finestra ') +
+      item.id +
+      ' · Piano ' + item.piano;
+    pendingSelect.appendChild(option);
+  });
+  pendingSelect.value = selectedKey;
+
+  const selectedItem = termodelAssociationItemsByKey.get(selectedKey);
+  const archiveName = selectedItem?.kind === 'wall' ? 'Pareti' : 'Finestre';
+  archiveLabel.textContent = 'Archivio ' + archiveName;
+
+  archiveSelect.replaceChildren();
+  termodelAssociationArchiveValues(selectedItem?.kind).forEach(value => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    archiveSelect.appendChild(option);
+  });
+
+  pendingDetails.textContent = selectedItem
+    ? (selectedItem.descrizione + ' · ' + items.length + ' elemento/i ancora da associare')
+    : '';
+
+  if (!archiveSelect.options.length) {
+    archiveDetails.textContent = 'Archivio ' + archiveName + ' privo di voci associabili.';
+    applyButton.disabled = true;
+  } else {
+    archiveSelect.selectedIndex = 0;
+    archiveDetails.textContent = 'Voce selezionata: ' + archiveSelect.value;
+    applyButton.disabled = false;
+  }
+}
+
+function finishTermodelAssociationDialog(result) {
+  if (!termodelAssociationDialog) return;
+  termodelAssociationDialog.hidden = true;
+  termodelAssociationDialog.setAttribute('aria-hidden', 'true');
+
+  if (termodelAssociationDialogResolver) {
+    const resolve = termodelAssociationDialogResolver;
+    termodelAssociationDialogResolver = null;
+    resolve(Boolean(result));
+  }
+}
+
+async function ensureTermodelPendingAssociationsResolved() {
+  const pending = termodelPendingAssociationItems();
+  if (!pending.length) return true;
+
+  const modal = ensureTermodelAssociationDialog();
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
+  renderTermodelAssociationDialog(pending[0]?.key || '');
+
+  return await new Promise(resolve => {
+    termodelAssociationDialogResolver = resolve;
+  });
+}
+
 async function loadEmptyProjectText() {
   if (!emptyProjectTextPromise) {
     emptyProjectTextPromise = import(EMPTY_PROJECT_MODULE_URL)
@@ -4331,6 +4700,15 @@ async function loadCalculatedModelFromService() {
   if (!structuredProjectActive || !currentProjectText) {
     await loadModel();
     resetView();
+    return;
+  }
+
+  const associationsResolved = await ensureTermodelPendingAssociationsResolved();
+  if (!associationsResolved) {
+    const pendingCount = termodelPendingAssociationItems().length;
+    status.textContent =
+      'Aggiorna Modello annullato · ' + pendingCount +
+      ' elemento/i ancora da associare';
     return;
   }
 
