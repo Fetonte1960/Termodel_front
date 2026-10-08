@@ -1,8 +1,8 @@
 # TERMODEL — Funzioni, tasti e menu
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
-> Ultimo aggiornamento: 2026-10-07  
-> Frontend esaminato: **Termodel Web 1.58**
+> Ultimo aggiornamento: 2026-10-08  
+> Frontend esaminato: **Termodel Web 1.59**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.58**.
+Versione frontend rilevata: **1.59**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.58**
-- CAD 2D: **Termodel Cad 2d Versione 1.58**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.59**
+- CAD 2D: **Termodel Cad 2d Versione 1.59**
 
 Dalla versione **1.51**, il numero di versione visualizzato non è più duplicato nell'HTML: `frontend-version.txt` è la fonte manuale unica; `index.html` usa quel valore per caricare `app.js`, e il runtime aggiorna automaticamente titolo della scheda e caption superiore.
 
@@ -404,12 +404,15 @@ Comandi principali:
 
 Apre un minipannello con un gruppo AI in alto:
 
-- **Copia istruzione AI negli appunti** — copia il bootstrap normalizzato che rimanda a `https://www.termodel.it/ai/`.
-- **Importa progetto realizzato con AI dagli appunti** — richiama lo stesso importatore della Home Web e accetta progetto Termodel corrente oppure SVG/TERMODEL-SVG-TEXT-V1; resta raggiungibile anche dal modello iniziale non esplorabile.
-- **? Help AI** — apre una spiegazione del flusso corretto copia istruzione → chat AI → copia risultato → importazione.
+- **Fotografa una pianta con ChatGPT** — dalla v1.59 è il percorso Mobile consigliato: apre direttamente ChatGPT con il bootstrap Termodel corrente e una breve istruzione di sessione; la fotografia o la scelta dell'immagine avviene dentro ChatGPT.
+- **Copia istruzione AI negli appunti** — percorso alternativo per usare un'altra AI o incollare manualmente il bootstrap.
+- **Importa progetto dagli appunti** — dalla v1.59 legge direttamente gli appunti e usa lo stesso importatore/validator del Web; sul Mobile non apre più la scelta Desktop Appunti/Download.
+- **? Help AI** — spiega il ciclo foto → ChatGPT → copia del blocco `TERMODEL-SVG-TEXT-V1` → ritorno in MyHome3D → importazione.
 - **Esempio** — scelta dell'esempio Termodel.
 - **Disegno unifilare** — apre il CAD 2D mostrando l'input unifilare.
 - **Disegno esecutivo** — apre l'esecutivo pannelli quando disponibile.
+
+Il file fotografato non viene selezionato prima in Termodel: una pagina Web non può trasferire automaticamente un file locale selezionato al campo allegati di un altro sito. Per evitare una doppia acquisizione, la foto viene quindi scattata/allegata direttamente in ChatGPT.
 
 Se l'esempio non supporta una delle viste, il comando relativo viene disabilitato.
 
