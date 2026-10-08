@@ -114,7 +114,41 @@ Se l'immagine è chiaramente o probabilmente una pianta e l'utente non ha chiest
 - non aprire una sequenza di domande per ogni dato mancante;
 - chiedi un chiarimento soltanto se manca un dato indispensabile per ottenere una geometria coerente o validabile;
 - genera e valida il normale **`DisegnoInput.svg`**;
-- consegna il risultato usando le **tre vie coesistenti**, nell'ordine definito sotto.
+- **non terminare la risposta dopo aver creato il download**;
+- nella stessa risposta finale mostra obbligatoriamente prima il download e subito dopo il blocco copia/incolla completo;
+- usa la struttura obbligatoria indicata qui sotto.
+
+##### Output obbligatorio della modalità rapida
+
+Quando la modalità rapida produce una nuova geometria, la risposta finale è **incompleta** finché non contiene entrambe queste uscite:
+
+**1. Scarica DisegnoInput.svg**
+
+Se l'ambiente consente la creazione reale del file, presenta il file scaricabile con questo nome.
+
+**2. Copia/incolla in Termodel**
+
+Subito dopo il download scrivi esattamente il titolo:
+
+**Copia/incolla in Termodel**
+
+e inserisci immediatamente un unico blocco di codice `text` contenente **l'intero payload `TERMODEL-SVG-TEXT-V1`**, senza abbreviazioni o omissioni.
+
+Schema minimo obbligatorio della risposta:
+
+```text
+[TERMODEL-SVG-TEXT-V1]
+...payload completo...
+```
+
+Il testo copiabile **non è facoltativo, non è un fallback e non dipende dal successo del download**. Se hai appena creato `DisegnoInput.svg`, devi comunque produrre anche il blocco `TERMODEL-SVG-TEXT-V1` nella stessa risposta.
+
+Prima di inviare la risposta esegui questo controllo finale:
+- cerca nella risposta la stringa **`[TERMODEL-SVG-TEXT-V1]`**;
+- se non è presente, **non inviare ancora la risposta**: aggiungi il titolo **Copia/incolla in Termodel** e il blocco completo;
+- soltanto dopo questo controllo puoi aggiungere, se disponibile e verificato, il Link Termodel V1.
+
+Se l'ambiente non consente di creare un file scaricabile, ometti soltanto la prima uscita: **il blocco copia/incolla resta comunque obbligatorio**.
 
 Se non è chiaro che l'utente voglia trasformare l'immagine in un progetto Termodel, chiedi soltanto se desidera farlo. Se l'utente chiede esplicitamente un percorso guidato, usa invece il normale flusso di riconoscimento, calibrazione e conferma.
 
