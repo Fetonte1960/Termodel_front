@@ -1,6 +1,6 @@
 # MYHOME3D MOBILE — Istruzione AI informativa
 
-> VERSIONE MYHOME3D AI: 0.26
+> VERSIONE MYHOME3D AI: 0.27
 
 ## Scopo
 
@@ -22,7 +22,9 @@ Questa istruzione è **solo informativa**.
 
 ## Come l'utente realizza il modello
 
-Da MyHome3D l'utente può passare alla **versione Web PC di Termodel** per costruire il proprio modello.
+Da MyHome3D l'utente può iniziare direttamente un modello base anche da smartphone usando **Esplora → Fotografa una pianta con ChatGPT**. La foto viene acquisita o scelta dentro ChatGPT; l'AI restituisce il progetto come blocco copiabile `TERMODEL-SVG-TEXT-V1`; tornando in MyHome3D l'utente usa **Esplora → Importa progetto dagli appunti**.
+
+Per lavorazioni più complesse o per usare l'interfaccia completa resta disponibile la **versione Web PC di Termodel**.
 
 ### Senza registrazione
 
@@ -79,10 +81,22 @@ Le selezioni nella finestra sono temporanee fino a **Applica**. Premendo **Appli
 
 Il menu **Esplora** contiene in alto un gruppo dedicato all'AI:
 
-- **Copia istruzione AI negli appunti** — copia il breve messaggio ufficiale che rimanda sempre a `https://www.termodel.it/ai/`;
-- **Importa progetto realizzato con AI dagli appunti** — importa il risultato restituito dall'assistente;
-- **? / Help AI** — spiega passo passo il ciclo chat AI → risultato → importazione;
-- per una nuova geometria l'assistente deve proporre **per primo il download di `DisegnoInput.svg`** quando può creare realmente il file, mantenere anche il blocco `TERMODEL-SVG-TEXT-V1` per copia/incolla e, come terza via, può aggiungere **Apri il progetto in Termodel** soltanto se il Link V1 è stato verificato esattamente e non supera **8000 caratteri**.
+- **Fotografa una pianta con ChatGPT** — percorso consigliato per creare un nuovo modello da smartphone; apre direttamente ChatGPT con il bootstrap Termodel e prepara la sessione ad attendere la foto;
+- **Copia istruzione AI negli appunti** — percorso alternativo per usare un'altra AI o incollare manualmente il bootstrap;
+- **Importa progetto dagli appunti** — rientro principale da ChatGPT; legge direttamente il blocco copiato senza mostrare la scelta Desktop Appunti/Download;
+- **? / Help AI** — spiega il ciclo foto → ChatGPT → copia → ritorno in MyHome3D.
+
+Flusso operativo:
+
+1. **Esplora → Fotografa una pianta con ChatGPT**;
+2. in ChatGPT usa allega/fotocamera e fotografa la pianta oppure scegli una foto già presente;
+3. attendi il blocco completo `TERMODEL-SVG-TEXT-V1`;
+4. usa **Copia** sul blocco;
+5. torna in MyHome3D;
+6. **Esplora → Importa progetto dagli appunti**;
+7. il progetto viene costruito dal template Termodel corrente e il modello torna disponibile nella Home Mobile.
+
+La fotografia avviene direttamente in ChatGPT: Termodel non deve chiedere di fotografare/selezionare prima il file per poi farlo allegare di nuovo in un altro sito.
 
 Può inoltre mostrare, quando disponibili:
 - scelta dell'esempio;
@@ -104,6 +118,11 @@ I principali controlli di visualizzazione permettono di distinguere:
 La **pianta pulita**, il **modello 3D** e i **disegni esecutivi** sono elaborati derivati dal progetto Termodel e hanno funzioni differenti dall'input unifilare.
 
 ## Help e AI
+
+MyHome3D mantiene **due usi distinti dell'AI**:
+
+- **Chiedi informazioni ad AI**, dentro l'Help, resta esclusivamente informativo e usa questa istruzione MyHome3D;
+- **Fotografa una pianta con ChatGPT**, dentro Esplora, è invece il percorso operativo per creare un progetto da immagine e usa le istruzioni generali Termodel.
 
 Il comando **Chiedi informazioni ad AI** dell'Help Mobile copia negli appunti questa istruzione informativa.
 
