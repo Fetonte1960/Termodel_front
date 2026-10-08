@@ -395,6 +395,34 @@
       font-size:14px;
       line-height:1.5;
     }
+    .ai-split-guide-head-actions {
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .ai-split-youtube-help {
+      width:30px;
+      height:28px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid rgba(255,255,255,.42);
+      border-radius:5px;
+      background:#fff;
+      color:#e62117;
+      text-decoration:none;
+      box-sizing:border-box;
+    }
+    .ai-split-youtube-help:hover,
+    .ai-split-youtube-help:focus-visible {
+      outline:2px solid #fff;
+      outline-offset:1px;
+    }
+    .ai-split-youtube-help svg {
+      width:21px;
+      height:15px;
+      display:block;
+    }
     .ai-split-demo {
       position:relative;
       height:220px;
@@ -2636,7 +2664,20 @@
     <section class="ai-instruct-window ai-split-guide-window" role="dialog" aria-modal="true" aria-labelledby="aiSplitGuideTitle">
       <header class="ai-instruct-head">
         <h2 id="aiSplitGuideTitle">Termodel + ChatGPT affiancati</h2>
-        <button id="aiSplitGuideClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
+        <div class="ai-split-guide-head-actions">
+          <a class="ai-split-youtube-help"
+             href="https://youtu.be/45aH-WSw4xA?si=bSnTl7WOh0yHdHmA"
+             target="_blank"
+             rel="noopener noreferrer"
+             title="Video: come affiancare Termodel e ChatGPT"
+             aria-label="Apri il video YouTube su come affiancare Termodel e ChatGPT">
+            <svg viewBox="0 0 28 20" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M27.4 3.1A3.5 3.5 0 0 0 25 0.7C22.8 0 14 0 14 0S5.2 0 3 0.7A3.5 3.5 0 0 0 0.6 3.1C0 5.3 0 10 0 10s0 4.7 0.6 6.9A3.5 3.5 0 0 0 3 19.3C5.2 20 14 20 14 20s8.8 0 11-0.7a3.5 3.5 0 0 0 2.4-2.4C28 14.7 28 10 28 10s0-4.7-0.6-6.9Z"/>
+              <path fill="#fff" d="M11.2 14.3V5.7L18.6 10l-7.4 4.3Z"/>
+            </svg>
+          </a>
+          <button id="aiSplitGuideClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
+        </div>
       </header>
       <div class="ai-instruct-body">
         <p class="ai-split-guide-copy">
