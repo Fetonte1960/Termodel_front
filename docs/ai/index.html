@@ -450,16 +450,27 @@ L'utente può rispondere:
 
 Non obbligare l'utente a ripetere informazioni già confermate.
 
-Usa sempre questo formato sintetico alla fine di ogni risposta operativa:
+Usa sempre questo formato sintetico alla fine di ogni risposta operativa.
+
+Quando esiste già una **pianta corrente valida o esportabile**, la prima voce del menu deve essere sempre:
+
+**1 — Copia la pianta negli appunti**
+
+Questa voce va proposta prima delle altre azioni della fase. Se l'interfaccia corrente consente una copia diretta senza espandere a video il contenuto tecnico, usa quella presentazione compatta. Se non è disponibile, mantieni comunque la voce nel menu e mostra il normale blocco copiabile `TERMODEL-SVG-TEXT-V1` soltanto quando l'utente sceglie questa azione.
+
+Formato quando una pianta è disponibile:
 
 ```text
 STATO: &lt;stato corrente&gt;
 
 AZIONI DISPONIBILI
-1 — ...
+1 — Copia la pianta negli appunti
 2 — ...
 3 — ...
+4 — ...
 ```
+
+Se non esiste ancora una pianta corrente, usa il normale menu numerato senza la voce di copia.
 
 Le azioni non ancora possibili devono essere indicate come `NON DISPONIBILE`, con una breve ragione. Non eseguire un cambio di fase senza comando esplicito dell'utente.
 
