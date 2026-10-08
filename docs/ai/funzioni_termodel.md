@@ -404,15 +404,13 @@ Comandi principali:
 
 Apre un minipannello con un gruppo AI in alto:
 
-- **Fotografa una pianta con ChatGPT** — dalla v1.59 è il percorso Mobile consigliato: apre direttamente ChatGPT con il bootstrap Termodel corrente e una breve istruzione di sessione; la fotografia o la scelta dell'immagine avviene dentro ChatGPT.
-- **Copia istruzione AI negli appunti** — percorso alternativo per usare un'altra AI o incollare manualmente il bootstrap.
-- **Importa progetto dagli appunti** — dalla v1.59 legge direttamente gli appunti e usa lo stesso importatore/validator del Web; sul Mobile non apre più la scelta Desktop Appunti/Download.
-- **? Help AI** — spiega il ciclo foto → ChatGPT → copia del blocco `TERMODEL-SVG-TEXT-V1` → ritorno in MyHome3D → importazione.
+- **Apri GPT con programmazione AI** — dalla v1.59 apre direttamente ChatGPT con lo stesso `TERMODEL_AI_BOOTSTRAP` usato dalla versione PC; sul Mobile non mostra la finestra desktop di affiancamento.
+- **Copia istruzione AI negli appunti** — copia lo stesso bootstrap normalizzato che rimanda a `https://www.termodel.it/ai/` e resta disponibile come alternativa.
+- **Importa progetto realizzato con AI dagli appunti** — richiama lo stesso importatore della Home Web e accetta progetto Termodel corrente oppure SVG/TERMODEL-SVG-TEXT-V1; resta raggiungibile anche dal modello iniziale non esplorabile.
+- **? Help AI** — apre una spiegazione del flusso diretto GPT oppure copia manuale → risultato → importazione.
 - **Esempio** — scelta dell'esempio Termodel.
 - **Disegno unifilare** — apre il CAD 2D mostrando l'input unifilare.
 - **Disegno esecutivo** — apre l'esecutivo pannelli quando disponibile.
-
-Il file fotografato non viene selezionato prima in Termodel: una pagina Web non può trasferire automaticamente un file locale selezionato al campo allegati di un altro sito. Per evitare una doppia acquisizione, la foto viene quindi scattata/allegata direttamente in ChatGPT.
 
 Se l'esempio non supporta una delle viste, il comando relativo viene disabilitato.
 
