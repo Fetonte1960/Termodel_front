@@ -58,8 +58,6 @@ Perfetto adesso sono in grado di darti informazioni su Myhome 3d e Termodel
 
 Dopo questa conferma attende la domanda dell'utente.
 
-Questa modalità informativa resta distinta dal percorso operativo **Fotografa una pianta con ChatGPT**, che usa invece il bootstrap generale Termodel e il flusso immagine → progetto.
-
 ## Creazione, consolidamento e livelli di accesso
 
 MyHome3D permette all'utente di arrivare alla costruzione del modello passando alla **versione Web PC di Termodel**.
@@ -126,27 +124,24 @@ L'utente non deve ricevere il prompt tecnico completo: il messaggio breve rimand
 
 ## Gruppo AI nella Home Mobile / Esplora
 
-Nel menu **Esplora** della Home Mobile i comandi AI devono essere raggruppati nello stesso blocco, con il percorso fotografico come azione principale:
+Nel menu **Esplora** della Home Mobile i comandi AI devono essere raggruppati visivamente nello stesso blocco:
 
-- **Fotografa una pianta con ChatGPT** — apre direttamente ChatGPT con il bootstrap Termodel corrente e una breve istruzione di sessione che chiede di attendere la foto; la fotografia o la scelta di una foto già esistente avviene dentro ChatGPT, evitando di acquisire l'immagine due volte;
-- **Copia istruzione AI negli appunti** — percorso alternativo per usare un'altra AI o incollare manualmente il bootstrap;
-- **Importa progetto dagli appunti** — legge direttamente gli appunti e usa lo stesso importatore/validator del Web, senza aprire la scelta Desktop Appunti/Download;
-- **? / Help flusso AI** — spiega il ciclo completo foto → ChatGPT → copia → ritorno MyHome3D.
+- **Apri GPT con programmazione AI** — apre direttamente ChatGPT con lo stesso `TERMODEL_AI_BOOTSTRAP` usato dalla versione PC, senza mostrare la finestra desktop di affiancamento;
+- **Copia istruzione AI negli appunti** — resta disponibile come alternativa e per l'uso con altre AI;
+- **Importa progetto realizzato con AI dagli appunti**;
+- **? / Help flusso AI**.
 
-Il flusso consigliato è:
+Il pulsante Help del gruppo deve spiegare il ciclo corretto:
 
-1. apri **Esplora**;
-2. premi **Fotografa una pianta con ChatGPT**;
-3. in ChatGPT usa il comando allega/fotocamera e fotografa la pianta, oppure scegli una foto già presente;
-4. l'AI applica il flusso immagine → progetto delle istruzioni Termodel e produce il blocco completo **`TERMODEL-SVG-TEXT-V1`**;
-5. usa il normale comando **Copia** del blocco in ChatGPT;
-6. torna in MyHome3D;
-7. apri **Esplora** e premi **Importa progetto dagli appunti**;
-8. Termodel usa il validator corrente, crea il contenitore progetto e mostra il modello.
+1. come percorso consigliato, premi **Apri GPT con programmazione AI**; in alternativa copia l'istruzione AI negli appunti e apri manualmente l'assistente desiderato;
+2. ChatGPT viene aperto già con la stessa programmazione Termodel della versione PC;
+3. descrivi il progetto o allega pianta/PDF;
+4. l'AI deve proporre **per primo il download di `DisegnoInput.svg`**, quando può creare realmente il file;
+5. deve fornire anche il blocco `TERMODEL-SVG-TEXT-V1` per il normale copia/incolla;
+6. se può costruire e verificare esattamente il Link V1 e questo non supera **8000 caratteri**, può aggiungere anche **Apri il progetto in Termodel** come terza via.
 
-Non chiedere all'utente di fotografare prima la pianta dentro Termodel e poi allegarla una seconda volta in ChatGPT: il browser non può trasferire automaticamente un file selezionato in una pagina Web dentro il campo allegati di un altro sito. La fotografia deve quindi avvenire direttamente nell'ambiente AI.
+Il Help deve ricordare che per una nuova geometria il formato previsto è `TERMODEL-SVG-TEXT-V1`, mentre un progetto Termodel completo corrente può usare `TERMODEL-PROJECT-TEXT-V1`. XML generico e XML Nazionale non vanno incollati in **Importa da AI**.
 
-Per una nuova geometria il formato di ritorno consigliato e universale resta **`TERMODEL-SVG-TEXT-V1`**. Un progetto Termodel completo corrente può usare `TERMODEL-PROJECT-TEXT-V1`. XML generico e XML Nazionale non vanno incollati in **Importa progetto dagli appunti**.
 
 
 ## Regola formati per l'importazione AI
@@ -163,23 +158,26 @@ Il formato interno del progetto può evolvere: per una nuova geometria l'AI non 
 
 ## Importazione progetto AI dalla Home Mobile
 
-Nel menu **Esplora** della Home Mobile il comando **Importa progetto dagli appunti** è il rientro principale dopo ChatGPT.
+Nel menu **Esplora** della Home Mobile il comando **Importa progetto realizzato con AI dagli appunti** è affiancato da **Apri GPT con programmazione AI**, **Copia istruzione AI negli appunti** e dal relativo **Help flusso AI**.
 
-Su Mobile questo comando deve:
+Il comando riusa la stessa procedura di importazione già disponibile nel frontend Termodel Web: legge dagli appunti un progetto completo `TERMODEL-PROJECT-TEXT-V1` oppure, quando previsto dal flusso esistente, una pianta SVG restituita dall'AI. Non deve esistere una seconda logica di importazione dedicata al Mobile.
 
-- leggere direttamente gli appunti in seguito al gesto esplicito dell'utente;
-- non aprire la finestra Desktop con la scelta **Importa dagli appunti / Leggi DisegnoInput.svg da Download**;
-- riusare esattamente `importAiFromClipboard()` e lo stesso `importAiText()` del frontend Web;
-- accettare `TERMODEL-SVG-TEXT-V1` / SVG previsto dal flusso oppure un progetto completo corrente `TERMODEL-PROJECT-TEXT-V1`;
-- restare raggiungibile anche quando è visualizzato il modello iniziale non esplorabile.
-
-Dopo un'importazione riuscita il nuovo progetto viene creato con il template corrente e l'utente rientra nella Home Mobile con il modello disponibile per esplorazione e modifica.
+Il comando deve essere raggiungibile anche quando è visualizzato il modello iniziale non esplorabile: in questo stato il menu **Esplora** resta apribile e permette sia di scegliere un esempio sia di importare il progetto AI dagli appunti.
 
 
-## Link AI V1 — compatibilità
+## Link AI V1 — apertura diretta
 
-Il frontend continua a riconoscere i fragment `#ai64=` e `#ai=` introdotti dalla versione 1.48 e li passa allo stesso importatore usato dagli appunti.
+Dalla versione frontend **1.48** Termodel/MyHome3D può ricevere un risultato AI direttamente nel fragment dell'URL, senza passare dagli appunti.
 
-Nel nuovo percorso Mobile **foto → ChatGPT → ritorno MyHome3D**, però, il Link AI V1 non è la via consigliata: la consegna operativa è il blocco copiabile `TERMODEL-SVG-TEXT-V1`.
+Formati accettati:
 
-Il Link V1 resta quindi una compatibilità disponibile per flussi specifici che possano generarlo e verificarlo deterministicamente. Dopo la lettura il fragment viene rimosso dalla barra degli indirizzi per evitare una seconda importazione al refresh.
+- `#ai64=<payload>` — formato preferito;
+- `#ai=<payload>` — variante compatibile.
+
+Per una **nuova geometria**, il payload preferito del Link V1 è lo **SVG finale grezzo e validato**, codificato UTF-8 → Base64URL senza padding. Non è necessario inserire nel link il wrapper `TERMODEL-SVG-TEXT-V1`.
+
+Il contenuto decodificato viene passato allo stesso importatore già usato da **Importa progetto realizzato con AI dagli appunti**: non esiste un secondo validatore.
+
+Regola di emissione AI: la consegna prioritaria è il file scaricabile **`DisegnoInput.svg`**, quando l'ambiente AI supporta realmente la creazione di file. Il blocco `TERMODEL-SVG-TEXT-V1` resta sempre la via universale di copia/incolla. Il Link V1 è una terza via opzionale e può essere proposto soltanto quando la sua lunghezza finale è al massimo **8000 caratteri** e la codifica è stata verificata con round-trip esatto. Se non è possibile verificare la codifica o se il link supera la soglia, non va pubblicato.
+
+Dopo la lettura il fragment viene rimosso dalla barra degli indirizzi, così un refresh non ripete automaticamente l'importazione.
