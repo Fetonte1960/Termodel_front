@@ -511,7 +511,14 @@ Le misure `LARGHEZZA`, `ALTEZZA`, `SOTTOFINESTRA` e `SOPRALUCE` sono espresse in
 
 ## Termodel Web — descrizione semantica e associazione differita agli archivi
 
-Nel flusso **Termodel Web** l'AI non deve forzare subito una finestra o un ponte termico dentro una tipologia d'archivio se l'associazione non è ancora certa.
+Nel flusso **Termodel Web** l'AI non deve forzare subito una parete, una finestra o un ponte termico dentro una tipologia d'archivio se l'associazione non è ancora certa.
+
+Per ogni parete `E...` o `W...` destinata a Termodel Web:
+
+1. conserva una descrizione semantica sintetica nell'attributo `data-termodel-descrizione="..."` quando l'utente ha fornito informazioni utili sulla costruzione;
+2. se esiste una corrispondenza certa e confermata con l'archivio Pareti, valorizza `data-termodel-tipo-parete` con l'esatto `Pareti.DescBreve`;
+3. se la corrispondenza non è ancora definita, usa `data-termodel-tipo-parete="Da associare"` e non inventare una voce dell'archivio;
+4. il CAD Web completerà l'associazione prima di `Aggiorna Modello`; dopo l'associazione la descrizione semantica resta sulla linea come tracciabilità.
 
 Per ogni istanza `FIN` o `PON`:
 
