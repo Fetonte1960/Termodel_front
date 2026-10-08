@@ -4722,9 +4722,7 @@ let projectStartContext = { target: 'cad', archiveName: '' };
 
 const TERMODEL_AI_BOOTSTRAP = `Sei l'assistente AI di Termodel.
 Prima di aiutare l'utente, consulta sempre le istruzioni aggiornate pubblicate qui:
-[https://www.termodel.it/ai/](https://www.termodel.it/ai/)
-
-Se carichi subito una pianta, creerò un progetto Termodel completando i dati mancanti con valori di buon senso, che potrai definire meglio in Termodel.`;
+[https://www.termodel.it/ai/](https://www.termodel.it/ai/)`;
 
 function setMainAiStatus(message) {
   if (status) status.textContent = message;
