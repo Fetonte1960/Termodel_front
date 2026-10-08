@@ -3555,12 +3555,24 @@ function termodelAssociationIsPending(value) {
     TERMODEL_PENDING_ASSOCIATION_VALUE.toLocaleLowerCase('it-IT');
 }
 
+function termodelTechnicalCadElements(localName) {
+  const root = cadWorkingDoc?.documentElement;
+  if (!root) return [];
+
+  return Array.from(root.children || [])
+    .filter(element => element.localName === 'g')
+    .flatMap(group =>
+      Array.from(group.children || [])
+        .filter(element => element.localName === localName)
+    );
+}
+
 function termodelPendingAssociationItems() {
   if (!cadWorkingDoc) return [];
 
   const items = [];
 
-  Array.from(cadWorkingDoc.querySelectorAll('g#calpestabile > line')).forEach((line, index) => {
+  termodelTechnicalCadElements('line').forEach((line, index) => {
     const id = cadText(line.id);
     const isWall = /^[EW]\d+/i.test(id) ||
       line.hasAttribute('data-termodel-tipo-parete');
@@ -3586,7 +3598,7 @@ function termodelPendingAssociationItems() {
     });
   });
 
-  Array.from(cadWorkingDoc.querySelectorAll('g#calpestabile > text')).forEach((symbol, index) => {
+  termodelTechnicalCadElements('text').forEach((symbol, index) => {
     if (cadSymbolBlockType(symbol) !== 'FIN') return;
 
     const id = cadText(symbol.id) || ('Finestra ' + (index + 1));
@@ -3992,6 +4004,55 @@ function renderTermodelAssociationDialog(preferredKey = '') {
     applyButton.disabled = selectedCount === 0;
     applyAllButton.disabled = visibleItems.length === 0;
   }
+}
+
+function termodelPendingAssociationsInServerPayload(projectText) {
+  const geometrySvg = getTermodelProjectSection(projectText, 'geometry/project.svg');
+  if (!geometrySvg) return ['geometry/project.svg mancante'];
+
+  const doc = new DOMParser().parseFromString(geometrySvg, 'image/svg+xml');
+  if (doc.querySelector('parsererror'))
+    return ['geometry/project.svg non valido'];
+
+  const root = doc.documentElement;
+  const groups = Array.from(root?.children || [])
+    .filter(element => element.localName === 'g');
+  const pending = [];
+
+  groups.forEach(group => {
+    Array.from(group.children || []).forEach(element => {
+      if (element.localName === 'line') {
+        const id = cadText(element.id) || '(senza id)';
+        const tipoParete = cadText(element.getAttribute('data-termodel-tipo-parete'));
+        if (termodelAssociationIsPending(tipoParete))
+          pending.push('Parete ' + id + ' · tipo parete');
+        return;
+      }
+
+      if (element.localName !== 'text' || cadSymbolBlockType(element) !== 'FIN')
+        return;
+
+      const id = cadText(element.id) || '(senza id)';
+      if (termodelAssociationIsPending(cadSymbolAttribute(element, 'TIPO')))
+        pending.push('Finestra ' + id + ' · TIPO');
+      if (termodelAssociationIsPending(cadSymbolAttribute(element, 'PORTA')))
+        pending.push('Finestra ' + id + ' · PORTA');
+    });
+  });
+
+  return pending;
+}
+
+function assertNoPendingAssociationsInServerPayload(projectText) {
+  const pending = termodelPendingAssociationsInServerPayload(projectText);
+  if (!pending.length) return;
+
+  throw new Error(
+    'Preflight associazioni: il payload contiene ancora ' +
+    pending.length + ' elemento/i "Da associare": ' +
+    pending.slice(0, 6).join('; ') +
+    (pending.length > 6 ? '; …' : '')
+  );
 }
 
 function finishTermodelAssociationDialog(result) {
@@ -4850,6 +4911,7 @@ async function loadCalculatedModelFromService() {
     const projectId = ensureCurrentProjectId();
     completeProjectText = currentProjectText;
     const serverPayload = await buildTermodelServerPayload(completeProjectText);
+    assertNoPendingAssociationsInServerPayload(serverPayload);
 
     const calculationPath = buildTermodelCalculationPath();
     exchange.postUrl = calculationPath;
