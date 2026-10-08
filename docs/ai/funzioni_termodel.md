@@ -2,7 +2,7 @@
 
 > DOCUMENTO OPERATIVO GENERATO DAI SORGENTI WEB  
 > Ultimo aggiornamento: 2026-10-07  
-> Frontend esaminato: **Termodel Web 1.56**
+> Frontend esaminato: **Termodel Web 1.57**
 
 ## Scopo
 
@@ -44,12 +44,12 @@ Il sorgente corrente ha sempre priorità su descrizioni precedenti.
 
 # 1. Stato generale dell'interfaccia
 
-Versione frontend rilevata: **1.56**.
+Versione frontend rilevata: **1.57**.
 
 Titoli applicazione dichiarati dal sorgente:
 
-- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.56**
-- CAD 2D: **Termodel Cad 2d Versione 1.56**
+- Home Web: **Termodel 3.2 — Web — GeneraPianta + ArchivioWeb v1.57**
+- CAD 2D: **Termodel Cad 2d Versione 1.57**
 
 Dalla versione **1.51**, il numero di versione visualizzato non è più duplicato nell'HTML: `frontend-version.txt` è la fonte manuale unica; `index.html` usa quel valore per caricare `app.js`, e il runtime aggiorna automaticamente titolo della scheda e caption superiore.
 
@@ -180,7 +180,7 @@ Sono presenti tre schede:
 Comandi principali:
 
 - **Gestione Piani** — apre l'archivio Piani.
-- **Crea progetto con AI** — dalla v1.50 apre una finestra con due percorsi: **Apri ChatGPT (consigliato)** oppure **Copia programmazione negli appunti**. Dalla v1.54, scegliendo **Apri ChatGPT**, Termodel mostra prima una breve finestra animata che suggerisce di trascinare la nuova scheda ChatGPT verso il lato destro di Chrome per usare Termodel e ChatGPT affiancati; dalla v1.56 nella stessa finestra è presente anche un piccolo simbolo YouTube che apre il video dimostrativo dell'affiancamento; solo il pulsante finale **Apri ChatGPT** apre la nuova scheda con il bootstrap Termodel. Dopo un'apertura riuscita, se **Mostra Filtri Grafici** era attivo, Termodel lo disattiva automaticamente per lasciare più spazio alla vista affiancata. Il percorso copia programmazione resta invariato. Dalla v1.55 il bootstrap è stato riportato alla forma storica minimale: identifica l'assistente Termodel e rimanda esclusivamente alle istruzioni pubbliche aggiornate su `/ai/`, senza aggiungere istruzioni operative duplicate nel prompt iniziale.
+- **Crea progetto con AI** — dalla v1.50 apre una finestra con due percorsi: **Apri ChatGPT (consigliato)** oppure **Copia programmazione negli appunti**. Dalla v1.54, scegliendo **Apri ChatGPT**, Termodel mostra prima una breve finestra animata che suggerisce di trascinare la nuova scheda ChatGPT verso il lato destro di Chrome per usare Termodel e ChatGPT affiancati; dalla v1.57 il video dimostrativo è presentato con maggiore evidenza in un riquadro dedicato sotto l'animazione, con simbolo YouTube e titolo, al posto del precedente riquadro Consiglio; solo il pulsante finale **Apri ChatGPT** apre la nuova scheda con il bootstrap Termodel. Dopo un'apertura riuscita, se **Mostra Filtri Grafici** era attivo, Termodel lo disattiva automaticamente per lasciare più spazio alla vista affiancata. Il percorso copia programmazione resta invariato. Dalla v1.55 il bootstrap è stato riportato alla forma storica minimale: identifica l'assistente Termodel e rimanda esclusivamente alle istruzioni pubbliche aggiornate su `/ai/`, senza aggiungere istruzioni operative duplicate nel prompt iniziale.
 - **?** — apre l'Help del flusso AI. La consegna AI corrente usa come percorso universale il blocco completo `TERMODEL-SVG-TEXT-V1`, sempre visibile in un unico blocco `text` e pronto per il pulsante Copia della UI ChatGPT. `DisegnoInput.svg` può essere proposto anche come download aggiuntivo; il Link AI V1 resta una terza comodità opzionale.
 - **Importa da AI** — dalla v1.53 non legge più immediatamente gli appunti: apre una finestra con due percorsi. **Importa dagli appunti** mantiene esattamente il comportamento precedente e accetta progetto Termodel corrente oppure SVG / `TERMODEL-SVG-TEXT-V1`. **Leggi DisegnoInput.svg da Download** usa l'accesso alla cartella locale autorizzato dal browser, cerca esclusivamente `DisegnoInput.svg` e passa il suo contenuto allo stesso importatore/validator SVG già esistente. Al primo uso Chrome/Edge richiedono all'utente di selezionare/autorizzare la cartella Download; l'handle viene riutilizzato durante la sessione. Se il browser non supporta l'accesso diretto alla cartella, resta disponibile il percorso dagli appunti. XML generico e XML Nazionale non sono payload validi per questo comando.
 - **Link AI V1 (v1.48)** — all'avvio il frontend riconosce `#ai64=` e `#ai=`. Per una nuova geometria il link codifica direttamente lo SVG finale grezzo in UTF-8 Base64URL senza padding; il contenuto decodificato viene passato allo stesso importatore usato dalla clipboard. Dal 2026-10-07 il link è una terza via opzionale: va mostrato soltanto quando il risultato finale non supera **8000 caratteri** e il round-trip della codifica ricostruisce esattamente lo SVG; dopo la lettura il fragment viene rimosso dall'URL per evitare una seconda importazione al refresh.
