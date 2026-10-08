@@ -1870,16 +1870,10 @@ function installAndroidExploreStyles() {
       border-radius: 6px;
       background: #eef5f9;
     }
-    .android-ai-flow-group .android-ai-flow-photo,
+    .android-ai-flow-group .android-ai-flow-open,
     .android-ai-flow-group .android-ai-flow-copy,
     .android-ai-flow-group .android-ai-flow-import {
       grid-column: 1 / -1;
-    }
-    .android-ai-flow-photo {
-      min-height: 42px;
-      border-color: #46799e;
-      background: linear-gradient(#eef9ff,#cfe8f6);
-      font-weight: 800;
     }
     .android-ai-flow-title {
       align-self: center;
@@ -2242,16 +2236,17 @@ function createAndroidAiFlowHelpDialog() {
         <button type="button" class="android-help-close" aria-label="Chiudi Help AI">×</button>
       </header>
       <div class="android-help-body">
-        <p>Per creare una casa partendo da una foto usa il percorso diretto:</p>
+        <p>Il flusso corretto usa due comandi dello stesso gruppo <strong>AI</strong>.</p>
         <ol>
-          <li>Premi <strong>Fotografa una pianta con ChatGPT</strong>.</li>
-          <li>In ChatGPT usa il comando per allegare una foto e fotografa la pianta, oppure scegli una foto già presente.</li>
-          <li>Attendi il blocco copiabile <strong>TERMODEL-SVG-TEXT-V1</strong> e usa il normale comando <strong>Copia</strong> del blocco.</li>
-          <li>Torna in MyHome3D.</li>
-          <li>Apri <strong>Esplora</strong> e premi <strong>Importa progetto dagli appunti</strong>.</li>
+          <li>Premi <strong>Copia istruzione AI negli appunti</strong>.</li>
+          <li>Apri ChatGPT, Gemini, DeepSeek o la tua AI e incolla l'istruzione.</li>
+          <li>Descrivi il progetto oppure allega la pianta/PDF che vuoi elaborare.</li>
+          <li>Quando l'AI restituisce <strong>Apri il progetto in Termodel</strong>, tocca direttamente quel link.</li>
+          <li>In alternativa copia negli appunti <strong>l'intero payload</strong>, torna in MyHome3D e premi <strong>Importa progetto realizzato con AI dagli appunti</strong>.</li>
         </ol>
-        <p>Il comando <strong>Copia istruzione AI negli appunti</strong> resta disponibile come percorso alternativo per altre AI.</p>
-        <p><strong>Formato:</strong> una nuova geometria deve rientrare come <code>TERMODEL-SVG-TEXT-V1</code>; il contenitore progetto corrente viene costruito da Termodel. XML generico e XML Nazionale non vanno incollati qui.</p>
+        <p><strong>Formato:</strong> per una nuova geometria l'AI deve restituire <code>TERMODEL-SVG-TEXT-V1</code>. Un progetto Termodel completo corrente può usare <code>TERMODEL-PROJECT-TEXT-V1</code>. Dalla versione 1.48 gli stessi dati possono arrivare anche tramite Link AI V1.</p>
+        <p><strong>Non incollare XML generico o XML Nazionale</strong> in Importa da AI: appartengono a flussi diversi.</p>
+        <p>L'istruzione copiata è volutamente breve: rimanda sempre alle istruzioni aggiornate pubblicate su <code>https://www.termodel.it/ai/</code>.</p>
       </div>
     </section>
   `;
@@ -2316,9 +2311,9 @@ function createAndroidExploreBox() {
         <div class="android-ai-flow-title">AI</div>
         <button id="androidExploreAiHelp" class="android-ai-flow-help" type="button"
           aria-label="Spiega come usare l'AI con Termodel" title="Help flusso AI">?</button>
-        <button id="androidExplorePhotoAi" class="android-explore-action android-ai-flow-photo" type="button"
-          title="Apri ChatGPT per fotografare o allegare una pianta">
-          Fotografa una pianta con ChatGPT
+        <button id="androidExploreOpenAi" class="android-explore-action android-ai-flow-open" type="button"
+          title="Apre ChatGPT con la programmazione AI ufficiale di Termodel">
+          Apri GPT con programmazione AI
         </button>
         <button id="androidExploreCopyAi" class="android-explore-action android-ai-flow-copy" type="button"
           title="Copia negli appunti l'istruzione AI ufficiale di Termodel">
@@ -2326,7 +2321,7 @@ function createAndroidExploreBox() {
         </button>
         <button id="androidExploreImportAi" class="android-explore-action android-ai-flow-import" type="button"
           title="Legge dagli appunti un progetto TERMODEL-PROJECT-TEXT-V1 o una pianta TERMODEL-SVG-TEXT-V1 restituita dall'AI">
-          Importa progetto dagli appunti
+          Importa progetto realizzato con AI dagli appunti
         </button>
         <div id="androidExploreAiFeedback" class="android-ai-flow-feedback" aria-live="polite"></div>
       </div>
@@ -2351,7 +2346,7 @@ function createAndroidExploreBox() {
   const help = box.querySelector('#androidHelp3d');
   const desktopToggle = box.querySelector('#androidFullDesktop');
   const menu = box.querySelector('#androidExploreMenu');
-  const photoAi = box.querySelector('#androidExplorePhotoAi');
+  const openAi = box.querySelector('#androidExploreOpenAi');
   const copyAiInstruction = box.querySelector('#androidExploreCopyAi');
   const importAiClipboard = box.querySelector('#androidExploreImportAi');
   const aiFlowHelp = box.querySelector('#androidExploreAiHelp');
@@ -2379,10 +2374,19 @@ function createAndroidExploreBox() {
     setOpen(menu.hidden);
   });
 
-  photoAi.addEventListener('click', event => {
+  openAi.addEventListener('click', event => {
     event.stopPropagation();
     setOpen(false);
-    openMobilePhotoChatGpt();
+
+    const target = buildChatGptTermodelUrl();
+    const opened = window.open(target, '_blank');
+    if (!opened) {
+      window.alert('Il browser ha bloccato l’apertura di ChatGPT. Consenti l’apertura oppure usa Copia istruzione AI negli appunti.');
+      return;
+    }
+
+    try { opened.opener = null; } catch (_) {}
+    setMainAiStatus('✓ ChatGPT aperto con la programmazione Termodel');
   });
 
   copyAiInstruction.addEventListener('click', async event => {
@@ -2404,7 +2408,7 @@ function createAndroidExploreBox() {
   importAiClipboard.addEventListener('click', async event => {
     event.stopPropagation();
     setOpen(false);
-    await importAiFromClipboard();
+    await importAiFromMainForm(event);
   });
 
   help.addEventListener('click', event => {
@@ -4749,12 +4753,6 @@ Dopo aver letto le istruzioni, applicale alla richiesta dell’utente.
 
 Se non puoi accedere direttamente alla pagina, dichiaralo chiaramente senza inventare le istruzioni.`;
 
-const TERMODEL_MOBILE_PHOTO_REQUEST = `${TERMODEL_AI_BOOTSTRAP}
-
-Sto usando MyHome3D da smartphone e voglio creare un nuovo progetto fotografando o allegando una pianta.
-Attendi che alleghi la foto della pianta. Quando la ricevi, applica direttamente il flusso immagine → progetto previsto dalle istruzioni Termodel.
-Dopo aver generato il blocco copiabile TERMODEL-SVG-TEXT-V1, ricordami di copiarlo e tornare in MyHome3D, quindi usare Esplora → Importa progetto dagli appunti.`;
-
 function setMainAiStatus(message) {
   if (status) status.textContent = message;
 }
@@ -4904,20 +4902,6 @@ async function importAiFromDownloads() {
     window.alert('DisegnoInput.svg non importato.\n\n' + (error?.message || error));
     return false;
   }
-}
-
-function openMobilePhotoChatGpt() {
-  const target = 'https://chatgpt.com/?q=' + encodeURIComponent(TERMODEL_MOBILE_PHOTO_REQUEST);
-  const opened = window.open(target, '_blank');
-
-  if (!opened) {
-    window.location.assign(target);
-    return true;
-  }
-
-  try { opened.opener = null; } catch (_) {}
-  setMainAiStatus('✓ ChatGPT aperto · fotografa o allega la pianta e poi torna in MyHome3D');
-  return true;
 }
 
 function openAiSplitGuideDialog() {
