@@ -3803,10 +3803,13 @@ function ensureTermodelAssociationDialog() {
 
     const before = cadSerializeWorkingSvg();
 
-    if (item.kind === 'wall')
-      item.element.setAttribute('data-termodel-tipo-parete', archiveValue);
-    else
+    if (item.kind === 'wall') {
+      const wallState = cadStateFromLine(item.element);
+      wallState.tipoParete = archiveValue;
+      cadApplySemanticAttributes(item.element, wallState);
+    } else {
       cadSetSymbolAttribute(item.element, 'TIPO', archiveValue);
+    }
 
     const after = cadSerializeWorkingSvg();
     if (after !== before) {
