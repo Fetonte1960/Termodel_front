@@ -1299,30 +1299,42 @@ function applyProjectBrowserCadInitialSetup() {
   refreshAndroidCadExploreControls();
 }
 
-function syncAndroidExampleCadAvailability(singleLineButton) {
+function syncAndroidExampleCadAvailability(singleLineButton = null) {
   const current = currentProjectBrowserExample();
-  const hasCad = Boolean(current?.project || current?.geometry);
-  const hasExecutive = hasCad && current?.executive === true;
+  const exampleHasCad = Boolean(current?.project || current?.geometry);
+  const projectHasCad =
+    structuredProjectActive &&
+    Boolean(cadWorkingDoc || validatedSvg);
+  const hasCad = exampleHasCad || projectHasCad;
+  const hasExecutive =
+    (exampleHasCad && current?.executive === true) ||
+    cadGeneratedExecutiveAvailable();
 
-  if (singleLineButton) {
-    singleLineButton.disabled = !hasCad;
-    singleLineButton.title =
-      current
-        ? (hasCad ? '' : 'Questo esempio dispone per ora soltanto del modello 3D.')
-        : 'Seleziona prima un esempio.';
+  const singleLine =
+    singleLineButton ||
+    document.getElementById('androidExploreSingleLine');
+
+  if (singleLine) {
+    singleLine.disabled = !hasCad;
+    singleLine.title = hasCad
+      ? ''
+      : (current
+          ? 'Questo esempio dispone per ora soltanto del modello 3D.'
+          : (structuredProjectActive
+              ? 'Il progetto corrente non contiene un disegno unifilare disponibile.'
+              : 'Seleziona un esempio oppure importa un progetto realizzato con AI.'));
   }
 
   const executiveButton = document.getElementById('androidExploreExecutive');
   if (executiveButton) {
     executiveButton.disabled = !hasExecutive;
-    executiveButton.title =
-      current
-        ? (hasExecutive
-            ? (current?.executiveSvg
-                ? 'Mostra l\'esecutivo pannelli consolidato locale, senza interrogare il Service.'
-                : 'Calcola, se necessario, e mostra l\'esecutivo pannelli nel CAD2D.')
-            : 'Questo esempio non dispone di un esecutivo pannelli.')
-        : 'Seleziona prima un esempio.';
+    executiveButton.title = hasExecutive
+      ? (current?.executiveSvg
+          ? 'Mostra l\'esecutivo pannelli consolidato locale, senza interrogare il Service.'
+          : 'Mostra l\'esecutivo pannelli disponibile nel CAD2D.')
+      : (current
+          ? 'Questo esempio non dispone di un esecutivo pannelli.'
+          : 'Il progetto corrente non dispone ancora di un esecutivo pannelli.');
   }
 
   refreshAndroidCadExploreControls();
@@ -5281,6 +5293,15 @@ async function importAiText(text, { source = 'clipboard' } = {}) {
     );
     return false;
   }
+
+  // Un progetto importato dall'AI non è un esempio del catalogo:
+  // azzera l'eventuale selezione precedente e ricalcola i comandi Mobile
+  // sul progetto strutturato corrente.
+  activeProjectBrowserExampleId = '';
+  const androidExampleSelect = document.getElementById('androidExploreExample');
+  if (androidExampleSelect)
+    androidExampleSelect.value = '';
+  syncAndroidExampleCadAvailability();
 
   activateModelPage();
   requestAnimationFrame(resize);
