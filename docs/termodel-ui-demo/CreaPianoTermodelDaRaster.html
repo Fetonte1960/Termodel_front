@@ -451,8 +451,10 @@ Nel flusso raster:
 - se la lettura non è affidabile, chiedi conferma;
 - quando la destinazione è **Termodel Web**, per pareti `E/W`, finestre/porte `FIN` e ponti `PON` applica la regola generale di **descrizione semantica + associazione differita all'archivio**;
 - per una parete senza corrispondenza certa con `Pareti.DescBreve`, conserva `data-termodel-descrizione` e usa `data-termodel-tipo-parete="Da associare"`;
-- per una finestra/porta senza corrispondenza certa con `Finestre.DescBreve` conserva `data-termodel-descrizione` e usa `TIPO,Da associare`; la stessa regola resta valida per `PON` rispetto a `Ponti.DescBreve`;
-- non inventare nomi di archivio: il CAD Web completerà le associazioni pendenti prima di `Aggiorna Modello`;
+- per una finestra/porta senza corrispondenza certa con `Finestre.DescBreve` conserva `data-termodel-descrizione` e usa `TIPO,Da associare`;
+- nel blocco `FIN` tratta separatamente `PORTA`: usa `Struttura trasparente` per una normale finestra/portafinestra trasparente; per una superficie opaca usa una voce `Pareti.DescBreve`; se questa seconda associazione è incerta nel Web usa `PORTA,Da associare`;
+- la stessa associazione differita resta valida per `PON` rispetto a `Ponti.DescBreve`;
+- non inventare nomi di archivio: il CAD Web completerà tutte le associazioni pendenti prima di `Aggiorna Modello`;
 - per un output destinato direttamente al lettore desktop resta invece necessario un `TIPO` valido rispetto all'archivio;
 - tornando alla geometria, annulla lo stato `GEOMETRIA APPROVATA` e ripeti il controllo prima dell'esportazione definitiva.
 
