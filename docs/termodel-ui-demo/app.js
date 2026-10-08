@@ -4627,6 +4627,10 @@ const aiProjectChoiceClose = document.getElementById('aiProjectChoiceClose');
 const aiProjectChoiceCloseBottom = document.getElementById('aiProjectChoiceCloseBottom');
 const aiProjectOpenChatGpt = document.getElementById('aiProjectOpenChatGpt');
 const aiProjectCopyPrompt = document.getElementById('aiProjectCopyPrompt');
+const aiSplitGuideModal = document.getElementById('aiSplitGuideModal');
+const aiSplitGuideClose = document.getElementById('aiSplitGuideClose');
+const aiSplitGuideBack = document.getElementById('aiSplitGuideBack');
+const aiSplitGuideOpen = document.getElementById('aiSplitGuideOpen');
 const aiImportChoiceModal = document.getElementById('aiImportChoiceModal');
 const aiImportChoiceClose = document.getElementById('aiImportChoiceClose');
 const aiImportChoiceCloseBottom = document.getElementById('aiImportChoiceCloseBottom');
@@ -4672,7 +4676,10 @@ function shouldBypassInitialModelDesktopGate(control) {
 
   // Il modello iniziale resta non esplorabile, ma i filtri agiscono
   // localmente sulle primitive 3D gia' caricate e devono restare utilizzabili.
-  if (control.closest?.('#webFilterPanel'))
+  // Vale sia per il pannello sia per il checkbox nella barra inferiore.
+  if (control === filtersCheck ||
+      control.closest?.('.check-wrap') ||
+      control.closest?.('#webFilterPanel'))
     return true;
 
   if (control.matches?.('.menu > button') &&
@@ -4870,11 +4877,41 @@ async function importAiFromDownloads() {
   }
 }
 
+function openAiSplitGuideDialog() {
+  if (!aiSplitGuideModal) {
+    return openChatGptWithTermodelBootstrap();
+  }
+
+  closeAiProjectChoiceDialog();
+  aiSplitGuideModal.classList.add('visible');
+  aiSplitGuideModal.setAttribute('aria-hidden', 'false');
+  aiSplitGuideOpen?.focus();
+  return true;
+}
+
+function closeAiSplitGuideDialog() {
+  if (!aiSplitGuideModal) return;
+  aiSplitGuideModal.classList.remove('visible');
+  aiSplitGuideModal.setAttribute('aria-hidden', 'true');
+}
+
+function backFromAiSplitGuideDialog() {
+  closeAiSplitGuideDialog();
+  openAiProjectChoiceDialog();
+}
+
 function buildChatGptTermodelUrl() {
   return 'https://chatgpt.com/?q=' + encodeURIComponent(TERMODEL_AI_BOOTSTRAP);
 }
 
 function openChatGptWithTermodelBootstrap() {
+  // In vista affiancata il pannello filtri toglierebbe spazio al modello.
+  // Se è aperto lo chiudiamo prima di lanciare ChatGPT.
+  if (filtersCheck?.checked) {
+    filtersCheck.checked = false;
+    setFilterPanelVisibility(false);
+  }
+
   const target = buildChatGptTermodelUrl();
   const opened = window.open(target, '_blank');
   if (!opened) {
@@ -5320,8 +5357,22 @@ if (aiProjectOpenChatGpt)
   aiProjectOpenChatGpt.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
+    openAiSplitGuideDialog();
+  });
+if (aiSplitGuideClose)
+  aiSplitGuideClose.addEventListener('click', closeAiSplitGuideDialog);
+if (aiSplitGuideBack)
+  aiSplitGuideBack.addEventListener('click', backFromAiSplitGuideDialog);
+if (aiSplitGuideOpen)
+  aiSplitGuideOpen.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
     if (openChatGptWithTermodelBootstrap())
-      closeAiProjectChoiceDialog();
+      closeAiSplitGuideDialog();
+  });
+if (aiSplitGuideModal)
+  aiSplitGuideModal.addEventListener('click', event => {
+    if (event.target === aiSplitGuideModal) closeAiSplitGuideDialog();
   });
 if (aiProjectCopyPrompt)
   aiProjectCopyPrompt.addEventListener('click', async event => {
@@ -11204,6 +11255,10 @@ document.addEventListener('keydown', (event) => {
   }
   if (dxfImportModal?.classList.contains('visible')) {
     closeDxfImportDialog(null);
+    return;
+  }
+  if (aiSplitGuideModal?.classList.contains('visible')) {
+    closeAiSplitGuideDialog();
     return;
   }
   if (aiInstructModal?.classList.contains('visible')) {
