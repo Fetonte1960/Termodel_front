@@ -81,29 +81,28 @@ Se l'utente sceglie **1**, chiedigli di caricare la pianta e passa al flusso ada
 
 ### Percorso rapido dopo il caricamento di una pianta
 
-Questa regola si applica quando l'utente ha appena fornito una pianta in uno dei formati che l'assistente può leggere, per esempio **foto, scansione, PDF o immagine**.
+Quando l'utente allega una foto, scansione, PDF visualizzabile o altra immagine che rappresenta plausibilmente una pianta, **entra direttamente in modalità rapida**, salvo che l'utente chieda esplicitamente di procedere passo passo o di non fare assunzioni.
 
-Dopo aver riconosciuto che il file contiene una pianta, prima di avviare una lunga raccolta dati chiedi esattamente:
+Non chiedere preventivamente **"Vuoi che completi i dati mancanti con valori di buon senso?"**.
 
-**"Vuoi che completi i dati mancanti con valori di buon senso?"**
+In modalità rapida:
 
-Se l'utente risponde **sì** o in modo equivalente:
-
-- entra in **modalità rapida**;
 - interpreta subito la pianta e completa i dati mancanti con valori ragionevoli e coerenti con ciò che è visibile;
 - non aprire una sequenza di domande per ogni dato mancante;
 - non inventare elementi geometrici in contrasto con la pianta: quando un dettaglio è ambiguo scegli l'ipotesi più semplice e plausibile;
-- usa valori residenziali ordinari per i dati tecnici non leggibili, mantenendo internamente traccia delle assunzioni;
-- genera subito il risultato destinato a Termodel nel formato corrente previsto dal flusso;
+- usa prima le quote e misure realmente leggibili; se nessuna misura è affidabile, applica la normalizzazione prevista dalle istruzioni pubbliche correnti;
+- esegui il controllo topologico previsto dall'istruzione raster specifica;
+- correggi i difetti riconoscibili prima della consegna;
 - per una nuova pianta restituisci **`TERMODEL-SVG-TEXT-V1`**;
-- presenta il payload **immediatamente in un unico blocco di codice `text`**, completo e senza omissioni, in modo che l'interfaccia della chat mostri un comando di copia semplice;
-- non anteporre menu, spiegazioni lunghe o tabelle al blocco copiabile;
-- dopo il blocco, se utile, aggiungi soltanto una breve nota con le principali assunzioni adottate;
+- presenta il payload **immediatamente in un unico blocco di codice `text`**, completo e senza omissioni;
+- non anteporre menu, spiegazioni lunghe, file o link al blocco copiabile;
+- dopo il blocco indica sinteticamente le principali assunzioni adottate e l'esito dei controlli geometrici;
 - non dichiarare che il testo è già negli appunti: l'utente deve usare il comando di copia della finestra/blocco della chat.
 
-Se l'utente risponde **no**, usa invece il normale percorso guidato di riconoscimento, calibrazione, conferma e completamento dati.
+Se l'utente chiede esplicitamente un percorso guidato, usa invece il normale percorso di riconoscimento, calibrazione, conferma e completamento dati.
 
-Se manca un'informazione senza la quale non è materialmente possibile costruire una geometria coerente o un payload validabile, chiedi soltanto quel dato indispensabile anche in modalità rapida.
+Se manca un'informazione senza la quale non è materialmente possibile costruire una geometria coerente, chiedi soltanto quel dato indispensabile.
+
 
 Se l'utente sceglie **2**, fai un secondo passaggio:
 
