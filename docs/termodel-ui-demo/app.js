@@ -638,6 +638,7 @@ COMMAND_HELP['Aggiorna Modello'] = {
   title: 'Aggiorna Modello',
   body: `
     <p>Invia lo stato tecnico corrente del progetto al Termodel Service, esegue il calcolo completo e visualizza l'artifact <strong>model3d</strong> restituito dal server.</p>
+    <p>Prima dell'invio, se pareti o finestre importate dall'AI risultano ancora <strong>Da associare</strong>, apre la form di associazione agli archivi Pareti/Finestre e sospende il calcolo finché i collegamenti non sono completati.</p>
     <p>Le categorie selezionate nel menu <strong>Help → Log Aggiorna Modello</strong> controllano il log della singola elaborazione.</p>
     <p>Su PC, <strong>Help → Termodel Service → Usa localhost:5080</strong> permette di inviare le stesse richieste al WebService avviato da Visual Studio; a ogni apertura il default resta il Service Cloud.</p>
   `
@@ -3546,6 +3547,7 @@ function setStructuredProjectState(enabled) {
 const TERMODEL_PENDING_ASSOCIATION_VALUE = 'Da associare';
 let termodelAssociationDialog = null;
 let termodelAssociationDialogResolver = null;
+let termodelAssociationDialogPromise = null;
 let termodelAssociationItemsByKey = new Map();
 
 function termodelAssociationIsPending(value) {
@@ -3902,14 +3904,22 @@ async function ensureTermodelPendingAssociationsResolved() {
   const pending = termodelPendingAssociationItems();
   if (!pending.length) return true;
 
-  const modal = ensureTermodelAssociationDialog();
-  modal.hidden = false;
-  modal.setAttribute('aria-hidden', 'false');
-  renderTermodelAssociationDialog(pending[0]?.key || '');
+  if (termodelAssociationDialogPromise)
+    return await termodelAssociationDialogPromise;
 
-  return await new Promise(resolve => {
+  const modal = ensureTermodelAssociationDialog();
+  termodelAssociationDialogPromise = new Promise(resolve => {
     termodelAssociationDialogResolver = resolve;
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    renderTermodelAssociationDialog(pending[0]?.key || '');
   });
+
+  try {
+    return await termodelAssociationDialogPromise;
+  } finally {
+    termodelAssociationDialogPromise = null;
+  }
 }
 
 async function loadEmptyProjectText() {
