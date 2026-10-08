@@ -159,10 +159,10 @@ Nel rapporto finale indica esplicitamente quando la scala è stata **stimata con
 
 #### Tre vie di consegna AI → Termodel
 
-Per una nuova geometria usa questo ordine di priorità. **La presenza del download NON autorizza a omettere il copia/incolla.**
+Per una nuova geometria usa questo ordine di priorità:
 
-1. **DOWNLOAD — percorso principale.** Se l'ambiente AI consente di creare file scaricabili, genera per primo un file reale chiamato **`DisegnoInput.svg`** contenente lo SVG finale grezzo e validato. Presentalo come **Scarica DisegnoInput.svg**. Su Termodel Web PC v1.53 l'utente può poi premere **Importa da AI → Leggi DisegnoInput.svg da Download**; al primo uso il browser può chiedere di autorizzare la cartella Download. Non simulare un download con testo o URL inventati: se l'ambiente non può materializzare un file, passa direttamente alla seconda via.
-2. **COPIA / INCOLLA — percorso universale e sempre visibile.** **Mostralo sempre, anche se il download è stato creato correttamente.** Subito dopo il download inserisci il titolo **Copia/incolla in Termodel** e poi un unico blocco di codice `text` contenente il payload completo **`TERMODEL-SVG-TEXT-V1`**, senza abbreviazioni. Il blocco deve essere effettivamente presente nella risposta: non limitarti a dire che il copia/incolla è disponibile.
+1. **DOWNLOAD — percorso principale.** Se l'ambiente AI consente di creare file scaricabili, genera per primo un file reale chiamato **`DisegnoInput.svg`** contenente lo SVG finale grezzo e validato. Presentalo come **Scarica DisegnoInput.svg**. Su Termodel Web PC v1.53+ l'utente può poi premere **Importa da AI → Leggi DisegnoInput.svg da Download**. Non simulare un download con testo o URL inventati.
+2. **COPIA NEGLI APPUNTI — percorso universale.** Ogni volta che ripresenti il menu e una pianta valida esiste, la prima azione deve essere **1 — Copia la pianta negli appunti**. Preferisci una copia compatta senza mostrare il payload tecnico, quando l'interfaccia lo consente. Se non è possibile, quando l'utente seleziona l'azione mostra il normale blocco completo **`TERMODEL-SVG-TEXT-V1`** in un unico blocco `text`, senza abbreviazioni.
 3. **LINK DIRETTO — comodità aggiuntiva.** Tenta il Link Termodel V1 soltanto se puoi eseguire e verificare in modo deterministico la codifica. Per il link usa lo **SVG finale grezzo e validato**, non il wrapper `TERMODEL-SVG-TEXT-V1`.
 
 Per il Link Termodel V1:
@@ -174,7 +174,7 @@ Per il Link Termodel V1:
 5. se il link è lungo **al massimo 8000 caratteri** e la verifica inversa è riuscita, presentalo dopo download e blocco copiabile con il testo **Apri il progetto in Termodel**;
 6. se supera 8000 caratteri oppure non puoi verificare esattamente la codifica, **non pubblicare il link** e non tentare di ricostruire Base64URL a mano.
 
-Le prime due vie devono coesistere ogni volta che il download è tecnicamente disponibile: **download + copia/incolla devono comparire entrambi nella stessa risposta**. Se il download non è disponibile, il copia/incolla resta comunque obbligatorio. Il link è soltanto una terza via opzionale e non deve mai sostituire né nascondere gli altri due percorsi.
+Download e copia negli appunti devono restare entrambi disponibili, ma non è necessario mostrare automaticamente il payload tecnico nella stessa risposta. Il download può comparire come file; la copia deve comparire come **prima azione del menu** e usare la modalità compatta quando disponibile. Il link resta soltanto una terza via opzionale.
 
 Se l'utente sceglie **2**, fai un secondo passaggio:
 
