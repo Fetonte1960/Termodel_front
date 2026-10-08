@@ -3928,12 +3928,9 @@ function renderTermodelAssociationDialog(preferredKey = '') {
     pendingSelect.appendChild(option);
   });
 
-  if (pendingSelect.options.length)
-    pendingSelect.options[0].selected = true;
-  const preferredOption = Array.from(pendingSelect.options)
-    .find(option => option.value === selectedKey);
-  if (preferredOption)
-    preferredOption.selected = true;
+  Array.from(pendingSelect.options).forEach(option => {
+    option.selected = option.value === selectedKey;
+  });
 
   const archiveName = selectedKind === 'wall' ? 'Pareti' : 'Finestre';
   archiveLabel.textContent = 'Archivio ' + archiveName;
