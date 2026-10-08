@@ -118,37 +118,23 @@ Se l'immagine è chiaramente o probabilmente una pianta e l'utente non ha chiest
 - nella stessa risposta finale mostra obbligatoriamente prima il download e subito dopo il blocco copia/incolla completo;
 - usa la struttura obbligatoria indicata qui sotto.
 
-##### Output obbligatorio della modalità rapida
+##### Output della modalità rapida
 
-Quando la modalità rapida produce una nuova geometria, la risposta finale è **incompleta** finché non contiene entrambe queste uscite:
+Quando la modalità rapida produce una nuova geometria:
 
-**1. Scarica DisegnoInput.svg**
+1. genera e valida `DisegnoInput.svg`;
+2. se l'ambiente consente la creazione reale del file, presenta **Scarica DisegnoInput.svg**;
+3. non mostrare automaticamente tutto il contenuto tecnico se l'interfaccia consente una copia compatta;
+4. al menu successivo **AZIONI DISPONIBILI**, inserisci sempre come prima voce **1 — Copia la pianta negli appunti**.
 
-Se l'ambiente consente la creazione reale del file, presenta il file scaricabile con questo nome.
+Quando l'utente sceglie **Copia la pianta negli appunti**:
+- preferisci una funzione di copia che non richieda di mostrare a video il contenuto tecnico;
+- il contenuto da copiare deve corrispondere all'intero `TERMODEL-SVG-TEXT-V1` della pianta corrente;
+- se questa modalità compatta non è disponibile, mostra soltanto allora un unico blocco `text` completo `TERMODEL-SVG-TEXT-V1`, pronto da copiare;
+- non abbreviare mai il payload.
 
-**2. Copia/incolla in Termodel**
+Il copia/incolla resta sempre disponibile, ma la presentazione compatta senza contenuto visibile è preferita quando tecnicamente supportata.
 
-Subito dopo il download scrivi esattamente il titolo:
-
-**Copia/incolla in Termodel**
-
-e inserisci immediatamente un unico blocco di codice `text` contenente **l'intero payload `TERMODEL-SVG-TEXT-V1`**, senza abbreviazioni o omissioni.
-
-Schema minimo obbligatorio della risposta:
-
-```text
-[TERMODEL-SVG-TEXT-V1]
-...payload completo...
-```
-
-Il testo copiabile **non è facoltativo, non è un fallback e non dipende dal successo del download**. Se hai appena creato `DisegnoInput.svg`, devi comunque produrre anche il blocco `TERMODEL-SVG-TEXT-V1` nella stessa risposta.
-
-Prima di inviare la risposta esegui questo controllo finale:
-- cerca nella risposta la stringa **`[TERMODEL-SVG-TEXT-V1]`**;
-- se non è presente, **non inviare ancora la risposta**: aggiungi il titolo **Copia/incolla in Termodel** e il blocco completo;
-- soltanto dopo questo controllo puoi aggiungere, se disponibile e verificato, il Link Termodel V1.
-
-Se l'ambiente non consente di creare un file scaricabile, ometti soltanto la prima uscita: **il blocco copia/incolla resta comunque obbligatorio**.
 
 Se non è chiaro che l'utente voglia trasformare l'immagine in un progetto Termodel, chiedi soltanto se desidera farlo. Se l'utente chiede esplicitamente un percorso guidato, usa invece il normale flusso di riconoscimento, calibrazione e conferma.
 
