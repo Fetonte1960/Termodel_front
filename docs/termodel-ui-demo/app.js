@@ -2236,10 +2236,10 @@ function createAndroidAiFlowHelpDialog() {
         <button type="button" class="android-help-close" aria-label="Chiudi Help AI">×</button>
       </header>
       <div class="android-help-body">
-        <p>Il flusso corretto usa due comandi dello stesso gruppo <strong>AI</strong>.</p>
+        <p>Nel gruppo <strong>AI</strong> puoi aprire direttamente ChatGPT già programmato per Termodel oppure usare la copia manuale.</p>
         <ol>
-          <li>Premi <strong>Copia istruzione AI negli appunti</strong>.</li>
-          <li>Apri ChatGPT, Gemini, DeepSeek o la tua AI e incolla l'istruzione.</li>
+          <li>Premi <strong>Apri GPT con programmazione AI</strong> per aprire ChatGPT con lo stesso bootstrap usato dalla versione PC.</li>
+          <li>In alternativa usa <strong>Copia istruzione AI negli appunti</strong> per ChatGPT, Gemini, DeepSeek o un altro assistente.</li>
           <li>Descrivi il progetto oppure allega la pianta/PDF che vuoi elaborare.</li>
           <li>Quando l'AI restituisce <strong>Apri il progetto in Termodel</strong>, tocca direttamente quel link.</li>
           <li>In alternativa copia negli appunti <strong>l'intero payload</strong>, torna in MyHome3D e premi <strong>Importa progetto realizzato con AI dagli appunti</strong>.</li>
