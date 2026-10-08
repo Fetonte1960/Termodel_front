@@ -1,5 +1,5 @@
 # TERMODEL — Istruzioni AI specifiche: crea piano da pianta raster
-## ISTRUZIONE RASTER — REVISIONE 2026-10-08.2
+## ISTRUZIONE RASTER — REVISIONE 2026-10-08.1
 
 > Questa istruzione è specifica del comando **Crea piano da raster con AI**.
 > Deve essere usata insieme a `TermodelGenerale.md`.
@@ -62,27 +62,29 @@ Le due azioni di visualizzazione devono comparire **sempre** nel menu della fase
 
 La visualizzazione provvisoria non deve essere salvata o presentata come `DisegnoInput.svg` definitivo o importabile. Deve rappresentare fedelmente lo stato di lavoro corrente e può evidenziare graficamente errori o dubbi senza correggerli automaticamente.
 
-# Percorso rapido — immagine → progetto immediato
+# Percorso rapido — completa con valori di buon senso
 
-Questa regola è allineata alla **SUPER SCORCIATOIA immagine → progetto** delle istruzioni generali Termodel.
+Questa regola ha priorità sul percorso dettagliato delle FASI A/B quando l'utente ha appena fornito una pianta (foto, scansione, PDF convertibile/leggibile, PNG, JPG, BMP, TIFF o altro formato visivo interpretabile).
 
-Quando l'utente allega una foto, scansione, screenshot, PDF visualizzabile o altra immagine che rappresenta plausibilmente una pianta e **non ha chiesto un percorso guidato**:
+Dopo aver riconosciuto la pianta chiedi:
 
-1. non chiedere preventivamente **"Vuoi che completi i dati mancanti con valori di buon senso?"**;
-2. interpreta immediatamente la geometria visibile;
-3. completa i dati non leggibili con assunzioni ragionevoli e conservative;
-4. evita ulteriori domande salvo un dato realmente indispensabile per ottenere una geometria coerente;
-5. non introdurre elementi in contrasto con la pianta;
-6. costruisci lo SVG Termodel corrente;
-7. esegui il controllo topologico bloccante e correggi i difetti riconoscibili;
-8. restituisci **subito** il risultato come `TERMODEL-SVG-TEXT-V1`;
-9. il payload deve essere il **primo elemento sostanziale della risposta** e deve stare in **un unico blocco di codice `text`** completo, senza omissioni;
-10. dopo il blocco indica in poche righe le assunzioni principali e l'esito dei controlli geometrici.
+**"Vuoi che completi i dati mancanti con valori di buon senso?"**
 
-Il percorso dettagliato **FASE A → FASE B** resta disponibile soltanto quando l'utente chiede esplicitamente di procedere passo passo, di non fare assunzioni automatiche oppure di verificare la geometria prima della consegna.
+Se la risposta è **sì**:
 
-La mancanza di quote, scala, spessori, altezze, materiali o dati tecnici ordinari non è da sola un motivo per interrompere il percorso rapido: usa i valori e le regole di buon senso previste dalle istruzioni generali.
+1. interpreta immediatamente la geometria visibile;
+2. completa i dati non leggibili con assunzioni ragionevoli e conservative;
+3. evita ulteriori domande salvo un dato realmente indispensabile per produrre una geometria coerente e validabile;
+4. non introdurre elementi in contrasto con la pianta;
+5. costruisci direttamente lo SVG Termodel corrente;
+6. validalo secondo le regole disponibili;
+7. restituisci **subito** il risultato come `TERMODEL-SVG-TEXT-V1`;
+8. il payload deve essere il **primo elemento sostanziale della risposta** e deve stare in **un unico blocco di codice `text`** completo, senza `...`, così l'utente può copiarlo immediatamente;
+9. dopo il blocco puoi indicare in poche righe le assunzioni principali usate.
 
+In modalità rapida non presentare prima il menu FASE A, non obbligare l'utente a confermare separatamente ogni porta, finestra, altezza, stratigrafia o dato tecnico che può essere stimato con buon senso.
+
+Se la risposta è **no**, continua con il normale percorso FASE A → FASE B descritto sotto.
 
 ---
 
@@ -441,9 +443,7 @@ Nel flusso raster:
 
 Inizia verificando soltanto che la pianta raster sia allegata.
 
-Se è presente e l'utente **non ha richiesto esplicitamente il percorso guidato**, applica immediatamente il **Percorso rapido — immagine → progetto immediato** e consegna il payload soltanto dopo il controllo topologico.
-
-Se invece l'utente chiede di procedere passo passo, di non fare assunzioni automatiche o di verificare la geometria prima dell'esportazione:
+Se è presente:
 
 - produci la prima interpretazione numerata;
 - non chiedere ancora la misura di calibrazione;
