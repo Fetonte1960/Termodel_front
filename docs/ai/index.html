@@ -139,10 +139,10 @@ Nel rapporto finale indica esplicitamente quando la scala è stata **stimata con
 
 #### Tre vie di consegna AI → Termodel
 
-Per una nuova geometria usa questo ordine di priorità:
+Per una nuova geometria usa questo ordine di priorità. **La presenza del download NON autorizza a omettere il copia/incolla.**
 
 1. **DOWNLOAD — percorso principale.** Se l'ambiente AI consente di creare file scaricabili, genera per primo un file reale chiamato **`DisegnoInput.svg`** contenente lo SVG finale grezzo e validato. Presentalo come **Scarica DisegnoInput.svg**. Su Termodel Web PC v1.53 l'utente può poi premere **Importa da AI → Leggi DisegnoInput.svg da Download**; al primo uso il browser può chiedere di autorizzare la cartella Download. Non simulare un download con testo o URL inventati: se l'ambiente non può materializzare un file, passa direttamente alla seconda via.
-2. **COPIA / INCOLLA — percorso universale.** Genera sempre anche il blocco completo **`TERMODEL-SVG-TEXT-V1`** in un unico blocco di codice `text`, senza abbreviazioni, pronto per essere copiato e importato in Termodel.
+2. **COPIA / INCOLLA — percorso universale e sempre visibile.** **Mostralo sempre, anche se il download è stato creato correttamente.** Subito dopo il download inserisci il titolo **Copia/incolla in Termodel** e poi un unico blocco di codice `text` contenente il payload completo **`TERMODEL-SVG-TEXT-V1`**, senza abbreviazioni. Il blocco deve essere effettivamente presente nella risposta: non limitarti a dire che il copia/incolla è disponibile.
 3. **LINK DIRETTO — comodità aggiuntiva.** Tenta il Link Termodel V1 soltanto se puoi eseguire e verificare in modo deterministico la codifica. Per il link usa lo **SVG finale grezzo e validato**, non il wrapper `TERMODEL-SVG-TEXT-V1`.
 
 Per il Link Termodel V1:
@@ -154,7 +154,7 @@ Per il Link Termodel V1:
 5. se il link è lungo **al massimo 8000 caratteri** e la verifica inversa è riuscita, presentalo dopo download e blocco copiabile con il testo **Apri il progetto in Termodel**;
 6. se supera 8000 caratteri oppure non puoi verificare esattamente la codifica, **non pubblicare il link** e non tentare di ricostruire Base64URL a mano.
 
-Le tre vie devono coesistere quando l'ambiente AI le supporta. Il download resta la prima scelta, il copia/incolla resta sempre disponibile, il link è soltanto una terza via opzionale e non deve mai sostituire gli altri due percorsi.
+Le prime due vie devono coesistere ogni volta che il download è tecnicamente disponibile: **download + copia/incolla devono comparire entrambi nella stessa risposta**. Se il download non è disponibile, il copia/incolla resta comunque obbligatorio. Il link è soltanto una terza via opzionale e non deve mai sostituire né nascondere gli altri due percorsi.
 
 Se l'utente sceglie **2**, fai un secondo passaggio:
 
@@ -727,7 +727,7 @@ Presenta separatamente:
 3. rapporto sintetico di controllo;
 4. eventuali blocchi stratigrafia delle nuove tipologie parete;
 5. **Scarica DisegnoInput.svg**, se l'ambiente AI può creare realmente il file;
-6. un unico blocco di codice `text` con il payload completo `TERMODEL-SVG-TEXT-V1`;
+6. il titolo visibile **Copia/incolla in Termodel** seguito immediatamente da un unico blocco di codice `text` con il payload completo `TERMODEL-SVG-TEXT-V1`; questa parte è **obbligatoria anche se il download è riuscito**;
 7. **Apri il progetto in Termodel**, soltanto se il Link V1 supera tutti i controlli previsti.
 
 Per il payload:
