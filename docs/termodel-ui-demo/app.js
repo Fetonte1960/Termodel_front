@@ -3577,6 +3577,8 @@ function termodelPendingAssociationItems() {
     items.push({
       key: 'wall:' + piano + ':' + (id || index),
       kind: 'wall',
+      archiveName: 'Pareti',
+      associationLabel: 'Tipo parete',
       id: id || ('Parete ' + (index + 1)),
       piano,
       descrizione,
@@ -3586,40 +3588,64 @@ function termodelPendingAssociationItems() {
 
   Array.from(cadWorkingDoc.querySelectorAll('g#calpestabile > text')).forEach((symbol, index) => {
     if (cadSymbolBlockType(symbol) !== 'FIN') return;
-    if (!termodelAssociationIsPending(cadSymbolAttribute(symbol, 'TIPO'))) return;
 
     const id = cadText(symbol.id) || ('Finestra ' + (index + 1));
     const piano = cadText(symbol.getAttribute('data-termodel-piano')) || 'Unico';
     const semantic = cadText(symbol.getAttribute('data-termodel-descrizione'));
     const porta = cadSymbolAttribute(symbol, 'PORTA');
+    const tipo = cadSymbolAttribute(symbol, 'TIPO');
     const larghezza = cadSymbolAttribute(symbol, 'LARGHEZZA');
     const altezza = cadSymbolAttribute(symbol, 'ALTEZZA');
     const fallback = [
-      porta || 'Finestra',
       larghezza ? ('L ' + larghezza + ' cm') : '',
       altezza ? ('H ' + altezza + ' cm') : ''
     ].filter(Boolean).join(' · ');
+    const descrizione = semantic || fallback || id;
 
-    items.push({
-      key: 'window:' + piano + ':' + id,
-      kind: 'window',
-      id,
-      piano,
-      descrizione: semantic || fallback || id,
-      element: symbol
-    });
+    if (termodelAssociationIsPending(tipo)) {
+      items.push({
+        key: 'window-type:' + piano + ':' + id,
+        kind: 'window-type',
+        archiveName: 'Finestre',
+        associationLabel: 'Tipo finestra',
+        id,
+        piano,
+        descrizione,
+        element: symbol
+      });
+    }
+
+    if (termodelAssociationIsPending(porta)) {
+      items.push({
+        key: 'window-porta:' + piano + ':' + id,
+        kind: 'window-porta',
+        archiveName: 'Pareti',
+        associationLabel: 'Porta/sup. opaca',
+        id,
+        piano,
+        descrizione,
+        element: symbol
+      });
+    }
   });
 
   return items;
 }
 
 function termodelAssociationArchiveValues(kind) {
-  const archiveName = kind === 'wall' ? 'Pareti' : 'Finestre';
-  return cadArchiveRecords(archiveName)
+  const archiveName =
+    kind === 'window-type'
+      ? 'Finestre'
+      : 'Pareti';
+  const values = cadArchiveRecords(archiveName)
     .map(record => cadText(record?.DescBreve))
     .filter(Boolean)
-    .filter((value, index, values) => values.indexOf(value) === index)
+    .filter((value, index, all) => all.indexOf(value) === index)
     .sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+
+  return kind === 'window-porta'
+    ? ['Struttura trasparente', ...values.filter(value => value !== 'Struttura trasparente')]
+    : values;
 }
 
 function ensureTermodelAssociationDialog() {
@@ -3851,6 +3877,8 @@ function ensureTermodelAssociationDialog() {
         const wallState = cadStateFromLine(item.element);
         wallState.tipoParete = archiveValue;
         cadApplySemanticAttributes(item.element, wallState);
+      } else if (item.kind === 'window-porta') {
+        cadSetSymbolAttribute(item.element, 'PORTA', archiveValue);
       } else {
         cadSetSymbolAttribute(item.element, 'TIPO', archiveValue);
       }
@@ -3921,10 +3949,10 @@ function renderTermodelAssociationDialog(preferredKey = '') {
   visibleItems.forEach(item => {
     const option = document.createElement('option');
     option.value = item.key;
+    const entityLabel = item.kind === 'wall' ? 'Parete ' : 'Finestra ';
+    const relationLabel = item.associationLabel ? (' · ' + item.associationLabel) : '';
     option.textContent =
-      (item.kind === 'wall' ? 'Parete ' : 'Finestra ') +
-      item.id +
-      ' · Piano ' + item.piano;
+      entityLabel + item.id + relationLabel + ' · Piano ' + item.piano;
     pendingSelect.appendChild(option);
   });
 
@@ -3932,8 +3960,11 @@ function renderTermodelAssociationDialog(preferredKey = '') {
     option.selected = option.value === selectedKey;
   });
 
-  const archiveName = selectedKind === 'wall' ? 'Pareti' : 'Finestre';
-  archiveLabel.textContent = 'Archivio ' + archiveName;
+  const archiveName = selectedItem.archiveName || (selectedKind === 'window-type' ? 'Finestre' : 'Pareti');
+  archiveLabel.textContent =
+    selectedKind === 'window-porta'
+      ? 'Archivio ' + archiveName + ' / Struttura trasparente'
+      : 'Archivio ' + archiveName;
 
   archiveSelect.replaceChildren();
   termodelAssociationArchiveValues(selectedKind).forEach(value => {
@@ -3946,7 +3977,8 @@ function renderTermodelAssociationDialog(preferredKey = '') {
   const selectedCount = pendingSelect.selectedOptions.length;
   pendingDetails.textContent =
     selectedCount + ' selezionato/i · ' +
-    visibleItems.length + ' elemento/i ' + archiveName.toLowerCase() +
+    visibleItems.length + ' elemento/i · ' +
+    (selectedItem.associationLabel || archiveName) +
     ' · ' + items.length + ' pendente/i totali';
 
   const applyAllButton = modal.querySelector('.termodel-association-apply-all');
