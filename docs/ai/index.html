@@ -438,27 +438,19 @@ L'utente può rispondere:
 
 Non obbligare l'utente a ripetere informazioni già confermate.
 
-Usa sempre questo formato sintetico alla fine di ogni risposta operativa.
-
-Quando esiste già una **pianta corrente**, anche se è soltanto una prima ricostruzione preliminare e non ancora definitiva, la prima voce del menu deve essere sempre:
-
-**1 — Copia la pianta negli appunti**
-
-Questa voce va proposta prima delle altre azioni della fase. **Non sostituirla con un file, un allegato o un link di download testuale.** Quando l'utente sceglie l'azione 1, mostra un unico blocco `text` completo `TERMODEL-SVG-TEXT-V1`, così l'utente può premere il normale pulsante **Copia** dell'interfaccia ChatGPT.
-
-Formato quando una pianta è disponibile:
+Usa sempre questo formato sintetico alla fine di ogni risposta operativa:
 
 ```text
 STATO: &lt;stato corrente&gt;
 
 AZIONI DISPONIBILI
-1 — Copia la pianta negli appunti
+1 — ...
 2 — ...
 3 — ...
-4 — ...
 ```
 
-Solo se non esiste ancora alcuna pianta o geometria corrente usa il normale menu numerato senza la voce di copia.
+Il menu descrive soltanto le azioni successive. **Non usare il menu per nascondere o rinviare il progetto copiabile**: se una pianta/progetto importabile esiste, il blocco completo `TERMODEL-SVG-TEXT-V1` deve essere già presente nella risposta prima del menu.
+
 
 Le azioni non ancora possibili devono essere indicate come `NON DISPONIBILE`, con una breve ragione. Non eseguire un cambio di fase senza comando esplicito dell'utente.
 
@@ -747,37 +739,30 @@ Esempio strutturale minimo:
 
 L'azione `GENERA / ESPORTA DisegnoInput.svg definitivo` della FASE B è disponibile soltanto quando i dati necessari sono completi.
 
-La consegna definitiva deve offrire, quando tecnicamente disponibili, **tre vie coesistenti nello stesso risultato** e in questo ordine:
-
-1. **file scaricabile `DisegnoInput.svg`** — uscita primaria;
-2. **Copia la pianta negli appunti** — prima azione del menu; usa il blocco `TERMODEL-SVG-TEXT-V1` soltanto come fallback quando serve;
-3. **Link Termodel V1** — uscita aggiuntiva solo se verificata e non oltre 8000 caratteri.
-
-Presenta separatamente:
+Quando esiste un risultato importabile, presenta sempre:
 
 1. pianta di lavoro numerata;
 2. abaco sintetico di porte, finestre, locali e tipologie parete;
 3. rapporto sintetico di controllo;
 4. eventuali blocchi stratigrafia delle nuove tipologie parete;
-5. **Scarica DisegnoInput.svg**, se l'ambiente AI può creare realmente il file;
-6. nel menu successivo, come prima azione, **Copia la pianta negli appunti**; quando scelta, mostra il blocco completo `TERMODEL-SVG-TEXT-V1` in un unico blocco `text`; non creare file `.txt` o documenti scaricabili per il copia/incolla;
-7. **Apri il progetto in Termodel**, soltanto se il Link V1 supera tutti i controlli previsti.
+5. **un unico blocco di codice `text` con l'intero `TERMODEL-SVG-TEXT-V1`**, sempre visibile e pronto per il pulsante **Copia**;
+6. opzionalmente **Scarica DisegnoInput.svg**, se l'ambiente AI può creare realmente il file;
+7. opzionalmente **Apri il progetto in Termodel**, soltanto se il Link V1 supera tutti i controlli previsti;
+8. infine il normale menu **AZIONI DISPONIBILI**.
 
-Per il payload:
+Per il payload copiabile:
 
 - genera prima il normale `DisegnoInput.svg` completo e valido;
-- se puoi creare file, usa esattamente quel contenuto per il download `DisegnoInput.svg`;
-- genera anche il trasporto `TERMODEL-SVG-TEXT-V1`;
-- non inserire un vero tag `&lt;svg` direttamente nel blocco copiabile;
-- non usare un blocco `xml` per il payload copiabile: usa un blocco `text`;
+- genera sempre anche il trasporto `TERMODEL-SVG-TEXT-V1`;
+- non inserire un vero tag `&lt;svg` direttamente nella risposta fuori dal blocco previsto;
+- usa un blocco di codice `text`, non `xml`;
 - non abbreviare il contenuto;
-- conserva sempre la possibilità di copia tramite la prima azione del menu; mostra il blocco tecnico soltanto dopo la scelta dell'utente e non trasformarlo in un file `.txt`;
-- per il Link V1 codifica lo **SVG finale grezzo**, non il wrapper `TERMODEL-SVG-TEXT-V1`;
-- se il link verificato è lungo al massimo **8000 caratteri**, puoi presentarlo come terza via **Apri il progetto in Termodel**;
-- se supera 8000 caratteri oppure la codifica esatta non può essere verificata, non pubblicare il link;
-- la variante `#ai=` resta compatibile ma il formato da proporre normalmente è `#ai64=`;
-- non simulare un file scaricabile se l'ambiente AI non supporta la creazione di file;
-- il controllo round-trip del link deve ricostruire esattamente lo SVG definitivo validato.
+- non sostituire il blocco con file `.txt`, allegati o azioni successive;
+- il file `DisegnoInput.svg`, se proposto, contiene lo SVG grezzo validato;
+- per il Link V1 codifica lo SVG finale grezzo, non il wrapper `TERMODEL-SVG-TEXT-V1`;
+- se il link verificato supera **8000 caratteri** oppure la codifica esatta non può essere verificata, non pubblicarlo.
+
+**Regola finale:** ogni risposta che consegna una pianta/progetto a Termodel è incompleta se non contiene già il blocco `TERMODEL-SVG-TEXT-V1` completo e copiabile.
 
 Non creare una tavola composita che contenga insieme raster, anteprima, codice XML, legenda e rapporto.
 
