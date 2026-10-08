@@ -14,7 +14,7 @@
 <body>
   <main>
     <pre># TERMODEL — Istruzioni AI specifiche: crea piano da pianta raster
-## VERSIONE WORK — flusso guidato a stati e menu numerati
+## ISTRUZIONE RASTER — REVISIONE 2026-10-08.1
 
 &gt; Questa istruzione è specifica del comando **Crea piano da raster con AI**.
 &gt; Deve essere usata insieme a `TermodelGenerale.md`.
@@ -25,6 +25,27 @@
 Per il ritorno da AI dopo l'analisi della pianta raster usa **`TERMODEL-SVG-TEXT-V1`**.
 
 Non produrre un XML Nazionale e non costruire manualmente un `TERMODEL-PROJECT-TEXT-V1` da zero. Termodel Web valida lo SVG e genera/aggiorna autonomamente il contenitore progetto nel formato corrente.
+
+---
+
+## REGOLA BLOCCANTE — controllo topologico prima della consegna
+
+**Ogni progetto SVG generato da una pianta raster deve superare una verifica preventiva della connettività dei segmenti e della chiusura degli ambienti, salvo le aperture e le terminazioni intenzionalmente presenti nel disegno originale. In caso di difetti riconosciuti, l'AI deve correggere la geometria prima della consegna.**
+
+Questa regola è obbligatoria anche nel percorso rapido e non può essere saltata dalla compilazione automatica dei dati mancanti.
+
+Prima di produrre `TERMODEL-SVG-TEXT-V1`:
+
+1. costruisci una rete geometrica con nodi condivisi, evitando segmenti indipendenti quando rappresentano pareti collegate;
+2. controlla tutti gli estremi, le intersezioni a T e a croce, i piccoli vuoti, i disallineamenti e i segmenti sovrapposti o duplicati;
+3. verifica che ogni locale previsto come chiuso sia realmente delimitato;
+4. distingui le aperture `P/F` e le terminazioni intenzionali dagli errori di continuità, confrontandole con il raster;
+5. correggi automaticamente soltanto i difetti la cui connessione prevista è riconoscibile, senza chiudere aperture intenzionali né alterare arbitrariamente la distribuzione;
+6. ripeti il controllo dopo ogni correzione;
+7. non consegnare lo SVG finché rimangono difetti topologici riconosciuti;
+8. se il validator effettivo di Termodel non è accessibile, non dichiarare il progetto validato dal programma: indica invece i controlli geometrici effettivamente eseguiti.
+
+Le checklist della **FASE A**, dell'azione **CONTROLLA GEOMETRIA** e delle **Regole geometriche indispensabili** specificano i controlli da applicare.
 
 ---
 
@@ -443,8 +464,7 @@ Se è presente:
 - non chiedere ancora la misura di calibrazione;
 - non chiedere dati termici;
 - non avviare stratigrafie;
-- termina mostrando il menu **FASE A — GEOMETRIA**.
-</pre>
+- termina mostrando il menu **FASE A — GEOMETRIA**.</pre>
   </main>
 </body>
 </html>

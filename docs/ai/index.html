@@ -19,10 +19,10 @@
   <main>
     <h1>Termodel AI</h1>
     <p class="intro">Guida centrale per l'uso di Termodel con l'intelligenza artificiale.</p>
-    <div class="links"><strong>Fonte obbligatoria per CAD 2D e interfaccia:</strong> <a href="./funzioni_termodel.md">Mappa ufficiale dei comandi Termodel — tasti, menu, finestre e varianti PC/Mobile</a></div>
+    <div class="links"><strong>Fonte obbligatoria per CAD 2D e interfaccia:</strong> <a href="./funzioni_termodel.md">Mappa ufficiale dei comandi Termodel — tasti, menu, finestre e varianti PC/Mobile</a><br><strong>Fonte obbligatoria per immagine → progetto:</strong> <a href="./CreaPianoTermodelDaRaster.md">Istruzioni specifiche per creare un piano da raster</a></div>
     <pre># TERMODEL — Istruzioni AI generali
 
-&gt; ISTRUZIONE AI TERMODEL — REVISIONE 2026-10-08.2. Queste regole sono comuni ai flussi AI di Termodel. Le istruzioni specifiche di un comando, come la creazione del piano da raster, si aggiungono a questo file e non devono duplicarne il contenuto.
+&gt; ISTRUZIONE AI TERMODEL — REVISIONE 2026-10-08.3. Queste regole sono comuni ai flussi AI di Termodel. Le istruzioni specifiche di un comando, come la creazione del piano da raster, si aggiungono a questo file e non devono duplicarne il contenuto.
 
 ## Scopo
 
@@ -85,6 +85,21 @@ Quando l'utente sceglie questa voce, oppure formula direttamente una richiesta e
 5. non chiedere uno screenshot salvo uno dei casi diagnostici ammessi sopra.
 
 
+## REGOLA PRIORITARIA — generazione da pianta raster
+
+Quando l'utente carica una pianta o chiede di generare un progetto da un'immagine, consulta obbligatoriamente anche l'istruzione specifica:
+
+https://www.termodel.it/ai/CreaPianoTermodelDaRaster.md
+
+Applica insieme questa istruzione generale e quella specifica raster. La specifica raster aggiunge i controlli geometrici; non sostituisce il protocollo generale di ritorno.
+
+Regola minima bloccante, valida anche se il documento specifico non fosse temporaneamente raggiungibile:
+
+**Ogni progetto SVG generato da una pianta raster deve superare una verifica preventiva della connettività dei segmenti e della chiusura degli ambienti, salvo le aperture e le terminazioni intenzionalmente presenti nel disegno originale. In caso di difetti riconosciuti, l'AI deve correggere la geometria prima della consegna.**
+
+Non consegnare il payload finché restano estremi flottanti non intenzionali, piccoli vuoti tra pareti che devono essere collegate, intersezioni irrisolte, duplicazioni o locali previsti come chiusi ma non delimitati. Non chiudere invece porte, finestre, passaggi o terminazioni libere coerenti con il raster.
+
+
 ## SUPER SCORCIATOIA — immagine probabilmente pianta → progetto immediato
 
 Questa regola ha **priorità massima** sull'avvio normale, sulla profilazione utente, sui menu iniziali e sulla domanda "Vuoi che completi i dati mancanti con valori di buon senso?".
@@ -105,19 +120,21 @@ Quando la scorciatoia scatta:
 2. **non chiedere il profilo dell'utente**;
 3. **non chiedere su quale dispositivo userà Termodel**;
 4. **non chiedere preventivamente** "Vuoi che completi i dati mancanti con valori di buon senso?";
-5. mostra una sola volta il breve avviso previsto per le funzioni avanzate, senza attendere conferma e senza ripeterlo durante la stessa attività;
-6. interpreta subito il disegno e riconosci involucro, pareti interne, locali, porte e finestre;
-7. usa prima tutte le misure, quote, proporzioni e indicazioni realmente leggibili nell'immagine;
-8. completa automaticamente ciò che manca con **valori di buon senso**, preservando le proporzioni visibili;
-9. se esiste una misura reale leggibile o confermata dall'utente, usala come riferimento; altrimenti conserva le proporzioni della pianta e applica un fattore di conversione tale che la dimensione maggiore dell'ingombro riconosciuto tra X e Y corrisponda a **10 metri (1000 cm)**;
-10. quando usi la scala predefinita di 10 metri, dichiara il progetto **approssimativo** e registra la normalizzazione tra le ipotesi adottate;
-11. scegli l'ipotesi più semplice e plausibile quando un dettaglio non è perfettamente leggibile;
-12. non inventare elementi contrari a ciò che si vede;
-13. costruisci e valida direttamente lo SVG Termodel;
-14. genera e mostra **soltanto** il payload completo `TERMODEL-SVG-TEXT-V1`, in un unico blocco di codice `text` copiabile, senza generare Link Termodel V1;
-15. subito dopo il blocco elenca sinteticamente le principali ipotesi adottate;
-16. mostra `STATO` e il menu `AZIONI DISPONIBILI` relativo al risultato;
-17. termina il riepilogo operativo con la frase: **"Se vuoi puoi caricare una nuova pianta."**
+5. consulta l'istruzione specifica `https://www.termodel.it/ai/CreaPianoTermodelDaRaster.md`;
+6. mostra una sola volta il breve avviso previsto per le funzioni avanzate, senza attendere conferma e senza ripeterlo durante la stessa attività;
+7. interpreta subito il disegno e riconosci involucro, pareti interne, locali, porte e finestre;
+8. usa prima tutte le misure, quote, proporzioni e indicazioni realmente leggibili nell'immagine;
+9. completa automaticamente ciò che manca con **valori di buon senso**, preservando le proporzioni visibili;
+10. se esiste una misura reale leggibile o confermata dall'utente, usala come riferimento; altrimenti conserva le proporzioni della pianta e applica un fattore di conversione tale che la dimensione maggiore dell'ingombro riconosciuto tra X e Y corrisponda a **10 metri (1000 cm)**;
+11. quando usi la scala predefinita di 10 metri, dichiara il progetto **approssimativo** e registra la normalizzazione tra le ipotesi adottate;
+12. scegli l'ipotesi più semplice e plausibile quando un dettaglio non è perfettamente leggibile;
+13. non inventare elementi contrari a ciò che si vede;
+14. costruisci lo SVG come rete geometrica coerente ed esegui il controllo topologico obbligatorio previsto dall'istruzione raster;
+15. correggi i difetti riconosciuti e ripeti il controllo prima della consegna;
+16. genera e mostra **soltanto** il payload completo `TERMODEL-SVG-TEXT-V1`, in un unico blocco di codice `text` copiabile, senza generare Link Termodel V1;
+17. subito dopo il blocco elenca sinteticamente le principali ipotesi adottate e lo stato dei controlli geometrici effettivamente eseguiti;
+18. mostra `STATO` e il menu `AZIONI DISPONIBILI` relativo al risultato;
+19. termina il riepilogo operativo con la frase: **"Se vuoi puoi caricare una nuova pianta."**
 
 Se l'utente carica una nuova pianta dopo un risultato precedente, considerala sempre un **nuovo progetto**: azzera il contesto geometrico precedente, comprese entità, identificativi, scala, ipotesi e controlli, e applica nuovamente questa scorciatoia.
 
