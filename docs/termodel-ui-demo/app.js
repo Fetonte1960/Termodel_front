@@ -3559,12 +3559,21 @@ function termodelTechnicalCadElements(localName) {
   const root = cadWorkingDoc?.documentElement;
   if (!root) return [];
 
-  return Array.from(root.children || [])
-    .filter(element => element.localName === 'g')
-    .flatMap(group =>
-      Array.from(group.children || [])
-        .filter(element => element.localName === localName)
-    );
+  const groups = Array.from(root.children || [])
+    .filter(element => element.localName === 'g');
+  const canonicalGroups = groups.filter(group =>
+    cadText(group.getAttribute('data-termodel-floor-id'))
+  );
+  const technicalGroups = canonicalGroups.length
+    ? canonicalGroups
+    : groups.filter(group =>
+        ['calpestabile', 'copertura'].includes(cadText(group.id).toLowerCase())
+      );
+
+  return technicalGroups.flatMap(group =>
+    Array.from(group.children || [])
+      .filter(element => element.localName === localName)
+  );
 }
 
 function termodelPendingAssociationItems() {
