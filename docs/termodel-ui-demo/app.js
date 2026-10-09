@@ -12662,12 +12662,16 @@ renderer.setAnimationLoop(() => {
 resize();
 completeTermodelMobileBoot();
 void (async () => {
-  await loadModel();
-  // Il progetto passato esplicitamente nell'URL ha priorità sul ripristino.
-  if (window.location.hash && window.location.hash.length > 1)
+  // Un progetto esplicito nel link mantiene la priorità.
+  if (window.location.hash && window.location.hash.length > 1) {
+    await loadModel();
     await importAiFromLocationHash();
-  else {
-    await restoreLastRegisteredProject();
-    await importAiFromLocationHash();
+    return;
   }
+
+  // Evita il flash del modello dimostrativo prima del ripristino Neon.
+  // Per Non Registrato il caricamento precedente rimane invariato.
+  const restored = await restoreLastRegisteredProject();
+  if (!restored) await loadModel();
+  await importAiFromLocationHash();
 })();
