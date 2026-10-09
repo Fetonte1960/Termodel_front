@@ -5208,6 +5208,16 @@ async function loadCalculatedModelFromService() {
     const serverPayload = await buildTermodelServerPayload(completeProjectText);
     assertNoPendingAssociationsInServerPayload(serverPayload);
 
+    if (TERMODEL_USER_LOGIN === 'admin') {
+      try {
+        // Persisti il progetto anche se la successiva elaborazione fallisce.
+        await saveLastRegisteredProject(completeProjectText);
+      } catch (error) {
+        console.warn('Salvataggio progetto admin su Neon non riuscito.', error);
+        setMainAiStatus('Attenzione: il progetto non è stato salvato su Neon.');
+      }
+    }
+
     const calculationPath = buildTermodelCalculationPath();
     exchange.postUrl = calculationPath;
     status.textContent = 'AggiornaCalcolo: elaborazione TermodelService...';
@@ -5251,15 +5261,6 @@ async function loadCalculatedModelFromService() {
 
     if (String(calculation.projectId) !== String(projectId))
       throw new Error('Il WebService ha restituito un projectId inatteso.');
-
-    if (TERMODEL_USER_LOGIN === 'admin') {
-      try {
-        // Salva il file completo, NON il payload ridotto usato dal calcolo.
-        await saveLastRegisteredProject(completeProjectText);
-      } catch (error) {
-        console.warn('Calcolo riuscito, ma salvataggio Neon admin non riuscito.', error);
-      }
-    }
 
     const artifacts = Array.isArray(calculation.artifacts) ? calculation.artifacts : [];
     const modelArtifact = artifacts.find(item =>
