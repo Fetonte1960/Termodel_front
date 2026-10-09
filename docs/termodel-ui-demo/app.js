@@ -226,6 +226,7 @@ const cadPage = document.getElementById('cadPage');
 const cadCanvas = document.getElementById('cadCanvas');
 const cadContextMenu = document.getElementById('cadContextMenu');
 const cadRepeatLastCommand = document.getElementById('cadRepeatLastCommand');
+const cadExtendTrim = document.getElementById('cadExtendTrim');
 const cadCloseSequence = document.getElementById('cadCloseSequence');
 const cadCloseOrthogonalSequence = document.getElementById('cadCloseOrthogonalSequence');
 const cadStopSequence = document.getElementById('cadStopSequence');
@@ -388,6 +389,7 @@ let northOrientationDeg = null;
 let cadWorkingDoc = null;
 let cadCommittedSvg = '';
 let cadSelectedLineId = '';
+let cadExtendTrimSourceId = '';
 let cadSelectedSymbolId = '';
 let cadUndoStack = [];
 let cadRedoStack = [];
@@ -10588,6 +10590,73 @@ function cadPositionContextMenu(event, height) {
   cadContextMenu.hidden = false;
 }
 
+function cadStartExtendTrim() {
+  cadHideContextMenu();
+  const source = cadFindSourceLine(cadSelectedLineId);
+  if (!source || !/^[EW]/i.test(source.id || '') || !cadEntityBelongsToCurrentPlane(source)) {
+    cadSetStatus('Estendi/Taglia: seleziona prima una parete E/W.', 'error');
+    return;
+  }
+  cadExtendTrimSourceId = source.id;
+  cadSetStatus('Estendi/Taglia ' + source.id + ': seleziona una seconda parete di riferimento. Esc annulla.');
+}
+
+function cadApplyExtendTrim(targetId) {
+  const sourceId = cadExtendTrimSourceId;
+  const source = cadFindSourceLine(sourceId);
+  const target = cadFindSourceLine(targetId);
+  // La seconda selezione termina sempre il comando, anche in caso di errore.
+  cadExtendTrimSourceId = '';
+  if (!source || !target || source === target ||
+      !/^[EW]/i.test(target.id || '') ||
+      !cadEntityBelongsToCurrentPlane(source) || !cadEntityBelongsToCurrentPlane(target)) {
+    cadSetStatus('Estendi/Taglia impossibile: scegli due pareti E/W distinte dello stesso piano.', 'error');
+    return;
+  }
+
+  const a = cadLinePoint(source, 1), b = cadLinePoint(source, 2);
+  const c = cadLinePoint(target, 1), d = cadLinePoint(target, 2);
+  const ax = b[0] - a[0], ay = b[1] - a[1];
+  const bx = d[0] - c[0], by = d[1] - c[1];
+  const cross = ax * by - ay * bx;
+  const lengthA = Math.hypot(ax, ay), lengthB = Math.hypot(bx, by);
+  if (!lengthA || !lengthB || Math.abs(cross) < 1e-8 * lengthA * lengthB) {
+    cadSetStatus('Estendi/Taglia impossibile: linee parallele o coincidenti.', 'error');
+    return;
+  }
+
+  const dx = c[0] - a[0], dy = c[1] - a[1];
+  const t = (dx * by - dy * bx) / cross;
+  const u = (dx * ay - dy * ax) / cross;
+  const tolerance = 0.001;
+  if (!Number.isFinite(t) || !Number.isFinite(u) || u < -tolerance || u > 1 + tolerance) {
+    cadSetStatus('Estendi/Taglia impossibile: le linee non si incontrano sul segmento di riferimento.', 'error');
+    return;
+  }
+
+  const point = [a[0] + t * ax, a[1] + t * ay];
+  const endpoint = Math.abs(t) <= Math.abs(1 - t) ? 1 : 2;
+  const opposite = endpoint === 1 ? b : a;
+  const newLength = Math.hypot(point[0] - opposite[0], point[1] - opposite[1]);
+  if (!Number.isFinite(newLength) || newLength < 0.05) {
+    cadSetStatus('Estendi/Taglia impossibile: la parete risulterebbe nulla.', 'error');
+    return;
+  }
+  if (Math.hypot(point[0] - (endpoint === 1 ? a[0] : b[0]),
+                  point[1] - (endpoint === 1 ? a[1] : b[1])) < 0.001) {
+    cadSetStatus('Estendi/Taglia: la parete raggiunge già il riferimento.');
+    return;
+  }
+  const before = cadSerializeWorkingSvg();
+  cadSetLinePoint(source, endpoint, point[0], point[1]);
+  cadUndoStack.push(before);
+  cadRedoStack = [];
+  cadSelectedLineId = sourceId;
+  renderCadComparison();
+  cadSetStatus(sourceId + ' · ' + (t >= 0 && t <= 1 ? 'tagliata' : 'estesa') +
+    ' fino a ' + targetId + ' · modifica non rigenerata', 'dirty');
+}
+
 function cadShowIdleContextMenu(event) {
   if (!cadContextMenu || cadToolMode !== 'select') return;
   if (cadRepeatLastCommand) {
@@ -10597,11 +10666,15 @@ function cadShowIdleContextMenu(event) {
   if (cadCloseSequence) cadCloseSequence.hidden = true;
   if (cadCloseOrthogonalSequence) cadCloseOrthogonalSequence.hidden = true;
   if (cadStopSequence) cadStopSequence.hidden = true;
-  cadPositionContextMenu(event, 36);
+  const selectedWall = cadFindSourceLine(cadSelectedLineId);
+  const canExtendTrim = !!selectedWall && /^[EW]/i.test(selectedWall.id || '') && cadEntityBelongsToCurrentPlane(selectedWall);
+  if (cadExtendTrim) cadExtendTrim.hidden = !canExtendTrim;
+  cadPositionContextMenu(event, canExtendTrim ? 72 : 36);
 }
 
 function cadShowLineContextMenu(event) {
   if (!cadContextMenu || cadToolMode !== 'line') return;
+  if (cadExtendTrim) cadExtendTrim.hidden = true;
   const canClose = cadCanCloseWallSequence();
   const pipeMode = cadToolbarState.modalita === 'rete';
   if (cadRepeatLastCommand) cadRepeatLastCommand.hidden = true;
@@ -10613,6 +10686,7 @@ function cadShowLineContextMenu(event) {
 }
 
 function cadShowWindowSequenceContextMenu(event) {
+  if (cadExtendTrim) cadExtendTrim.hidden = true;
   const activeWindowSequence =
     (cadToolMode === 'symbol' && cadSymbolInsertType === 'FIN') ||
     cadToolMode === 'window2';
@@ -11715,6 +11789,12 @@ function renderCadComparison() {
             event.preventDefault();
             event.stopPropagation();
 
+            if (cadExtendTrimSourceId) {
+              event.preventDefault();
+              event.stopPropagation();
+              cadApplyExtendTrim(id);
+              return;
+            }
             cadSelectedSymbolId = '';
             cadSelectedLineId = id;
             cadSyncOverlay(svg);
@@ -12254,6 +12334,7 @@ if (cadDelete)
 if (cadNewLine)
   cadNewLine.addEventListener('click', cadToggleNewLine);
 cadRepeatLastCommand?.addEventListener('click', cadRepeatLastCadCommand);
+cadExtendTrim?.addEventListener('click', cadStartExtendTrim);
 cadCloseSequence?.addEventListener('click', () => cadCloseWallSequence(false));
 cadCloseOrthogonalSequence?.addEventListener('click', () => cadCloseWallSequence(true));
 cadStopSequence?.addEventListener('click', () => {
