@@ -414,6 +414,9 @@ let cadGeneratedPlanByPlane = new Map();
 // Overlay runtime letto dagli artifact Service. Non entra in cadWorkingDoc e
 // quindi non modifica TERMODEL-PROJECT-TEXT-V1 né lo stack Undo/Redo.
 let cadGeneratedExecutiveOverlay = null;
+// Diagnostica geometrica restituita dal Service: runtime puro, non entra
+// nello SVG del progetto e non rende il CAD dirty.
+let cadServiceGeometryErrorState = null;
 const CAD_SNAP_DISTANCE = 12;
 const CAD_JOIN_EPSILON = 0.05;
 const CAD_CALIBRATION_ORTHO_EPSILON = 0.05;
@@ -3576,6 +3579,227 @@ function termodelTechnicalCadElements(localName) {
   );
 }
 
+function termodelParseServiceProblem(body) {
+  if (!body) return null;
+  try {
+    const parsed = typeof body === 'string' ? JSON.parse(body) : body;
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function termodelIsGeometryProblem(problem, statusCode) {
+  if (Number(statusCode) !== 422 || !problem || typeof problem !== 'object')
+    return false;
+
+  const errors = Array.isArray(problem.errors) ? problem.errors : [];
+  return problem.title === 'Errori geometrici nel disegno di input' ||
+    errors.some(error => cadText(error?.code) === 'DXF_GRAPHIC_ERROR');
+}
+
+function cadServiceGeometryPointCm(point) {
+  const x = Number(point?.x);
+  const y = Number(point?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return [x * 100, y * 100];
+}
+
+function cadServiceGeometryPointSegmentDistance(point, start, end) {
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const length2 = dx * dx + dy * dy;
+  if (length2 <= 1e-12)
+    return Math.hypot(point[0] - start[0], point[1] - start[1]);
+
+  const t = Math.max(0, Math.min(
+    1,
+    ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / length2
+  ));
+  const px = start[0] + t * dx;
+  const py = start[1] + t * dy;
+  return Math.hypot(point[0] - px, point[1] - py);
+}
+
+function cadMatchServiceGeometrySourceLine(startCm, endCm) {
+  if (!startCm || !endCm) return null;
+
+  const toleranceCm = 0.75;
+  let best = null;
+
+  termodelTechnicalCadElements('line').forEach(line => {
+    const start = cadLinePoint(line, 1);
+    const end = cadLinePoint(line, 2);
+    const d1 = cadServiceGeometryPointSegmentDistance(startCm, start, end);
+    const d2 = cadServiceGeometryPointSegmentDistance(endCm, start, end);
+    if (d1 > toleranceCm || d2 > toleranceCm) return;
+
+    const sourceLength = Math.hypot(end[0] - start[0], end[1] - start[1]);
+    const errorLength = Math.hypot(endCm[0] - startCm[0], endCm[1] - startCm[1]);
+    const score = d1 + d2 + Math.max(0, sourceLength - errorLength) * 0.0001;
+
+    if (!best || score < best.score)
+      best = { line, score };
+  });
+
+  return best?.line || null;
+}
+
+function cadServiceGeometryLayerFromContext(context) {
+  const match = /(?:^|\s)Layer:\s*([^\r\n]+?)\s*$/i.exec(String(context || ''));
+  return match ? cadText(match[1]) : '';
+}
+
+function cadServiceGeometryProblemState(problem) {
+  const segments = [];
+  const errors = Array.isArray(problem?.errors) ? problem.errors : [];
+
+  errors.forEach((error, errorIndex) => {
+    const lines = Array.isArray(error?.lines) ? error.lines : [];
+    lines.forEach((line, lineIndex) => {
+      const startCm = cadServiceGeometryPointCm(line?.start);
+      const endCm = cadServiceGeometryPointCm(line?.end);
+      if (!startCm || !endCm) return;
+
+      const source = cadMatchServiceGeometrySourceLine(startCm, endCm);
+      segments.push({
+        errorIndex,
+        lineIndex,
+        sourceId: cadText(source?.id),
+        plane: cadEntityPlane(source),
+        startCm,
+        endCm,
+        startM: [Number(line.start.x), Number(line.start.y)],
+        endM: [Number(line.end.x), Number(line.end.y)],
+        message: cadText(error?.message) || cadText(problem?.detail),
+        context: cadText(error?.context),
+        userData: cadText(line?.userData)
+      });
+    });
+  });
+
+  let plane = cadText(segments.find(segment => segment.plane)?.plane);
+  if (!plane) {
+    const knownPlanes = cadArchiveRecords('Piani')
+      .map(record => cadText(record?.Nome))
+      .filter(Boolean);
+    for (const error of errors) {
+      const layer = cadServiceGeometryLayerFromContext(error?.context);
+      const match = knownPlanes.find(name =>
+        name.localeCompare(layer, 'it', { sensitivity: 'base' }) === 0
+      );
+      if (match) {
+        plane = match;
+        break;
+      }
+    }
+  }
+
+  return { problem, segments, plane };
+}
+
+function cadFormatServiceGeometryError(state) {
+  const problem = state?.problem || {};
+  const detail =
+    cadText(problem.detail) ||
+    cadText(state?.segments?.[0]?.message) ||
+    'Errore geometrico nel disegno di input';
+  const segments = Array.isArray(state?.segments) ? state.segments : [];
+  const coordinates = segments.slice(0, 4).map(segment =>
+    '(' + segment.startM[0].toFixed(2) + ', ' + segment.startM[1].toFixed(2) + ')' +
+    ' → ' +
+    '(' + segment.endM[0].toFixed(2) + ', ' + segment.endM[1].toFixed(2) + ')'
+  );
+  return '✗ ' + detail +
+    (state?.plane ? ' · Piano ' + state.plane : '') +
+    ' · ' + segments.length + ' linea/e' +
+    (coordinates.length ? ' · ' + coordinates.join('; ') : '');
+}
+
+function cadSetServiceGeometryProblem(problem) {
+  if (!cadWorkingDoc && validatedSvg) {
+    try {
+      cadSetWorkingSvg(validatedSvg);
+    } catch (error) {
+      console.warn('Impossibile preparare il CAD per la diagnostica geometrica.', error);
+    }
+  }
+
+  cadServiceGeometryErrorState = cadServiceGeometryProblemState(problem);
+
+  if (cadServiceGeometryErrorState.plane)
+    cadToolbarState.piano = cadServiceGeometryErrorState.plane;
+
+  if (cadShowInput)
+    cadShowInput.checked = true;
+
+  activateCadPage();
+  cadRefreshToolbarControls();
+  renderCadComparison();
+  cadSetStatus(cadFormatServiceGeometryError(cadServiceGeometryErrorState), 'error');
+}
+
+function cadClearServiceGeometryProblem() {
+  if (!cadServiceGeometryErrorState) return;
+  cadServiceGeometryErrorState = null;
+  if (cadPage?.classList.contains('active'))
+    renderCadComparison();
+}
+
+function cadFindServiceGeometrySourceById(segment) {
+  if (!segment?.sourceId) return null;
+  return termodelTechnicalCadElements('line').find(line =>
+    cadText(line.id) === segment.sourceId &&
+    (!segment.plane || cadEntityPlane(line) === segment.plane)
+  ) || null;
+}
+
+function cadRenderServiceGeometryErrors(svg) {
+  if (!svg || !cadServiceGeometryErrorState?.segments?.length) return;
+
+  const currentPlane = cadCurrentPlane();
+  const layer = svgNode('g', {
+    id: 'cadServiceGeometryErrorLayer',
+    'pointer-events': 'none',
+    'aria-label': 'Errori geometrici rilevati dal Termodel Service'
+  });
+  const renderedSources = new Set();
+
+  cadServiceGeometryErrorState.segments.forEach(segment => {
+    if (segment.plane && currentPlane && segment.plane !== currentPlane)
+      return;
+
+    const source = cadFindServiceGeometrySourceById(segment);
+    const sourceKey = source
+      ? (cadEntityPlane(source) + '|' + cadText(source.id))
+      : '';
+
+    if (sourceKey && renderedSources.has(sourceKey))
+      return;
+    if (sourceKey)
+      renderedSources.add(sourceKey);
+
+    const start = source ? cadLinePoint(source, 1) : segment.startCm;
+    const end = source ? cadLinePoint(source, 2) : segment.endCm;
+
+    layer.appendChild(svgNode('line', {
+      x1: start[0],
+      y1: start[1],
+      x2: end[0],
+      y2: end[1],
+      stroke: '#c00000',
+      'stroke-width': 6.2,
+      'stroke-dasharray': '14 8',
+      'stroke-linecap': 'round',
+      opacity: 1,
+      'vector-effect': 'non-scaling-stroke'
+    }));
+  });
+
+  if (layer.childNodes.length)
+    svg.appendChild(layer);
+}
+
 function termodelPendingAssociationItems() {
   if (!cadWorkingDoc) return [];
 
@@ -4941,9 +5165,20 @@ async function loadCalculatedModelFromService() {
     exchange.postBody = await calculationResponse.clone().text();
 
     if (!calculationResponse.ok) {
+      const problem = termodelParseServiceProblem(exchange.postBody);
+      if (termodelIsGeometryProblem(problem, calculationResponse.status)) {
+        cadSetServiceGeometryProblem(problem);
+        const detail = cadText(problem?.detail) || cadText(problem?.title) || 'Errore geometrico';
+        throw new Error('AggiornaCalcolo: ' + detail);
+      }
+
       const detail = await readTermodelServiceError(calculationResponse);
       throw new Error('AggiornaCalcolo: ' + detail);
     }
+
+    // Un calcolo accettato dal Service rende superata l'eventuale evidenza
+    // geometrica della precedente elaborazione fallita.
+    cadClearServiceGeometryProblem();
 
     const calculation = await calculationResponse.json();
     if (calculation.contractVersion !== 'TERMODEL-FRONT-SERVICE-V1')
@@ -11526,6 +11761,8 @@ function renderCadComparison() {
   }
 
   svg.appendChild(inputLayer);
+  // Overlay runtime degli errori geometrici Service: non modifica cadWorkingDoc.
+  cadRenderServiceGeometryErrors(svg);
   cadRenderNorthOverlay(svg, vb);
   cadCanvas.appendChild(svg);
 
