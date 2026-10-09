@@ -934,6 +934,8 @@ function selectedTermodelSpiralClosure() {
 function buildTermodelCalculationPath() {
   const categories = selectedTermodelLogCategories();
   const query = new URLSearchParams();
+  if (TERMODEL_USER_REGISTERED)
+    query.set('utente', TERMODEL_USER_LOGIN);
   if (!categories.length) {
     query.set('logEnabled', 'false');
   } else {
@@ -5210,30 +5212,25 @@ async function loadCalculatedModelFromService() {
     let completeProjectText = await buildCurrentProjectText();
     const projectId = ensureCurrentProjectId();
     completeProjectText = currentProjectText;
-    if (TERMODEL_USER_REGISTERED) {
-      try {
-        // Persisti il progetto anche se la successiva elaborazione fallisce.
-        await saveLastRegisteredProject(completeProjectText);
-      } catch (error) {
-        console.warn('Salvataggio progetto admin su Neon non riuscito.', error);
-        setMainAiStatus('Attenzione: il progetto non è stato salvato su Neon.');
-      }
-    }
-
     const serverPayload = await buildTermodelServerPayload(completeProjectText);
     assertNoPendingAssociationsInServerPayload(serverPayload);
 
     const calculationPath = buildTermodelCalculationPath();
     exchange.postUrl = calculationPath;
     status.textContent = 'AggiornaCalcolo: elaborazione TermodelService...';
+    const registeredBody = TERMODEL_USER_REGISTERED ? new FormData() : null;
+    if (registeredBody) {
+      registeredBody.append('projectText', completeProjectText);
+      registeredBody.append('calculationText', serverPayload);
+    }
     const calculationResponse = await fetchTermodelService(
       calculationPath,
       {
         method: 'POST',
-        headers: {
+        headers: registeredBody ? {} : {
           'Content-Type': 'text/plain; charset=utf-8'
         },
-        body: serverPayload,
+        body: registeredBody || serverPayload,
         cache: 'no-store'
       }
     );
