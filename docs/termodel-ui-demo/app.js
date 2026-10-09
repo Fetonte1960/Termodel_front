@@ -3701,20 +3701,20 @@ function cadServiceGeometryProblemState(problem) {
 
 function cadFormatServiceGeometryError(state) {
   const problem = state?.problem || {};
-  const detail =
-    cadText(problem.detail) ||
+  const errors = Array.isArray(problem.errors) ? problem.errors : [];
+  // Il payload strutturato conserva piano, linee e coordinate per la grafica.
+  // Nell'avviso utente mostriamo soltanto la descrizione dell'anomalia.
+  const raw = cadText(errors.find(error => cadText(error?.message))?.message) ||
     cadText(state?.segments?.[0]?.message) ||
-    'Errore geometrico nel disegno di input';
-  const segments = Array.isArray(state?.segments) ? state.segments : [];
-  const coordinates = segments.slice(0, 4).map(segment =>
-    '(' + segment.startM[0].toFixed(2) + ', ' + segment.startM[1].toFixed(2) + ')' +
-    ' → ' +
-    '(' + segment.endM[0].toFixed(2) + ', ' + segment.endM[1].toFixed(2) + ')'
-  );
-  return '✗ ' + detail +
-    (state?.plane ? ' · Piano ' + state.plane : '') +
-    ' · ' + segments.length + ' linea/e' +
-    (coordinates.length ? ' · ' + coordinates.join('; ') : '');
+    cadText(problem.detail);
+  const essential = raw
+    .replace(/\\b(?:errore geometrico (?:nel )?)?disegno di input\\b\\s*[:.\\-–]?/gi, '')
+    .replace(/\\s*[·|]\\s*(?:piano|layer)\\s*[:=]?\\s*[^·|;\\r\\n]+/gi, '')
+    .replace(/\\s*[·|]\\s*\\d+\\s+linee?\\b/gi, '')
+    .replace(/\\s*[·|]\\s*\\([^)]*\\)\\s*(?:→|->)\\s*\\([^)]*\\)/g, '')
+    .replace(/^[\\s:;,.·–-]+|[\\s:;,.·–-]+$/g, '')
+    .trim();
+  return essential || 'Errore geometrico';
 }
 
 function cadRefreshServiceGeometryErrorBanner() {
