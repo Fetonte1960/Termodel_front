@@ -78,11 +78,12 @@ const APP_VERSION = String(
   new URL(import.meta.url).searchParams.get('v') ||
   'dev'
 ).trim();
-// Identità operativa di sola visualizzazione: nessuna autenticazione attiva.
-// Configurare globalThis.TERMODEL_USER_LOGIN = null per "Non Registrato".
-const TERMODEL_USER_LOGIN = globalThis.TERMODEL_USER_LOGIN === undefined
-  ? 'admin'
-  : String(globalThis.TERMODEL_USER_LOGIN ?? '').trim();
+// Identità esclusivamente visuale: NON è un'autenticazione o un controllo accessi.
+// Solo ?utente=admin abilita la caption admin; qualsiasi altro caso è anonimo.
+const TERMODEL_USER_LOGIN =
+  new URLSearchParams(window.location.search).get('utente') === 'admin'
+    ? 'admin'
+    : '';
 const TERMODEL_USER_CAPTION = TERMODEL_USER_LOGIN || 'Non Registrato';
 function buildTermodelCaption(area) {
   const normalizedArea = String(area || '').trim();
