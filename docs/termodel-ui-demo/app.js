@@ -78,13 +78,18 @@ const APP_VERSION = String(
   new URL(import.meta.url).searchParams.get('v') ||
   'dev'
 ).trim();
-// Identità esclusivamente visuale: NON è un'autenticazione o un controllo accessi.
-// Solo ?utente=admin abilita la caption admin; qualsiasi altro caso è anonimo.
+// Identità dichiarativa di test: NON è autenticazione né controllo accessi.
+// Nessun parametro o "Non Registrato" lasciano invariata la modalità pubblica.
+const termodelRequestedUser = String(
+  new URLSearchParams(window.location.search).get('utente') || ''
+).trim();
 const TERMODEL_USER_LOGIN =
-  new URLSearchParams(window.location.search).get('utente') === 'admin'
-    ? 'admin'
+  /^[a-z][a-z0-9_]{0,63}$/.test(termodelRequestedUser) &&
+  termodelRequestedUser.toLowerCase() !== 'non_registrato'
+    ? termodelRequestedUser
     : '';
-const TERMODEL_USER_CAPTION = TERMODEL_USER_LOGIN || 'Non Registrato';
+const TERMODEL_USER_REGISTERED = !!TERMODEL_USER_LOGIN;
+const TERMODEL_USER_CAPTION = TERMODEL_USER_REGISTERED ? TERMODEL_USER_LOGIN : 'Non Registrato';
 function buildTermodelCaption(area) {
   const normalizedArea = String(area || '').trim();
   return `Termodel V:${APP_VERSION}${normalizedArea ? ` — ${normalizedArea}` : ''} — Utente: ${TERMODEL_USER_CAPTION}`;
@@ -5135,8 +5140,8 @@ async function readTermodelServiceError(response) {
 }
 
 async function saveLastRegisteredProject(projectText) {
-  if (TERMODEL_USER_LOGIN !== 'admin') return;
-  const response = await fetchTermodelService('/api/registered/admin/last-project', {
+  if (!TERMODEL_USER_REGISTERED) return;
+  const response = await fetchTermodelService('/api/registered/' + encodeURIComponent(TERMODEL_USER_LOGIN) + '/last-project', {
     method: 'PUT',
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     body: projectText,
@@ -5147,9 +5152,9 @@ async function saveLastRegisteredProject(projectText) {
 }
 
 async function restoreLastRegisteredProject() {
-  if (TERMODEL_USER_LOGIN !== 'admin') return false;
+  if (!TERMODEL_USER_REGISTERED) return false;
   try {
-    const response = await fetchTermodelService('/api/registered/admin/last-project', {
+    const response = await fetchTermodelService('/api/registered/' + encodeURIComponent(TERMODEL_USER_LOGIN) + '/last-project', {
       cache: 'no-store'
     });
     if (response.status === 204) return false;
@@ -5205,7 +5210,7 @@ async function loadCalculatedModelFromService() {
     let completeProjectText = await buildCurrentProjectText();
     const projectId = ensureCurrentProjectId();
     completeProjectText = currentProjectText;
-    if (TERMODEL_USER_LOGIN === 'admin') {
+    if (TERMODEL_USER_REGISTERED) {
       try {
         // Persisti il progetto anche se la successiva elaborazione fallisce.
         await saveLastRegisteredProject(completeProjectText);
