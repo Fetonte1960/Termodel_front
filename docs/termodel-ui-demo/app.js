@@ -282,6 +282,7 @@ const cadInsertRidge = document.getElementById('cadInsertRidge');
 const cadNewLineType = document.getElementById('cadNewLineType');
 const cadEntitySeparator = document.getElementById('cadEntitySeparator');
 const cadEditStatus = document.getElementById('cadEditStatus');
+const cadServiceGeometryErrorBanner = document.getElementById('cadServiceGeometryErrorBanner');
 const cadPropertiesHead = document.getElementById('cadPropertiesHead');
 const cadPropertiesEmpty = document.getElementById('cadPropertiesEmpty');
 const cadPropertiesBody = document.getElementById('cadPropertiesBody');
@@ -3716,6 +3717,15 @@ function cadFormatServiceGeometryError(state) {
     (coordinates.length ? ' · ' + coordinates.join('; ') : '');
 }
 
+function cadRefreshServiceGeometryErrorBanner() {
+  if (!cadServiceGeometryErrorBanner) return;
+  const state = cadServiceGeometryErrorState;
+  cadServiceGeometryErrorBanner.hidden = !state;
+  cadServiceGeometryErrorBanner.textContent = state
+    ? cadFormatServiceGeometryError(state)
+    : '';
+}
+
 function cadSetServiceGeometryProblem(problem) {
   if (!cadWorkingDoc && validatedSvg) {
     try {
@@ -3726,6 +3736,7 @@ function cadSetServiceGeometryProblem(problem) {
   }
 
   cadServiceGeometryErrorState = cadServiceGeometryProblemState(problem);
+  cadRefreshServiceGeometryErrorBanner();
 
   if (cadServiceGeometryErrorState.plane)
     cadToolbarState.piano = cadServiceGeometryErrorState.plane;
@@ -3742,6 +3753,7 @@ function cadSetServiceGeometryProblem(problem) {
 function cadClearServiceGeometryProblem() {
   if (!cadServiceGeometryErrorState) return;
   cadServiceGeometryErrorState = null;
+  cadRefreshServiceGeometryErrorBanner();
   if (cadPage?.classList.contains('active'))
     renderCadComparison();
 }
