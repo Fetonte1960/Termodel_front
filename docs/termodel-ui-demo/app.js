@@ -5205,9 +5205,6 @@ async function loadCalculatedModelFromService() {
     let completeProjectText = await buildCurrentProjectText();
     const projectId = ensureCurrentProjectId();
     completeProjectText = currentProjectText;
-    const serverPayload = await buildTermodelServerPayload(completeProjectText);
-    assertNoPendingAssociationsInServerPayload(serverPayload);
-
     if (TERMODEL_USER_LOGIN === 'admin') {
       try {
         // Persisti il progetto anche se la successiva elaborazione fallisce.
@@ -5217,6 +5214,9 @@ async function loadCalculatedModelFromService() {
         setMainAiStatus('Attenzione: il progetto non è stato salvato su Neon.');
       }
     }
+
+    const serverPayload = await buildTermodelServerPayload(completeProjectText);
+    assertNoPendingAssociationsInServerPayload(serverPayload);
 
     const calculationPath = buildTermodelCalculationPath();
     exchange.postUrl = calculationPath;
