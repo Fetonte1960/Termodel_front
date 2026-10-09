@@ -12212,6 +12212,11 @@ rasterAiModal.addEventListener('click', (event) => {
 });
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
+  if (cadExtendTrimSourceId) {
+    cadExtendTrimSourceId = '';
+    cadSetStatus('Estendi/Taglia annullato.');
+    return;
+  }
   if (pdfImportModal?.classList.contains('visible')) {
     closePdfImportDialog(false);
     return;
