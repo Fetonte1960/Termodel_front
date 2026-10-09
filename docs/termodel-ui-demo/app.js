@@ -3755,7 +3755,9 @@ function cadFindServiceGeometrySourceById(segment) {
 }
 
 function cadRenderServiceGeometryErrors(svg) {
-  if (!svg || !cadServiceGeometryErrorState?.segments?.length) return;
+  if (!svg) return;
+  svg.querySelector('#cadServiceGeometryErrorLayer')?.remove();
+  if (!cadServiceGeometryErrorState?.segments?.length) return;
 
   const currentPlane = cadCurrentPlane();
   const layer = svgNode('g', {
@@ -3796,8 +3798,15 @@ function cadRenderServiceGeometryErrors(svg) {
     }));
   });
 
-  if (layer.childNodes.length)
-    svg.appendChild(layer);
+  if (layer.childNodes.length) {
+    const anchor =
+      svg.querySelector('#cadHandlesLayer') ||
+      svg.querySelector('#cadNorthOverlay');
+    if (anchor)
+      svg.insertBefore(layer, anchor);
+    else
+      svg.appendChild(layer);
+  }
 }
 
 function termodelPendingAssociationItems() {
@@ -11357,6 +11366,9 @@ function cadSyncOverlay(svg) {
     displaySymbol.classList.toggle('selected', id === cadSelectedSymbolId);
   });
 
+  // Mantiene l'evidenza diagnostica agganciata alla geometria anche durante
+  // drag/spostamenti effettuati per correggere l'errore.
+  cadRenderServiceGeometryErrors(svg);
   cadRenderSelectionHandles(svg);
   cadUpdatePropertiesPanel();
   cadUpdateControls();
