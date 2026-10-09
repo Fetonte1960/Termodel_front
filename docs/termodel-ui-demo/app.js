@@ -78,9 +78,15 @@ const APP_VERSION = String(
   new URL(import.meta.url).searchParams.get('v') ||
   'dev'
 ).trim();
+// Identità operativa di sola visualizzazione: nessuna autenticazione attiva.
+// Configurare globalThis.TERMODEL_USER_LOGIN = null per "Non Registrato".
+const TERMODEL_USER_LOGIN = globalThis.TERMODEL_USER_LOGIN === undefined
+  ? 'admin'
+  : String(globalThis.TERMODEL_USER_LOGIN ?? '').trim();
+const TERMODEL_USER_CAPTION = TERMODEL_USER_LOGIN || 'Non Registrato';
 function buildTermodelCaption(area) {
   const normalizedArea = String(area || '').trim();
-  return `Termodel V:${APP_VERSION}${normalizedArea ? ` — ${normalizedArea}` : ''}`;
+  return `Termodel V:${APP_VERSION}${normalizedArea ? ` — ${normalizedArea}` : ''} — Utente: ${TERMODEL_USER_CAPTION}`;
 }
 const APP_MAIN_TITLE = buildTermodelCaption('Web');
 const APP_CAD_TITLE = buildTermodelCaption('CAD 2D');
