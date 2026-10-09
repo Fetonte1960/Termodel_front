@@ -80,9 +80,13 @@ const APP_VERSION = String(
 ).trim();
 // Identità dichiarativa di test: NON è autenticazione né controllo accessi.
 // Nessun parametro o "Non Registrato" lasciano invariata la modalità pubblica.
-const termodelRequestedUser = String(
-  new URLSearchParams(window.location.search).get('utente') || ''
-).trim();
+const termodelLaunchParams = new URLSearchParams(window.location.search);
+const termodelDevelopmentAlias =
+  termodelLaunchParams.get('sviluppo') === 'diego1960fetonte';
+// Alias esclusivamente per collaudo: non costituisce login o autorizzazione.
+const termodelRequestedUser = termodelDevelopmentAlias
+  ? 'admin'
+  : String(termodelLaunchParams.get('utente') || '').trim();
 const TERMODEL_USER_LOGIN =
   /^[a-z][a-z0-9_]{0,63}$/.test(termodelRequestedUser) &&
   termodelRequestedUser.toLowerCase() !== 'non_registrato'
