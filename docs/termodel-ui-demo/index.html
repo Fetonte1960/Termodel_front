@@ -1204,6 +1204,18 @@
       overflow: hidden; background: #f6f6f6;
       display: flex; align-items: center; justify-content: center;
     }
+    /* Avviso diagnostico sopra il CAD, indipendente dalle coordinate SVG. */
+    .cad-geometry-error-banner {
+      position: absolute; top: 49px; left: 16px; z-index: 5;
+      box-sizing: border-box; max-width: min(820px, calc(100% - 342px));
+      padding: 10px 14px; border: 2px solid #b00000; border-radius: 5px;
+      background: rgba(255, 247, 247, .97); color: #b00000;
+      font-size: 19px; font-weight: 750; line-height: 1.35;
+      white-space: normal; overflow-wrap: anywhere;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    }
+    .cad-geometry-error-banner[hidden] { display: none !important; }
     .cad-canvas svg { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
     .cad-canvas.symbol-insert-mode svg { cursor: crosshair; }
     .cad-canvas.wall-insert-mode svg,
@@ -2410,6 +2422,7 @@
                 <div id="cadCanvas" class="cad-canvas">
           <div class="cad-empty">Genera prima una pianta da raster con AI. Qui potrai correggere direttamente le pareti E/W del DisegnoInput.svg.</div>
         </div>
+        <div id="cadServiceGeometryErrorBanner" class="cad-geometry-error-banner" role="alert" hidden></div>
         <div id="cadContextMenu" class="cad-context-menu" hidden role="menu" aria-label="Menu contestuale CAD">
           <button id="cadRepeatLastCommand" type="button" role="menuitem" hidden>Ripeti ultimo comando</button>
           <button id="cadCloseSequence" type="button" role="menuitem" hidden>Chiudi</button>
