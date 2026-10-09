@@ -5238,15 +5238,6 @@ async function loadCalculatedModelFromService() {
       throw new Error('AggiornaCalcolo: ' + detail);
     }
 
-    if (TERMODEL_USER_LOGIN === 'admin') {
-      try {
-        // Salva il file completo, NON il payload ridotto usato dal calcolo.
-        await saveLastRegisteredProject(completeProjectText);
-      } catch (error) {
-        console.warn('Calcolo riuscito, ma salvataggio Neon admin non riuscito.', error);
-      }
-    }
-
     // Un calcolo accettato dal Service rende superata l'eventuale evidenza
     // geometrica della precedente elaborazione fallita.
     cadClearServiceGeometryProblem();
@@ -5260,6 +5251,15 @@ async function loadCalculatedModelFromService() {
 
     if (String(calculation.projectId) !== String(projectId))
       throw new Error('Il WebService ha restituito un projectId inatteso.');
+
+    if (TERMODEL_USER_LOGIN === 'admin') {
+      try {
+        // Salva il file completo, NON il payload ridotto usato dal calcolo.
+        await saveLastRegisteredProject(completeProjectText);
+      } catch (error) {
+        console.warn('Calcolo riuscito, ma salvataggio Neon admin non riuscito.', error);
+      }
+    }
 
     const artifacts = Array.isArray(calculation.artifacts) ? calculation.artifacts : [];
     const modelArtifact = artifacts.find(item =>
