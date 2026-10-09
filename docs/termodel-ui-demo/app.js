@@ -5134,6 +5134,38 @@ async function readTermodelServiceError(response) {
   return 'HTTP ' + response.status;
 }
 
+async function saveLastRegisteredProject(projectText) {
+  if (TERMODEL_USER_LOGIN !== 'admin') return;
+  const response = await fetchTermodelService('/api/registered/admin/last-project', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    body: projectText,
+    cache: 'no-store'
+  });
+  if (!response.ok)
+    throw new Error('Archivio Neon admin: HTTP ' + response.status);
+}
+
+async function restoreLastRegisteredProject() {
+  if (TERMODEL_USER_LOGIN !== 'admin') return false;
+  try {
+    const response = await fetchTermodelService('/api/registered/admin/last-project', {
+      cache: 'no-store'
+    });
+    if (response.status === 204) return false;
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const saved = await response.json();
+    if (!isCompleteTermodelProjectText(saved.projectText))
+      throw new Error('Il testo restituito non è un progetto Termodel valido.');
+    await loadProjectTextIntoFrontend(saved.projectText);
+    setMainAiStatus('✓ Ripristinato ultimo progetto di admin da Neon.');
+    return true;
+  } catch (error) {
+    console.warn('Ripristino ultimo progetto admin non disponibile.', error);
+    return false;
+  }
+}
+
 async function loadCalculatedModelFromService() {
   if (loading) return;
   if (!await ensureLatestTermodelFrontend()) return;
@@ -5204,6 +5236,15 @@ async function loadCalculatedModelFromService() {
 
       const detail = await readTermodelServiceError(calculationResponse);
       throw new Error('AggiornaCalcolo: ' + detail);
+    }
+
+    if (TERMODEL_USER_LOGIN === 'admin') {
+      try {
+        // Salva il file completo, NON il payload ridotto usato dal calcolo.
+        await saveLastRegisteredProject(completeProjectText);
+      } catch (error) {
+        console.warn('Calcolo riuscito, ma salvataggio Neon admin non riuscito.', error);
+      }
     }
 
     // Un calcolo accettato dal Service rende superata l'eventuale evidenza
@@ -12619,5 +12660,11 @@ resize();
 completeTermodelMobileBoot();
 void (async () => {
   await loadModel();
-  await importAiFromLocationHash();
+  // Il progetto passato esplicitamente nell'URL ha priorità sul ripristino.
+  if (window.location.hash && window.location.hash.length > 1)
+    await importAiFromLocationHash();
+  else {
+    await restoreLastRegisteredProject();
+    await importAiFromLocationHash();
+  }
 })();
