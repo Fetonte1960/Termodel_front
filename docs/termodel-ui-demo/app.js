@@ -10316,7 +10316,11 @@ function cadUpdateControls() {
   if (cadNewLineType) cadNewLineType.disabled = !hasDoc || busy;
   if (cadExportArchitectural) cadExportArchitectural.disabled = !lastGeneratedPlan || dirty || busy;
 
-  if (!hasDoc) cadSetStatus('Genera prima una pianta');
+  // Un errore geometrico del Service rimane prioritario nello status CAD:
+  // la selezione di una parete e i refresh della toolbar non lo cancellano.
+  if (cadServiceGeometryErrorState)
+    cadSetStatus(cadFormatServiceGeometryError(cadServiceGeometryErrorState), 'error');
+  else if (!hasDoc) cadSetStatus('Genera prima una pianta');
   else if (drawingLine) {
     const tipo = (cadNewLineType?.value || 'W').toUpperCase();
     const lineLabel = networkMode
