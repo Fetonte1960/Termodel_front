@@ -84,9 +84,11 @@ const termodelLaunchParams = new URLSearchParams(window.location.search);
 const termodelDevelopmentAlias =
   termodelLaunchParams.get('sviluppo') === 'diego1960fetonte';
 // Alias esclusivamente per collaudo: non costituisce login o autorizzazione.
-const termodelRequestedUser = termodelDevelopmentAlias
-  ? 'admin'
-  : String(termodelLaunchParams.get('utente') || '').trim();
+const termodelUrlUser = String(termodelLaunchParams.get('utente') || '').trim();
+const termodelRequestedUser =
+  termodelDevelopmentAlias || termodelUrlUser === 'diego1960fetonte'
+    ? 'admin'
+    : termodelUrlUser;
 const TERMODEL_USER_LOGIN =
   /^[a-z][a-z0-9_]{0,63}$/.test(termodelRequestedUser) &&
   termodelRequestedUser.toLowerCase() !== 'non_registrato'
