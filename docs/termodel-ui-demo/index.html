@@ -2840,6 +2840,25 @@
   </div>
 
 
+  <div id="cadStructuresModal" class="ai-instruct-modal" aria-hidden="true">
+    <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="cadStructuresTitle">
+      <header class="ai-instruct-head">
+        <h2 id="cadStructuresTitle">Strutture edilizie per il CAD</h2>
+        <button id="cadStructuresClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
+      </header>
+      <div class="ai-instruct-body">
+        <p>Scegli gli archivi da usare prima di aprire il CAD2D.</p>
+        <div class="project-start-actions">
+          <button id="cadStructuresDefault" class="primary" type="button">Strutture Termodel<br><small>Usa gli archivi predefiniti e apri il CAD</small></button>
+          <button id="cadStructuresXml" type="button">Importa XML nazionale<br><small>Seleziona un file XML esportato da un altro software</small></button>
+        </div>
+        <input id="cadStructuresXmlFile" type="file" accept=".xml,application/xml,text/xml" hidden />
+        <p id="cadStructuresStatus" role="status" aria-live="polite"></p>
+      </div>
+      <footer class="ai-instruct-foot"><button id="cadStructuresCancel" type="button">Annulla</button></footer>
+    </section>
+  </div>
+
   <div id="rasterAiModal" class="raster-ai-modal" aria-hidden="true">
     <section class="raster-ai-window" role="dialog" aria-modal="true" aria-labelledby="rasterAiTitle">
       <header class="raster-ai-head">
