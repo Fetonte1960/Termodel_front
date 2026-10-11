@@ -5657,25 +5657,97 @@ cadStructuresDefault?.addEventListener('click', () => {
   void startBlankProjectFromCad();
 });
 cadStructuresXml?.addEventListener('click', () => cadStructuresXmlFile?.click());
+// Riprende le collezioni importate in GestXml.cs nel Desktop.
+// L'XML base resta integralmente nel progetto per il round-trip.
+function parseNationalXmlArchives(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.querySelector('parsererror') || !doc.documentElement)
+    throw new Error('Il file non contiene un documento XML valido.');
+  const elements = name => Array.from(doc.getElementsByTagName('*'))
+    .filter(node => node.localName === name);
+  const child = (node, name) => Array.from(node?.children || [])
+    .find(item => item.localName === name);
+  const value = (node, name) => String(child(node, name)?.textContent || '').trim();
+  const identity = node => child(node, 'identificativo');
+  const unique = rows => Array.from(new Map(rows.map(row => [
+    String(row.Codice || row.Descrizione).trim(), row
+  ])).values());
+  const Pareti = unique(elements('stratigrafia').map(node => {
+    const id = identity(node);
+    const descrizione = value(id, 'descrizione');
+    const codice = value(id, 'id');
+    return { Codice: codice, Descrizione: descrizione,
+      DescBreve: descrizione.includes(':') ? descrizione.split(':').slice(1).join(':').trim() : descrizione,
+      PontiAutomatici: 'Parete' };
+  }).filter(row => row.Codice || row.Descrizione));
+  const Finestre = unique(elements('vetrata').map(node => {
+    const id = identity(node);
+    const descrizione = value(id, 'descrizione');
+    return { Codice: value(id, 'id'), Descrizione: descrizione,
+      DescBreve: descrizione.includes(':') ? descrizione.split(':').slice(1).join(':').trim() : descrizione,
+      Finestrata: 'Finestra semplice', PontiAutomatici: 'Finestra' };
+  }).filter(row => row.Codice || row.Descrizione));
+  const Ponti = unique(elements('PonteTermico').map(node => ({
+    Descrizione: value(node, 'descrizione'),
+    DescBreve: value(node, 'descrizione'),
+    TrasmLin: value(node, 'trasmittanzaLineare'),
+    Categoria: value(node, 'categoria')
+  })).filter(row => row.Descrizione && row.TrasmLin));
+  const Zone = unique(elements('subEdificio').map(node => {
+    const id = identity(node);
+    const descrizione = value(id, 'descrizione');
+    return { Codice: descrizione, IDXML: value(id, 'id'),
+      Descrizione: descrizione, Tipo: 'AmbienteClimatizzato' };
+  }).filter(row => row.Codice || row.IDXML));
+  const count = Pareti.length + Finestre.length + Ponti.length + Zone.length;
+  if (!count)
+    throw new Error('XML leggibile ma senza strutture o zone compatibili con il lettore Desktop.');
+  return { Pareti, Finestre, Ponti, Zone };
+}
+
 cadStructuresXmlFile?.addEventListener('change', async () => {
   const file = cadStructuresXmlFile.files?.[0];
   cadStructuresXmlFile.value = '';
   if (!file) return;
+  if (cadStructuresStatus) cadStructuresStatus.textContent = 'Importazione XML in corso…';
   try {
     const xml = await file.text();
-    const parsed = new DOMParser().parseFromString(xml, 'application/xml');
-    if (parsed.querySelector('parsererror') || !parsed.documentElement)
-      throw new Error('Il file non contiene un documento XML valido.');
-    // Non aprire il CAD con gli archivi di default spacciandoli per dati importati.
-    // La mappatura dei nodi XML nazionale sugli archivi Termodel richiede il
-    // campione Blumatica e un importatore dedicato; non è attualmente implementata.
-    if (cadStructuresStatus)
-      cadStructuresStatus.textContent =
-        'XML valido selezionato: ' + file.name +
-        '. Importazione delle strutture non ancora disponibile: il CAD non viene aperto per evitare dati errati.';
+    const records = parseNationalXmlArchives(xml);
+    const svg = createBlankProjectSvg();
+    let projectText = await buildTermodelProjectText(
+      await loadEmptyProjectText(), { geometrySvg: svg, backgrounds: [] }
+    );
+    for (const [name, rows] of Object.entries(records)) {
+      if (rows.length)
+        projectText = replaceTermodelProjectSection(
+          projectText, 'archives/json/' + name + '.json',
+          JSON.stringify(rows, null, 2)
+        );
+    }
+    projectText = replaceTermodelProjectSection(projectText, 'xml/input.xml', xml);
+    // Verifica gli archivi inizializzati prima di consentire l'accesso al CAD.
+    const project = await loadTermodelProjectText(projectText);
+    currentProjectText = projectText;
+    currentProjectFileName = projectFileNameFromName(project.projectName);
+    syncCurrentProjectIdFromText(currentProjectText);
+    currentServiceManifest = null;
+    validatedSvg = svg;
+    lastCleanPlanSvg = createBlankCleanSvg();
+    lastGeneratedPlan = null;
+    lastAiPreviewData = null;
+    cadSetWorkingSvg(svg);
+    validatedSvg = cadSerializeWorkingSvg();
+    rasterSvgText.value = validatedSvg;
+    setStructuredProjectState(true);
+    closeCadStructuresDialog();
+    activateCadPage();
+    const counts = Object.entries(records).map(([name, rows]) => name + ': ' + rows.length).join(', ');
+    cadSetStatus('XML importato (' + file.name + ') · ' + counts + ' · salva il progetto per conservarlo');
+    setMainAiStatus('✓ XML importato negli archivi: ' + counts);
   } catch (error) {
     if (cadStructuresStatus)
       cadStructuresStatus.textContent = 'Importazione XML non riuscita: ' + error.message;
+    console.error('Importazione XML nazionale:', error);
   }
 });
 
