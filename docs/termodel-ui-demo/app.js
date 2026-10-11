@@ -27,7 +27,8 @@ import {
   consolidateTermodelBackgrounds,
   hydrateTermodelBackgrounds,
   getTermodelProjectSection,
-  replaceTermodelProjectSection
+  replaceTermodelProjectSection,
+  setTermodelProjectSection
 } from './termodel-project-text.js?v=0.75';
 
 const MODEL_URL = './TermodelWebModel.json';
@@ -5724,7 +5725,7 @@ cadStructuresXmlFile?.addEventListener('change', async () => {
           JSON.stringify(rows, null, 2)
         );
     }
-    projectText = replaceTermodelProjectSection(projectText, 'xml/input.xml', xml);
+    projectText = setTermodelProjectSection(projectText, 'xml/input.xml', xml);
     // Verifica gli archivi inizializzati prima di consentire l'accesso al CAD.
     const project = await loadTermodelProjectText(projectText);
     currentProjectText = projectText;
