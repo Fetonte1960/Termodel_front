@@ -5632,6 +5632,53 @@ const projectStartMessage = document.getElementById('projectStartMessage');
 const projectStartClose = document.getElementById('projectStartClose');
 const projectStartCloseBottom = document.getElementById('projectStartCloseBottom');
 const projectStartBlank = document.getElementById('projectStartBlank');
+const cadStructuresModal = document.getElementById('cadStructuresModal');
+const cadStructuresDefault = document.getElementById('cadStructuresDefault');
+const cadStructuresXml = document.getElementById('cadStructuresXml');
+const cadStructuresXmlFile = document.getElementById('cadStructuresXmlFile');
+const cadStructuresStatus = document.getElementById('cadStructuresStatus');
+function closeCadStructuresDialog() {
+  cadStructuresModal?.classList.remove('visible');
+  cadStructuresModal?.setAttribute('aria-hidden', 'true');
+}
+function openCadStructuresDialog() {
+  closeProjectStartDialog();
+  if (cadStructuresStatus) cadStructuresStatus.textContent = '';
+  cadStructuresModal?.classList.add('visible');
+  cadStructuresModal?.setAttribute('aria-hidden', 'false');
+}
+document.getElementById('cadStructuresClose')?.addEventListener('click', closeCadStructuresDialog);
+document.getElementById('cadStructuresCancel')?.addEventListener('click', closeCadStructuresDialog);
+cadStructuresModal?.addEventListener('click', event => {
+  if (event.target === cadStructuresModal) closeCadStructuresDialog();
+});
+cadStructuresDefault?.addEventListener('click', () => {
+  closeCadStructuresDialog();
+  void startBlankProjectFromCad();
+});
+cadStructuresXml?.addEventListener('click', () => cadStructuresXmlFile?.click());
+cadStructuresXmlFile?.addEventListener('change', async () => {
+  const file = cadStructuresXmlFile.files?.[0];
+  cadStructuresXmlFile.value = '';
+  if (!file) return;
+  try {
+    const xml = await file.text();
+    const parsed = new DOMParser().parseFromString(xml, 'application/xml');
+    if (parsed.querySelector('parsererror') || !parsed.documentElement)
+      throw new Error('Il file non contiene un documento XML valido.');
+    // Non aprire il CAD con gli archivi di default spacciandoli per dati importati.
+    // La mappatura dei nodi XML nazionale sugli archivi Termodel richiede il
+    // campione Blumatica e un importatore dedicato; non è attualmente implementata.
+    if (cadStructuresStatus)
+      cadStructuresStatus.textContent =
+        'XML valido selezionato: ' + file.name +
+        '. Importazione delle strutture non ancora disponibile: il CAD non viene aperto per evitare dati errati.';
+  } catch (error) {
+    if (cadStructuresStatus)
+      cadStructuresStatus.textContent = 'Importazione XML non riuscita: ' + error.message;
+  }
+});
+
 const projectStartInstructAi = document.getElementById('projectStartInstructAi');
 const projectStartImportAi = document.getElementById('projectStartImportAi');
 const newProjectButton = document.getElementById('newProjectButton');
@@ -12527,7 +12574,7 @@ projectStartModal?.addEventListener('click', event => {
 });
 projectStartBlank?.addEventListener('click', () => {
   projectStartContext = { target: 'cad', archiveName: '' };
-  void startBlankProjectFromCad();
+  openCadStructuresDialog();
 });
 projectStartInstructAi?.addEventListener('click', async event => {
   closeProjectStartDialog();
