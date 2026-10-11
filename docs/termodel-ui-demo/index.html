@@ -2817,7 +2817,7 @@
   <div id="projectStartModal" class="ai-instruct-modal" aria-hidden="true">
     <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="projectStartTitle">
       <header class="ai-instruct-head">
-        <h2 id="projectStartTitle">Crea il tuo progetto Termodel</h2>
+        <h2 id="projectStartTitle">Come vuoi inizializzare il progetto?</h2>
         <button id="projectStartClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
       </header>
       <div class="ai-instruct-body">
@@ -2825,9 +2825,8 @@
           Il modello iniziale è un esempio. Per modificare archivi e disegno crea il tuo progetto.
         </p>
         <div class="project-start-actions">
-          <button id="projectStartBlank" class="primary" type="button">Edita nel Cad<br><small>Apri un progetto vuoto nel CAD Web</small></button>
-          <button id="projectStartInstructAi" type="button">Istruisci AI<br><small>Prepara la tua AI per Termodel</small></button>
-          <button id="projectStartImportAi" type="button">Importa da AI<br><small>Scegli appunti oppure DisegnoInput.svg da Download</small></button>
+          <button id="projectStartBlank" class="primary" type="button">Archivi Termodel<br><small>Usa le strutture predefinite</small></button>
+          <button id="projectStartInstructAi" type="button">Importa XML nazionale<br><small>Archivi da un altro software di calcolo</small></button>
         </div>
         <div class="project-start-note">
           Il progetto vuoto e gli archivi vengono inizializzati dal template Termodel locale; il browser non inventa dati tecnici.
@@ -2843,14 +2842,14 @@
   <div id="cadStructuresModal" class="ai-instruct-modal" aria-hidden="true">
     <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="cadStructuresTitle">
       <header class="ai-instruct-head">
-        <h2 id="cadStructuresTitle">Strutture edilizie per il CAD</h2>
+        <h2 id="cadStructuresTitle">Come vuoi inserire il disegno?</h2>
         <button id="cadStructuresClose" class="ai-instruct-close" type="button" aria-label="Chiudi">×</button>
       </header>
       <div class="ai-instruct-body">
-        <p>Scegli gli archivi da usare prima di aprire il CAD2D.</p>
+        <p>Archivi inizializzati. Scegli il metodo di input.</p>
         <div class="project-start-actions">
-          <button id="cadStructuresDefault" class="primary" type="button">Strutture Termodel<br><small>Usa gli archivi predefiniti e apri il CAD</small></button>
-          <button id="cadStructuresXml" type="button">Importa XML nazionale<br><small>Seleziona un file XML esportato da un altro software</small></button>
+          <button id="cadStructuresDefault" class="primary" type="button">Edita nel CAD<br><small>Apri il CAD2D con gli archivi scelti</small></button>
+          <button id="cadStructuresXml" type="button">Crea con AI<br><small>Prepara o importa il disegno con AI</small></button>
         </div>
         <input id="cadStructuresXmlFile" type="file" accept=".xml,application/xml,text/xml" hidden />
         <p id="cadStructuresStatus" role="status" aria-live="polite"></p>
