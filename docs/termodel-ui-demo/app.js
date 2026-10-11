@@ -12784,6 +12784,22 @@ helpCopyLogClipboard?.addEventListener('click', async event => {
   }
 });
 
+// L'XML nazionale deve provenire dall'ultima elaborazione del Service.
+// Finché il Service non espone un generatore XML nazionale, non avviare
+// un download fittizio né consegnare il file XML originale come risultato.
+document.getElementById('exportNationalXmlButton')?.addEventListener('click', event => {
+  event.preventDefault();
+  event.stopPropagation();
+  document.querySelectorAll('.menu').forEach(menu => menu.classList.remove('open'));
+  const message = 'Esportazione XML nazionale non ancora disponibile: ' +
+    'il Service attuale non genera l’artefatto xml-nazionale. ' +
+    'L’esportazione richiederà una nuova elaborazione del progetto ' +
+    'e il download del relativo XML nella stessa richiesta, ' +
+    'senza affidarsi alla persistenza dei file Render.';
+  setMainAiStatus(message);
+  window.alert(message);
+});
+
 newProjectButton?.addEventListener('click', event => {
   event.preventDefault();
   event.stopPropagation();
