@@ -5655,9 +5655,12 @@ cadStructuresModal?.addEventListener('click', event => {
 });
 cadStructuresDefault?.addEventListener('click', () => {
   closeCadStructuresDialog();
-  void startBlankProjectFromCad();
+  activateCadPage();
 });
-cadStructuresXml?.addEventListener('click', () => cadStructuresXmlFile?.click());
+cadStructuresXml?.addEventListener('click', async () => {
+  closeCadStructuresDialog();
+  await instructAiFromMainForm();
+});
 // Riprende le collezioni importate in GestXml.cs nel Desktop.
 // L'XML base resta integralmente nel progetto per il round-trip.
 function parseNationalXmlArchives(xml) {
@@ -5740,10 +5743,9 @@ cadStructuresXmlFile?.addEventListener('change', async () => {
     validatedSvg = cadSerializeWorkingSvg();
     rasterSvgText.value = validatedSvg;
     setStructuredProjectState(true);
-    closeCadStructuresDialog();
-    activateCadPage();
+    openCadStructuresDialog();
     const counts = Object.entries(records).map(([name, rows]) => name + ': ' + rows.length).join(', ');
-    cadSetStatus('XML importato (' + file.name + ') · ' + counts + ' · salva il progetto per conservarlo');
+    cadSetStatus('XML importato (' + file.name + ') · ' + counts + ' · scegli CAD o AI');
     setMainAiStatus('✓ XML importato negli archivi: ' + counts);
   } catch (error) {
     if (cadStructuresStatus)
@@ -6058,6 +6060,26 @@ async function continueAfterProjectStart() {
   }
 
   activateCadPage();
+}
+
+async function initializeDefaultArchivesBeforeDrawing() {
+  closeProjectStartDialog();
+  try {
+    const svg = createBlankProjectSvg();
+    const project = await createStructuredProjectFromSvg(svg);
+    currentProjectFileName = projectFileNameFromName(project.projectName);
+    validatedSvg = svg;
+    lastCleanPlanSvg = createBlankCleanSvg();
+    lastGeneratedPlan = null;
+    lastAiPreviewData = null;
+    cadSetWorkingSvg(svg);
+    rasterSvgText.value = cadSerializeWorkingSvg();
+    setStructuredProjectState(true);
+    openCadStructuresDialog();
+  } catch (error) {
+    setMainAiStatus('Inizializzazione archivi non riuscita: ' + error.message);
+    window.alert('Impossibile inizializzare gli archivi: ' + error.message);
+  }
 }
 
 async function startBlankProjectFromCad() {
@@ -12647,12 +12669,9 @@ projectStartModal?.addEventListener('click', event => {
 });
 projectStartBlank?.addEventListener('click', () => {
   projectStartContext = { target: 'cad', archiveName: '' };
-  openCadStructuresDialog();
+  void initializeDefaultArchivesBeforeDrawing();
 });
-projectStartInstructAi?.addEventListener('click', async event => {
-  closeProjectStartDialog();
-  await instructAiFromMainForm(event);
-});
+projectStartInstructAi?.addEventListener('click', () => cadStructuresXmlFile?.click());
 projectStartImportAi?.addEventListener('click', async event => {
   const context = projectStartContext;
   closeProjectStartDialog();
