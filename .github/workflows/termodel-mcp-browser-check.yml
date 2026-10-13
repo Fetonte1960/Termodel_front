@@ -28,10 +28,12 @@ jobs:
         run: |
           node --check docs/termodel-ui-demo/app.js
           node --check docs/termodel-ui-demo/termodel-project-text.js
-          grep -q 'aiImportConnectMcp' docs/termodel-ui-demo/index.html
+          grep -q 'directGptMcpLaunch' docs/termodel-ui-demo/index.html
+          grep -q 'directGptMcpModal' docs/termodel-ui-demo/index.html
+          if grep -q 'id="aiImportConnectMcp"' docs/termodel-ui-demo/index.html; then exit 1; fi
           grep -q 'startTermodelMcpImportSession' docs/termodel-ui-demo/app.js
           grep -q "importAiText(payload, { source: 'mcp' })" docs/termodel-ui-demo/app.js
-          test "$(tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt)" = "1.85"
+          test "$(tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt)" = "1.86"
       - name: Report result
         if: always()
         env:
