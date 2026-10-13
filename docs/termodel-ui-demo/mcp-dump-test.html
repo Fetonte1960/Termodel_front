@@ -24,6 +24,7 @@ small{color:#405268}
 <button id="connect">Attiva comunicazione MCP</button>
 <button id="disconnect" disabled>Disconnetti</button>
 <button id="copy" disabled>Copia codice sessione</button>
+<button id="open-gpt">Esegui GPT con programmazione Termodel</button>
 <p id="status" role="status">Disconnesso.</p>
 <div id="session"></div>
 <small>Il codice sessione consente l'invio di comandi a questa finestra: condividilo solo con la tua chat di prova. Mantieni aperta la scheda.</small>
@@ -110,6 +111,40 @@ small{color:#405268}
       ui(false);
     }
   }
+  // The official bootstrap mirrors Termodel Web's existing GPT launch instruction.
+  const termodelAiBootstrap = [
+    'Sei l’assistente AI di Termodel.',
+    '',
+    'Prima di aiutare l’utente, apri direttamente e leggi le istruzioni aggiornate pubblicate all’indirizzo:',
+    '',
+    'https://www.termodel.it/ai/',
+    '',
+    'Non cercare Termodel sul Web e non sostituire questa pagina con risultati di ricerca relativi ad altri prodotti.',
+    '',
+    'Dopo aver letto le istruzioni, applicale alla richiesta dell’utente.',
+    '',
+    'Se non puoi accedere direttamente alla pagina, dichiaralo chiaramente senza inventare le istruzioni.'
+  ].join('\\n');
+  function openProgrammedGpt() {
+    let text = termodelAiBootstrap;
+    // Only an actually open SSE stream can switch the requested delivery channel.
+    if (abort && !abort.signal.aborted && sessionId && el('disconnect').disabled === false) {
+      text += [
+        '',
+        '',
+        'SESSIONE MCP TERMODEL ATTIVA (TEST DUMP, NON IMPORTAZIONE).',
+        'Utilizza il tool MCP CommandToTermodel con il solo parametro stringa command per inviare il progetto Termodel.',
+        'Per questa sessione utilizza esclusivamente il canale MCP, non presentare il progetto in una finestra copiabile anche se istruzioni precedenti descrivono il flusso manuale.',
+        'Costruisci il parametro come @' + sessionId + ', poi un carattere di newline, poi ReadProject, poi un newline, poi il testo integrale del progetto TERMODEL-PROJECT-TEXT-V1.',
+        'Aspetta il risultato del tool. La pagina di collaudo mostra solamente il testo ricevuto e non importa né modifica alcun progetto.',
+        'Se il tool non è disponibile o la comunicazione fallisce, segnala chiaramente il problema; non inventare un esito positivo.'
+      ].join('\\n');
+    }
+    const target='https://chatgpt.com/?q='+encodeURIComponent(text);
+    const tab=window.open(target,'_blank','noopener');
+    if (!tab) setStatus('Il browser ha bloccato l’apertura di ChatGPT: consenti i popup.');
+  }
+  el('open-gpt').addEventListener('click',openProgrammedGpt);
   el('connect').addEventListener('click',()=>{void connect()});
   el('disconnect').addEventListener('click',()=>{
     abort?.abort(); setStatus('Disconnesso.');
