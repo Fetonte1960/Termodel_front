@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Termodel MCP — test ricezione testo</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color-scheme:light}
+body{max-width:1100px;margin:24px auto;padding:0 18px;background:#f6f8fa;color:#152334}
+h1{font-size:1.4rem}
+section{background:white;border:1px solid #cbd5e1;border-radius:8px;padding:18px;margin:14px 0}
+button{padding:10px 14px;cursor:pointer;margin:4px 6px 4px 0}
+textarea{width:100%;box-sizing:border-box;min-height:340px;font:13px/1.5 ui-monospace,Consolas,monospace;resize:vertical}
+code{overflow-wrap:anywhere}
+#status{font-weight:600}
+#session{font:13px Consolas,monospace;word-break:break-all}
+small{color:#405268}
+</style>
+</head>
+<body>
+<h1>Termodel MCP — test indipendente di ricezione</h1>
+<p>Questa pagina non carica Termodel, non legge gli appunti, non salva e non importa progetti. Visualizza soltanto il testo ricevuto da ChatGPT tramite il Gateway MCP.</p>
+<section>
+<button id="connect">Attiva comunicazione MCP</button>
+<button id="disconnect" disabled>Disconnetti</button>
+<button id="copy" disabled>Copia codice sessione</button>
+<p id="status" role="status">Disconnesso.</p>
+<div id="session"></div>
+<small>Il codice sessione consente l'invio di comandi a questa finestra: condividilo solo con la tua chat di prova. Mantieni aperta la scheda.</small>
+</section>
+<section>
+<label for="dump"><strong>Testo ricevuto (nessuna esecuzione)</strong></label>
+<textarea id="dump" readonly spellcheck="false" placeholder="Il testo ricevuto tramite MCP apparirà qui."></textarea>
+<p id="size"></p>
+<button id="clear">Svuota testo</button>
+</section>
+<script>
+(() => {
+  'use strict';
+  const base = 'https://termodel-mcp-gateway.onrender.com';
+  const el = id => document.getElementById(id);
+  let abort = null, sessionId = '', browserToken = '';
+  const setStatus = message => { el('status').textContent = message; };
+  const ui = active => {
+    el('connect').disabled = active;
+    el('disconnect').disabled = !active;
+    el('copy').disabled = !active;
+  };
+  async function connect() {
+    if (abort) return;
+    el('connect').disabled = true;
+    setStatus('Registrazione sessione...');
+    const controller = new AbortController();
+    try {
+      const registered = await fetch(base + '/browser/register', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:'{}',
+        signal:controller.signal, cache:'no-store'
+      });
+      if (!registered.ok) throw Error('Registrazione HTTP ' + registered.status);
+      const session = await registered.json();
+      if (!session.sessionId || !session.browserToken) throw Error('Sessione incompleta');
+      sessionId = session.sessionId;
+      browserToken = session.browserToken;
+      abort = controller;
+      el('session').textContent = 'Sessione MCP: ' + sessionId;
+      setStatus('Connessione SSE in corso...');
+      const res = await fetch(base + '/browser/events/' + encodeURIComponent(sessionId), {
+        headers:{'Authorization':'Bearer ' + browserToken}, signal:controller.signal,
+        cache:'no-store'
+      });
+      if (!res.ok || !res.body) throw Error('SSE HTTP ' + res.status);
+      ui(true);
+      setStatus('Connesso: in attesa di un comando da ChatGPT.');
+      const reader = res.body.getReader(), decoder = new TextDecoder();
+      let buffer = '';
+      while (!controller.signal.aborted) {
+        const {done,value} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value,{stream:true}).replace(/\r\n/g,'\n');
+        let index;
+        while ((index=buffer.indexOf('\n\n'))>=0) {
+          const frame=buffer.slice(0,index);
+          buffer=buffer.slice(index+2);
+          const data=frame.split('\n').find(line=>line.startsWith('data: '));
+          if (!data) continue;
+          let packet;
+          try { packet=JSON.parse(data.slice(6)); } catch { continue; }
+          if (typeof packet.command!=='string' || !packet.requestId) continue;
+          const value=packet.command;
+          // Display the opaque incoming command, including any project text; never execute or import.
+          el('dump').value=value;
+          el('size').textContent='Ricevuti ' + new Blob([value]).size + ' byte di testo UTF-8';
+          setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
+          const answer='OK: testo ricevuto e visualizzato nel dump MCP (' +
+            new Blob([value]).size + ' byte). Nessun progetto importato.';
+          try {
+            const reply=await fetch(base+'/browser/reply/'+encodeURIComponent(sessionId)+'/'+encodeURIComponent(packet.requestId),{
+              method:'POST', headers:{'Authorization':'Bearer '+browserToken,'Content-Type':'text/plain; charset=utf-8'},
+              body:answer,signal:controller.signal
+            });
+            if (!reply.ok) throw Error('HTTP '+reply.status);
+          } catch (err) { if (!controller.signal.aborted) setStatus('Risposta al Gateway fallita: '+err.message); }
+        }
+      }
+    } catch (err) {
+      if (err.name!=='AbortError') setStatus('Errore: '+err.message);
+    } finally {
+      if (abort===controller) abort=null;
+      sessionId=''; browserToken='';
+      ui(false);
+    }
+  }
+  el('connect').addEventListener('click',()=>{void connect()});
+  el('disconnect').addEventListener('click',()=>{
+    abort?.abort(); setStatus('Disconnesso.');
+  });
+  el('copy').addEventListener('click',async()=>{
+    if (!sessionId) return;
+    try { await navigator.clipboard.writeText(sessionId); setStatus('Codice sessione copiato.'); }
+    catch { window.prompt('Copia il codice sessione:',sessionId); }
+  });
+  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';});
+})();
+</script>
+</body>
+</html>
