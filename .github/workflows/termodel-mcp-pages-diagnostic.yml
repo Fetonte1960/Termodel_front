@@ -1,0 +1,42 @@
+name: Termodel MCP Pages diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/termodel-ui-demo/mcp-dump-test.html'
+      - '.github/workflows/termodel-mcp-pages-diagnostic.yml'
+permissions:
+  contents: read
+  pages: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source file and Pages configuration
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/termodel-ui-demo/mcp-dump-test.html
+          echo 'Source file exists in current commit:'
+          git log -1 --format='%h %s'
+          echo 'GitHub Pages configuration:'
+          gh api "repos/${{ github.repository }}/pages" --jq '{url,build_type,status,source,https_enforced}' || true
+          echo 'Recent Pages builds:'
+          gh api "repos/${{ github.repository }}/pages/builds?per_page=5" --jq '.[] | {status,created_at,error:.error.message}' || true
+      - name: Request branch-source Pages rebuild if supported
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_type=$(gh api "repos/${{ github.repository }}/pages" --jq '.build_type' 2>/dev/null || echo unknown)
+          if [ "$build_type" = "legacy" ]; then
+            gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
+          else
+            echo "Pages build_type=$build_type; no legacy rebuild attempted."
+          fi
