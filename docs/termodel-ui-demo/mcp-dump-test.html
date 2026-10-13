@@ -124,7 +124,7 @@ small{color:#405268}
     'Dopo aver letto le istruzioni, applicale alla richiesta dell’utente.',
     '',
     'Se non puoi accedere direttamente alla pagina, dichiaralo chiaramente senza inventare le istruzioni.'
-  ].join('\\n');
+  ].join('\n');
   function openProgrammedGpt() {
     let text = termodelAiBootstrap;
     // Only an actually open SSE stream can switch the requested delivery channel.
@@ -138,7 +138,7 @@ small{color:#405268}
         'Costruisci il parametro come @' + sessionId + ', poi un carattere di newline, poi ReadProject, poi un newline, poi il testo integrale del progetto TERMODEL-PROJECT-TEXT-V1.',
         'Aspetta il risultato del tool. La pagina di collaudo mostra solamente il testo ricevuto e non importa né modifica alcun progetto.',
         'Se il tool non è disponibile o la comunicazione fallisce, segnala chiaramente il problema; non inventare un esito positivo.'
-      ].join('\\n');
+      ].join('\n');
     }
     const target='https://chatgpt.com/?q='+encodeURIComponent(text);
     const tab=window.open(target,'_blank','noopener');
