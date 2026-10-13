@@ -2728,11 +2728,16 @@
             Importa dagli appunti
             <small>Continua a usare esattamente il flusso attuale: copia il risultato AI e importalo dagli appunti.</small>
           </button>
+          <button id="aiImportConnectMcp" type="button">
+            Collega ChatGPT MCP
+            <small>Ricevi direttamente il progetto da ChatGPT; l'importazione richiede conferma.</small>
+          </button>
           <button id="aiImportFromDownloads" type="button">
             Leggi DisegnoInput.svg da Download
             <small>Legge esclusivamente DisegnoInput.svg. Al primo uso il browser chiede di autorizzare la cartella Download.</small>
           </button>
         </div>
+        <p id="aiImportMcpStatus" role="status" style="overflow-wrap:anywhere"></p>
       </div>
       <footer class="ai-instruct-foot">
         <button id="aiImportChoiceCloseBottom" type="button">Annulla</button>
