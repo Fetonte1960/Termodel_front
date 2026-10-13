@@ -6584,7 +6584,7 @@ if (aiSplitGuideClose)
 if (aiSplitGuideBack)
   aiSplitGuideBack.addEventListener('click', backFromAiSplitGuideDialog);
 if (aiSplitGuideOpen)
-  aiSplitGuideOpen.addEventListener('click', event => {
+  aiSplitGuideOpen.addEventListener('click', async event => {
     event.preventDefault();
     event.stopPropagation();
     closeAiSplitGuideDialog();
