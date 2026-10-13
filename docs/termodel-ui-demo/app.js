@@ -6334,6 +6334,12 @@ async function importAiText(text, { source = 'clipboard' } = {}) {
 const TERMODEL_MCP_GATEWAY = 'https://termodel-mcp-gateway.onrender.com';
 let termodelMcpAbort = null;
 let termodelMcpConnected = false;
+let termodelMcpSessionId = '';
+document.getElementById('aiImportMcpCopy')?.addEventListener('click', async () => {
+  if (!termodelMcpSessionId) return;
+  try { await navigator.clipboard.writeText(termodelMcpSessionId); }
+  catch (_) { window.prompt('Copia il codice sessione MCP:', termodelMcpSessionId); }
+});
 
 async function startTermodelMcpImportSession() {
   const button = document.getElementById('aiImportConnectMcp');
@@ -6357,6 +6363,9 @@ async function startTermodelMcpImportSession() {
     if (!session.sessionId || !session.browserToken) throw new Error('Sessione MCP incompleta');
     const controller = new AbortController();
     termodelMcpAbort = controller;
+    termodelMcpSessionId = session.sessionId;
+    const copy = document.getElementById('aiImportMcpCopy');
+    if (copy) copy.hidden = false;
     if (button) { button.disabled = false; button.textContent = 'Disconnetti MCP'; }
     if (output) {
       output.textContent = 'Sessione MCP: ' + session.sessionId +
@@ -6400,6 +6409,7 @@ async function startTermodelMcpImportSession() {
             if (!accepted) reply = 'ANNULLATO: importazione rifiutata dall’utente';
             else {
               const ok = await importAiText(payload, { source: 'mcp' });
+              if (ok) finishAiImportChoice(true);
               reply = ok ? 'OK: progetto Termodel importato tramite MCP' :
                 'ERRORE: importazione rifiutata dal frontend';
             }
@@ -6426,6 +6436,9 @@ async function startTermodelMcpImportSession() {
   } finally {
     termodelMcpConnected = false;
     termodelMcpAbort = null;
+    termodelMcpSessionId = '';
+    const copy = document.getElementById('aiImportMcpCopy');
+    if (copy) copy.hidden = true;
     if (button) { button.disabled = false; button.textContent = 'Collega ChatGPT MCP'; }
   }
 }
