@@ -5946,32 +5946,17 @@ function backFromAiSplitGuideDialog() {
 }
 
 function buildChatGptTermodelUrl() {
-  const mcpInstruction = termodelMcpConnected && termodelMcpSessionId
-    ? ['',
-       'COMUNICAZIONE DIRETTA TERMODEL MCP ATTIVA.',
-       'Per inviare un progetto Termodel al browser utilizza il solo tool CommandToTermodel con il singolo parametro stringa command.',
-       'Non usare finestre copiabili come canale di consegna, anche se le istruzioni storiche le prevedono: questo blocco prevale SOLO durante la sessione MCP attiva.',
-       'Formato della stringa da inviare: @' + termodelMcpSessionId + ' seguito da newline, ReadProject, newline e l’intero progetto TERMODEL-PROJECT-TEXT-V1.',
-       'Non dire che il progetto è stato importato senza risposta di conferma del tool e consenso dell’utente nel browser.',
-       'Se il tool non è disponibile segnala il problema; la via manuale è solo un ripiego.'
-      ].join('\\n')
-    : '';
-  return 'https://chatgpt.com/?q=' + encodeURIComponent(TERMODEL_AI_BOOTSTRAP + mcpInstruction);
+  return 'https://chatgpt.com/?q=' + encodeURIComponent(TERMODEL_AI_BOOTSTRAP);
 }
 
-async function openChatGptWithTermodelBootstrap() {
-  const opened = window.open('about:blank', '_blank');
+function openChatGptWithTermodelBootstrap() {
+  const target = buildChatGptTermodelUrl();
+  const opened = window.open(target, '_blank');
   if (!opened) {
     window.alert('Il browser ha bloccato l’apertura di ChatGPT. Consenti i popup per Termodel oppure usa la copia negli appunti.');
     return false;
   }
 
-  if (!termodelMcpConnected) {
-    void startTermodelMcpImportSession();
-    for (let attempt = 0; attempt < 40 && !termodelMcpConnected; attempt++)
-      await new Promise(resolve => setTimeout(resolve, 150));
-  }
-  opened.location.replace(buildChatGptTermodelUrl());
   // In vista affiancata il pannello filtri toglierebbe spazio al modello.
   // Lo chiudiamo soltanto dopo che l'apertura di ChatGPT è riuscita.
   if (filtersCheck?.checked) {
@@ -6350,15 +6335,15 @@ const TERMODEL_MCP_GATEWAY = 'https://termodel-mcp-gateway.onrender.com';
 let termodelMcpAbort = null;
 let termodelMcpConnected = false;
 let termodelMcpSessionId = '';
-document.getElementById('directGptMcpCopy')?.addEventListener('click', async () => {
+document.getElementById('aiImportMcpCopy')?.addEventListener('click', async () => {
   if (!termodelMcpSessionId) return;
   try { await navigator.clipboard.writeText(termodelMcpSessionId); }
   catch (_) { window.prompt('Copia il codice sessione MCP:', termodelMcpSessionId); }
 });
 
 async function startTermodelMcpImportSession() {
-  const button = document.getElementById('directGptMcpButton');
-  const output = document.getElementById('directGptMcpStatus');
+  const button = document.getElementById('aiImportConnectMcp');
+  const output = document.getElementById('aiImportMcpStatus');
   if (termodelMcpAbort) {
     termodelMcpAbort.abort();
     termodelMcpAbort = null;
@@ -6379,7 +6364,7 @@ async function startTermodelMcpImportSession() {
     const controller = new AbortController();
     termodelMcpAbort = controller;
     termodelMcpSessionId = session.sessionId;
-    const copy = document.getElementById('directGptMcpCopy');
+    const copy = document.getElementById('aiImportMcpCopy');
     if (copy) copy.hidden = false;
     if (button) { button.disabled = false; button.textContent = 'Disconnetti MCP'; }
     if (output) {
@@ -6452,28 +6437,12 @@ async function startTermodelMcpImportSession() {
     termodelMcpConnected = false;
     termodelMcpAbort = null;
     termodelMcpSessionId = '';
-    const copy = document.getElementById('directGptMcpCopy');
+    const copy = document.getElementById('aiImportMcpCopy');
     if (copy) copy.hidden = true;
     if (button) { button.disabled = false; button.textContent = 'Collega ChatGPT MCP'; }
   }
 }
-document.getElementById('directGptMcpButton')?.addEventListener('click', startTermodelMcpImportSession);
-document.getElementById('directGptMcpLaunch')?.addEventListener('click', () => {
-  const modal = document.getElementById('directGptMcpModal');
-  modal?.classList.add('visible');
-  modal?.setAttribute('aria-hidden', 'false');
-});
-document.getElementById('directGptMcpClose')?.addEventListener('click', () => {
-  const modal = document.getElementById('directGptMcpModal');
-  modal?.classList.remove('visible');
-  modal?.setAttribute('aria-hidden', 'true');
-});
-document.getElementById('directGptMcpOpen')?.addEventListener('click', async () => {
-  const modal = document.getElementById('directGptMcpModal');
-  modal?.classList.remove('visible');
-  modal?.setAttribute('aria-hidden', 'true');
-  await openChatGptWithTermodelBootstrap();
-});
+document.getElementById('aiImportConnectMcp')?.addEventListener('click', startTermodelMcpImportSession);
 
 async function importAiFromClipboard() {
   let text = '';
@@ -6584,11 +6553,11 @@ if (aiSplitGuideClose)
 if (aiSplitGuideBack)
   aiSplitGuideBack.addEventListener('click', backFromAiSplitGuideDialog);
 if (aiSplitGuideOpen)
-  aiSplitGuideOpen.addEventListener('click', async event => {
+  aiSplitGuideOpen.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
-    closeAiSplitGuideDialog();
-    await openChatGptWithTermodelBootstrap();
+    if (openChatGptWithTermodelBootstrap())
+      closeAiSplitGuideDialog();
   });
 if (aiSplitGuideModal)
   aiSplitGuideModal.addEventListener('click', event => {
