@@ -6330,6 +6330,107 @@ async function importAiText(text, { source = 'clipboard' } = {}) {
   return true;
 }
 
+// Termodel MCP: explicit, browser-owned session, no global Render secret in public JS.
+const TERMODEL_MCP_GATEWAY = 'https://termodel-mcp-gateway.onrender.com';
+let termodelMcpAbort = null;
+let termodelMcpConnected = false;
+
+async function startTermodelMcpImportSession() {
+  const button = document.getElementById('aiImportConnectMcp');
+  const output = document.getElementById('aiImportMcpStatus');
+  if (termodelMcpAbort) {
+    termodelMcpAbort.abort();
+    termodelMcpAbort = null;
+    termodelMcpConnected = false;
+    if (output) output.textContent = 'Connessione MCP chiusa.';
+    if (button) button.textContent = 'Collega ChatGPT MCP';
+    return;
+  }
+  if (button) button.disabled = true;
+  if (output) output.textContent = 'Collegamento al Gateway MCP...';
+  try {
+    const registered = await fetch(TERMODEL_MCP_GATEWAY + '/browser/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+    });
+    if (!registered.ok) throw new Error('Registrazione MCP: HTTP ' + registered.status);
+    const session = await registered.json();
+    if (!session.sessionId || !session.browserToken) throw new Error('Sessione MCP incompleta');
+    const controller = new AbortController();
+    termodelMcpAbort = controller;
+    if (button) { button.disabled = false; button.textContent = 'Disconnetti MCP'; }
+    if (output) {
+      output.textContent = 'Sessione MCP: ' + session.sessionId +
+        ' — comunica questo codice alla chat ChatGPT. Non condividerlo con altri.';
+    }
+    const endpoint = TERMODEL_MCP_GATEWAY + '/browser/events/' + encodeURIComponent(session.sessionId);
+    // Native EventSource cannot provide the Authorization header; use fetch streaming.
+    const response = await fetch(endpoint, {
+      signal: controller.signal,
+      headers: { 'Authorization': 'Bearer ' + session.browserToken }
+    });
+    if (!response.ok || !response.body)
+      throw new Error('Canale MCP SSE: HTTP ' + response.status);
+    termodelMcpConnected = true;
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (!controller.signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+      let boundary;
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const data = frame.split('\n').find(line => line.startsWith('data: '));
+        if (!data) continue;
+        let request;
+        try { request = JSON.parse(data.slice(6)); } catch (_) { continue; }
+        if (!request?.requestId || typeof request.command !== 'string') continue;
+        let reply = 'ERRORE: comando non supportato';
+        try {
+          const separator = request.command.indexOf('\n');
+          const verb = separator < 0 ? request.command : request.command.slice(0, separator);
+          const payload = separator < 0 ? '' : request.command.slice(separator + 1);
+          if (verb === 'ReadProject' && isTermodelProjectText(payload)) {
+            const accepted = window.confirm(
+              'ChatGPT vuole importare un progetto in Termodel.\n' +
+              'Questo può sostituire il progetto corrente. Confermi?'
+            );
+            if (!accepted) reply = 'ANNULLATO: importazione rifiutata dall’utente';
+            else {
+              const ok = await importAiText(payload, { source: 'mcp' });
+              reply = ok ? 'OK: progetto Termodel importato tramite MCP' :
+                'ERRORE: importazione rifiutata dal frontend';
+            }
+          } else if (verb === 'ReadProject') {
+            reply = 'ERRORE: il comando ReadProject deve contenere un progetto TERMODEL-PROJECT-TEXT-V1';
+          }
+        } catch (error) { reply = 'ERRORE: ' + String(error?.message || error).slice(0, 300); }
+        try {
+          await fetch(TERMODEL_MCP_GATEWAY + '/browser/reply/' +
+            encodeURIComponent(session.sessionId) + '/' + encodeURIComponent(request.requestId), {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain; charset=utf-8',
+                'Authorization': 'Bearer ' + session.browserToken },
+              body: reply
+            });
+        } catch (error) {
+          if (output) output.textContent = 'MCP: impossibile restituire il risultato (' + error.message + ')';
+        }
+      }
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError' && output)
+      output.textContent = 'MCP: ' + (error.message || String(error));
+  } finally {
+    termodelMcpConnected = false;
+    termodelMcpAbort = null;
+    if (button) { button.disabled = false; button.textContent = 'Collega ChatGPT MCP'; }
+  }
+}
+document.getElementById('aiImportConnectMcp')?.addEventListener('click', startTermodelMcpImportSession);
+
 async function importAiFromClipboard() {
   let text = '';
   try {
