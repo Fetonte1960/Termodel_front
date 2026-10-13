@@ -2577,7 +2577,6 @@
       <button type="button" data-archive="Piani">Gestione Piani</button>
       <button type="button" id="instructAiButton" class="ai-main-button" title="Scegli come avviare l'AI per creare un progetto Termodel">Crea progetto con AI</button>
       <button type="button" id="aiFlowHelpButton" class="ai-main-button" title="Spiega il flusso corretto con l'AI" aria-label="Help flusso AI">?</button>
-      <button type="button" id="directGptMcpLaunch" class="ai-main-button" title="Attiva o gestisci la comunicazione diretta con ChatGPT tramite MCP">Comunicazione diretta GPT</button>
       <button type="button" id="importAiButton" class="ai-main-button" title="Scegli se importare il risultato AI dagli appunti oppure da DisegnoInput.svg nella cartella Download">Importa da AI</button>
       <button type="button" data-action="Edita nel Cad">Edita nel Cad</button>
       <button type="button" id="resetView">Aggiorna Modello</button>
@@ -2716,25 +2715,6 @@
   </div>
 
 
-  <div id="directGptMcpModal" class="ai-instruct-modal" aria-hidden="true">
-    <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="directGptMcpTitle">
-      <header class="ai-instruct-head">
-        <h2 id="directGptMcpTitle">Comunicazione diretta con ChatGPT</h2>
-        <button type="button" id="directGptMcpClose" class="ai-instruct-close" aria-label="Chiudi">×</button>
-      </header>
-      <div class="ai-instruct-body">
-        <p>Attiva la connessione MCP, quindi apri ChatGPT con la programmazione Termodel. La chat riceverà il codice della sessione e userà <strong>CommandToTermodel</strong> al posto della finestra copiabile, soltanto mentre la comunicazione è attiva.</p>
-        <p>Devi avere installato e abilitato il plugin personale Termodel in ChatGPT. La scheda Termodel deve rimanere aperta. Ogni importazione di progetto richiede la tua conferma.</p>
-        <div class="ai-project-choice-actions">
-          <button id="directGptMcpButton" type="button">Attiva comunicazione MCP</button>
-          <button id="directGptMcpOpen" type="button">Apri GPT con programmazione</button>
-        </div>
-        <p id="directGptMcpStatus" role="status" style="overflow-wrap:anywhere"></p>
-        <button id="directGptMcpCopy" type="button" hidden>Copia codice sessione MCP</button>
-      </div>
-    </section>
-  </div>
-
   <div id="aiImportChoiceModal" class="ai-instruct-modal" aria-hidden="true">
     <section class="ai-instruct-window" role="dialog" aria-modal="true" aria-labelledby="aiImportChoiceTitle">
       <header class="ai-instruct-head">
@@ -2748,11 +2728,17 @@
             Importa dagli appunti
             <small>Continua a usare esattamente il flusso attuale: copia il risultato AI e importalo dagli appunti.</small>
           </button>
+          <button id="aiImportConnectMcp" type="button">
+            Collega ChatGPT MCP
+            <small>Ricevi direttamente il progetto da ChatGPT; l'importazione richiede conferma.</small>
+          </button>
           <button id="aiImportFromDownloads" type="button">
             Leggi DisegnoInput.svg da Download
             <small>Legge esclusivamente DisegnoInput.svg. Al primo uso il browser chiede di autorizzare la cartella Download.</small>
           </button>
         </div>
+        <p id="aiImportMcpStatus" role="status" style="overflow-wrap:anywhere"></p>
+        <button id="aiImportMcpCopy" type="button" hidden>Copia codice sessione MCP</button>
       </div>
       <footer class="ai-instruct-foot">
         <button id="aiImportChoiceCloseBottom" type="button">Annulla</button>
