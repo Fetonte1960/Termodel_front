@@ -154,6 +154,10 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
     if (value.toUpperCase().includes('[TERMODEL-PROJECT-TEXT-V1]')) {
       const {loadTermodelProjectText}=await import('./archivio-web.js?v=0.82');
       const project=await loadTermodelProjectText(value);
+      if(project.geometrySvg) {
+        const {generaPiantaDaSvg}=await import('./genera-pianta.js?v=0.71');
+        previewPlan=generaPiantaDaSvg(project.geometrySvg);
+      }
       return {handled:true,label:'Progetto completo',detail:project.projectName};
     }
     if (value.toUpperCase().includes('[TERMODEL-SVG-TEXT-V1]') || /<svg\b/i.test(value)) {
@@ -350,9 +354,10 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 })();
 </script>
 
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const host=document.getElementById('view3d');
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xf3f6f8);
 const camera=new THREE.PerspectiveCamera(42,1,.1,10000);
