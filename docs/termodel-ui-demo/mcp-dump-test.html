@@ -42,7 +42,7 @@ small{color:#405268}
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.4';
+  const HARNESS_VERSION = '1.5';
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
@@ -206,10 +206,20 @@ small{color:#405268}
             if (validation.handled) {
               validatedProjectText=validation.correctedText ?? value.replace(/^ReadProject\r?\n?/, '');
               const report=validation.changes?.length?' CORRETTO: '+validation.changes.join('; ')+'.':'';
-              answer='VALIDO: '+validation.label+' ('+validation.detail+').'+report+' Testo pronto per la copia negli appunti; nessuna importazione nel CAD.';
               if(validation.changes?.length)el('dump').value='ReadProject\n'+validatedProjectText;
               el('copy-project').disabled=false;
-              setStatus('VALIDO: '+validation.label+'. Puoi copiare il testo negli appunti.');
+              let copied=false;
+              try {
+                await navigator.clipboard.writeText(validatedProjectText);
+                copied=true;
+              } catch (clipboardError) {
+                // Browsers may disallow clipboard writes without a direct user gesture.
+              }
+              const delivery=copied
+                ? 'Progetto corretto copiato automaticamente negli appunti.'
+                : 'Copia automatica bloccata dal browser: premi «Copia progetto negli appunti».';
+              answer='VALIDO: '+validation.label+' ('+validation.detail+').'+report+' '+delivery+' Nessuna importazione nel CAD.';
+              setStatus('VALIDO: '+validation.label+'. '+delivery);
             }
           } catch (error) {
             const reason=String(error?.message || error);
