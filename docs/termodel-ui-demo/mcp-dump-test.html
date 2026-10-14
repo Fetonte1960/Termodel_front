@@ -96,8 +96,24 @@ small{color:#405268}
           el('dump').value=value;
           el('size').textContent='Ricevuti ' + new Blob([value]).size + ' byte di testo UTF-8';
           setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
-          const answer='OK: testo ricevuto e visualizzato nel dump MCP (' +
+          let answer='OK: testo ricevuto e visualizzato nel dump MCP (' +
             new Blob([value]).size + ' byte). Nessun progetto importato.';
+          if (/^ReadProject(?:\\r?\\n|$)/.test(value)) {
+            const projectText=value.replace(/^ReadProject\\r?\\n?/, '');
+            try {
+              // Reuse the real project's existing parser/validator in this separate page.
+              // No app.js, canvas, active CAD project, or persistent archives are involved.
+              const { loadTermodelProjectText }=await import('./archivio-web.js?v=0.82');
+              const project=await loadTermodelProjectText(projectText);
+              answer='VALIDO: progetto Termodel "'+project.projectName+
+                '" verificato dal lettore archivi. Testo visualizzato, nessuna importazione nel CAD.';
+              setStatus('VALIDO: '+project.projectName+' (nessuna importazione nel CAD).');
+            } catch (error) {
+              const reason=String(error?.message || error);
+              answer='NON VALIDO: '+reason+'. Nessun progetto importato.';
+              setStatus('NON VALIDO: '+reason);
+            }
+          }
           try {
             const reply=await fetch(base+'/browser/reply/'+encodeURIComponent(sessionId)+'/'+encodeURIComponent(packet.requestId),{
               method:'POST', headers:{'Authorization':'Bearer '+browserToken,'Content-Type':'text/plain; charset=utf-8'},
