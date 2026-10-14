@@ -42,11 +42,12 @@ small{color:#405268}
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.3';
+  const HARNESS_VERSION = '1.4';
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
   let abort = null, sessionId = '', browserToken = '';
+  let validatedProjectText = '';
   const setStatus = message => { el('status').textContent = message; };
   const ui = active => {
     el('connect').disabled = active;
@@ -74,6 +75,53 @@ small{color:#405268}
     if (begin<0 || end<begin) throw Error('Blocco SVG non trovato.');
     return source.slice(begin,end+6).trim();
   }
+  // Recupero conservativo: soltanto un perimetro semplice chiuso, non un progetto multipiano.
+  function repairUnlabeledPerimeter(svg) {
+    const xml=new DOMParser().parseFromString(svg,'image/svg+xml');
+    if (xml.querySelector('parsererror')) throw Error('SVG XML non valido');
+    const group=Array.from(xml.documentElement.children).find(n=>n.localName==='g'&&n.id==='calpestabile');
+    if (!group) return {svg,changes:[]};
+    const lines=Array.from(group.children).filter(n=>n.localName==='line');
+    const missing=lines.filter(n=>!n.getAttribute('id'));
+    if (!missing.length) return {svg,changes:[]};
+    // No implicit guesses when mixed named/unnamed walls or additional lines exist.
+    if (missing.length!==lines.length || lines.length<3)
+      throw Error('Pareti senza id in geometria mista: classificazione ambigua, correzione non automatica.');
+    const edge=lines.map(n=>{
+      const values=['x1','y1','x2','y2'].map(k=>Number(n.getAttribute(k)));
+      if (values.some(v=>!Number.isFinite(v))) throw Error('Coordinate pareti non valide.');
+      const [x1,y1,x2,y2]=values;
+      if(x1===x2&&y1===y2) throw Error('Parete di lunghezza nulla.');
+      return {n,a:[x1,y1].join(','),b:[x2,y2].join(',')};
+    });
+    const degree=new Map();
+    for(const e of edge)for(const p of [e.a,e.b])degree.set(p,(degree.get(p)||0)+1);
+    if(degree.size!==edge.length||Array.from(degree.values()).some(v=>v!==2))
+      throw Error('Linee senza id: il perimetro non è un anello semplice chiuso.');
+    const visited=new Set(),todo=[edge[0].a];
+    while(todo.length){
+      const p=todo.pop();if(visited.has(p))continue;visited.add(p);
+      for(const e of edge){if(e.a===p&&!visited.has(e.b))todo.push(e.b);if(e.b===p&&!visited.has(e.a))todo.push(e.a);}
+    }
+    if(visited.size!==degree.size)throw Error('Più anelli non collegati: impossibile classificare automaticamente.');
+    // Reject intersections not at endpoints: no silent topology repair.
+    const seg=e=>[e.a.split(',').map(Number),e.b.split(',').map(Number)];
+    const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+    for(let i=0;i<edge.length;i++)for(let j=i+1;j<edge.length;j++){
+      const e=edge[i],f=edge[j];
+      if([e.a,e.b].some(p=>p===f.a||p===f.b))continue;
+      const [a,b]=seg(e),[c,d]=seg(f);
+      if(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)
+        throw Error('Perimetro auto-intersecante: correzione non automatica.');
+    }
+    edge.forEach((e,i)=>e.n.setAttribute('id','E'+String(i+1).padStart(3,'0')));
+    return {svg:new XMLSerializer().serializeToString(xml),changes:['Assegnati '+edge.length+' identificativi E alle pareti del perimetro chiuso; coordinate invariate']};
+  }
+  function encodeSvgTransport(original,updated) {
+    if(!original.toUpperCase().includes('[TERMODEL-SVG-TEXT-V1]'))return updated;
+    const encoded=updated.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    return '[TERMODEL-SVG-TEXT-V1]\\n'+encoded+'\\n[/TERMODEL-SVG-TEXT-V1]';
+  }
   async function validateIncoming(command) {
     if (!/^ReadProject(?:\r?\n|$)/.test(command))
       return {handled:false};
@@ -86,8 +134,17 @@ small{color:#405268}
     }
     if (value.toUpperCase().includes('[TERMODEL-SVG-TEXT-V1]') || /<svg\b/i.test(value)) {
       const {generaPiantaDaSvg}=await import('./genera-pianta.js?v=0.71');
-      const result=generaPiantaDaSvg(svgPayload(value));
-      return {handled:true,label:'Pianta SVG',detail:String(result.stats?.linee ?? '')+' linee'};
+      const original=svgPayload(value);
+      let corrected=original, changes=[];
+      try { generaPiantaDaSvg(original); }
+      catch(firstError) {
+        const repair=repairUnlabeledPerimeter(original);
+        if(!repair.changes.length)throw firstError;
+        corrected=repair.svg;changes=repair.changes;
+      }
+      const result=generaPiantaDaSvg(corrected);
+      return {handled:true,label:'Pianta SVG',detail:String(result.stats?.linee ?? '')+' linee',
+        correctedText:changes.length?encodeSvgTransport(value,corrected):value,changes};
     }
     throw Error('Formato non riconosciuto: atteso TERMODEL-SVG-TEXT-V1 oppure TERMODEL-PROJECT-TEXT-V1.');
   }
@@ -140,13 +197,17 @@ small{color:#405268}
           // Display the opaque incoming command, including any project text; never execute or import.
           el('dump').value=value;
           el('copy-project').disabled=true;
+          validatedProjectText='';
           el('size').textContent='Ricevuti ' + new Blob([value]).size + ' byte di testo UTF-8';
           setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
           let answer='OK: testo ricevuto nel dump (nessuna importazione).';
           try {
             const validation=await validateIncoming(value);
             if (validation.handled) {
-              answer='VALIDO: '+validation.label+' ('+validation.detail+'). Testo pronto per la copia negli appunti; nessuna importazione nel CAD.';
+              validatedProjectText=validation.correctedText ?? value.replace(/^ReadProject\r?\n?/, '');
+              const report=validation.changes?.length?' CORRETTO: '+validation.changes.join('; ')+'.':'';
+              answer='VALIDO: '+validation.label+' ('+validation.detail+').'+report+' Testo pronto per la copia negli appunti; nessuna importazione nel CAD.';
+              if(validation.changes?.length)el('dump').value='ReadProject\n'+validatedProjectText;
               el('copy-project').disabled=false;
               setStatus('VALIDO: '+validation.label+'. Puoi copiare il testo negli appunti.');
             }
@@ -236,11 +297,10 @@ small{color:#405268}
     try { await navigator.clipboard.writeText(sessionId); setStatus('Codice sessione copiato.'); }
     catch { window.prompt('Copia il codice sessione:',sessionId); }
   });
-  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';el('copy-project').disabled=true;});
+  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';el('copy-project').disabled=true;validatedProjectText='';});
   el('failure-close').addEventListener('click',()=>el('failure-modal').close());
   el('copy-project').addEventListener('click',async()=>{
-    const command=el('dump').value;
-    const project=command.replace(/^ReadProject\r?\n?/, '');
+    const project=validatedProjectText;
     try { await navigator.clipboard.writeText(project);setStatus('Progetto copiato negli appunti.'); }
     catch { el('dump').focus();el('dump').select();setStatus('Copia automatica non autorizzata: seleziona il testo e premi Ctrl+C.'); }
   });
