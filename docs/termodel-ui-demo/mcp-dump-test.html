@@ -39,7 +39,7 @@ small{color:#405268}
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.1';
+  const HARNESS_VERSION = '1.2';
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
@@ -98,8 +98,8 @@ small{color:#405268}
           setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
           let answer='OK: testo ricevuto e visualizzato nel dump MCP (' +
             new Blob([value]).size + ' byte). Nessun progetto importato.';
-          if (/^ReadProject(?:\\r?\\n|$)/.test(value)) {
-            const projectText=value.replace(/^ReadProject\\r?\\n?/, '');
+          if (/^ReadProject(?:\r?\n|$)/.test(value)) {
+            const projectText=value.replace(/^ReadProject\r?\n?/, '');
             try {
               // Reuse the real project's existing parser/validator in this separate page.
               // No app.js, canvas, active CAD project, or persistent archives are involved.
