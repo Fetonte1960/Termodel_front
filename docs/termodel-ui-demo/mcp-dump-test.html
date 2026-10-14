@@ -18,7 +18,7 @@ small{color:#405268}
 </style>
 </head>
 <body>
-<h1>Termodel MCP — test indipendente di ricezione</h1>
+<h1>Termodel MCP — test indipendente di ricezione <small id="harness-version"></small></h1>
 <p>Questa pagina non carica Termodel, non legge gli appunti, non salva e non importa progetti. Visualizza soltanto il testo ricevuto da ChatGPT tramite il Gateway MCP.</p>
 <section>
 <button id="connect">Attiva comunicazione MCP</button>
@@ -39,6 +39,8 @@ small{color:#405268}
 <script>
 (() => {
   'use strict';
+  const HARNESS_VERSION = '1.1';
+  document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
   let abort = null, sessionId = '', browserToken = '';
