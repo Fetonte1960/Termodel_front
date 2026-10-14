@@ -75,16 +75,16 @@ small{color:#405268}
     return source.slice(begin,end+6).trim();
   }
   async function validateIncoming(command) {
-    if (!/^ReadProject(?:\\r?\\n|$)/.test(command))
+    if (!/^ReadProject(?:\r?\n|$)/.test(command))
       return {handled:false};
-    const value=command.replace(/^ReadProject\\r?\\n?/, '');
+    const value=command.replace(/^ReadProject\r?\n?/, '');
     if (!value.trim()) throw Error('ReadProject vuoto.');
     if (value.toUpperCase().includes('[TERMODEL-PROJECT-TEXT-V1]')) {
       const {loadTermodelProjectText}=await import('./archivio-web.js?v=0.82');
       const project=await loadTermodelProjectText(value);
       return {handled:true,label:'Progetto completo',detail:project.projectName};
     }
-    if (value.toUpperCase().includes('[TERMODEL-SVG-TEXT-V1]') || /<svg\\b/i.test(value)) {
+    if (value.toUpperCase().includes('[TERMODEL-SVG-TEXT-V1]') || /<svg\b/i.test(value)) {
       const {generaPiantaDaSvg}=await import('./genera-pianta.js?v=0.71');
       const result=generaPiantaDaSvg(svgPayload(value));
       return {handled:true,label:'Pianta SVG',detail:String(result.stats?.linee ?? '')+' linee'};
@@ -240,7 +240,7 @@ small{color:#405268}
   el('failure-close').addEventListener('click',()=>el('failure-modal').close());
   el('copy-project').addEventListener('click',async()=>{
     const command=el('dump').value;
-    const project=command.replace(/^ReadProject\\r?\\n?/, '');
+    const project=command.replace(/^ReadProject\r?\n?/, '');
     try { await navigator.clipboard.writeText(project);setStatus('Progetto copiato negli appunti.'); }
     catch { el('dump').focus();el('dump').select();setStatus('Copia automatica non autorizzata: seleziona il testo e premi Ctrl+C.'); }
   });
