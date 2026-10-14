@@ -25,7 +25,7 @@ small{color:#405268}
 <button id="disconnect" disabled>Disconnetti</button>
 <button id="copy" disabled>Copia codice sessione</button>
 <button id="open-gpt">Esegui GPT con programmazione Termodel</button>
-<button id="open-alt" type="button" disabled>Avvio alternativo (prova)</button>
+<button id="open-alt" type="button">Avvio alternativo (prova)</button>
 <p id="status" role="status">Disconnesso.</p>
 <div id="session"></div>
 <small>Il codice sessione consente l'invio di comandi a questa finestra: condividilo solo con la tua chat di prova. Mantieni aperta la scheda.</small>
@@ -146,6 +146,11 @@ small{color:#405268}
     if (!tab) setStatus('Il browser ha bloccato l’apertura di ChatGPT: consenti i popup.');
   }
   el('open-gpt').addEventListener('click',openProgrammedGpt);
+  el('open-alt').addEventListener('click', () => {
+    const initial = 'Leggi le istruzioni Termodel da https://www.termodel.it/ai/ .';
+    window.open('https://claude.ai/new?q=' + encodeURIComponent(initial), '_blank', 'noopener');
+  });
+
   el('connect').addEventListener('click',()=>{void connect()});
   el('disconnect').addEventListener('click',()=>{
     abort?.abort(); setStatus('Disconnesso.');
