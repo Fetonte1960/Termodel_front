@@ -156,7 +156,7 @@ small{color:#405268}
       'Il ricevitore di test mostra soltanto il testo e non importa progetti.',
       active ? 'CODICE_SESSIONE = ' + sessionId : 'Sessione non attiva: chiedi di attivare il collegamento e comunicarti il codice.',
       'Se non puoi accedere alla pagina o al tool, dichiaralo esplicitamente senza inventare un risultato.'
-    ].join('\\n');
+    ].join('\n');
     window.open('https://claude.ai/new?q=' + encodeURIComponent(initial), '_blank', 'noopener');
   });
 
