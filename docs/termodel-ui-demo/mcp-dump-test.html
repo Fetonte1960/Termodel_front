@@ -15,11 +15,32 @@ code{overflow-wrap:anywhere}
 #status{font-weight:600}
 #session{font:13px Consolas,monospace;word-break:break-all}
 small{color:#405268}
+
+header{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+header h1{font-size:1.05rem;font-weight:600;margin:0}
+header small{font-size:.7rem;color:#64748b;font-weight:400}
+.tabs{display:flex;gap:5px;border-bottom:1px solid #cbd5e1;margin:8px 0 0}
+.tabs button{border:1px solid #cbd5e1;border-bottom:0;border-radius:6px 6px 0 0;background:#e9eef4;margin:0}
+.tabs button[aria-selected="true"]{background:white;font-weight:700}
+.tab-panel{display:none;background:white;padding:12px;border:1px solid #cbd5e1;border-top:0;min-height:520px}
+.tab-panel.active{display:block}
+.view{width:100%;height:min(68vh,650px);background:#f3f6f8;border:1px solid #dbe3eb;position:relative;overflow:hidden}
+.view canvas{display:block;width:100%;height:100%}
+#view2d svg{max-width:100%;max-height:100%;width:100%;height:100%}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
+.filters label{font-size:12px;white-space:nowrap}
+#preview-info{font-size:.8rem;color:#536477}
 </style>
 </head>
 <body>
-<h1>Termodel MCP — test indipendente di ricezione <small id="harness-version"></small></h1>
-<p>Questa pagina valida il testo ricevuto con i motori di Termodel, senza importarlo nel CAD. Se valido, puoi copiarlo negli appunti; se non valido compare un avviso.</p>
+<header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small></header>
+<nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
+<div id="tab-3d" class="tab-panel active" role="tabpanel">
+  <div class="filters"><label><input type="checkbox" id="filter-walls" checked> Pareti</label><label><input type="checkbox" id="filter-floor" checked> Pavimenti</label><label><input type="checkbox" id="filter-edges" checked> Spigoli</label></div>
+  <div id="view3d" class="view"></div><p id="preview-info">In attesa di un progetto valido. Anteprima 3D sperimentale.</p>
+</div>
+<div id="tab-2d" class="tab-panel" role="tabpanel"><div id="view2d" class="view"></div></div>
+<div id="tab-comunicazione" class="tab-panel" role="tabpanel">
 <section>
 <button id="connect">Attiva comunicazione MCP</button>
 <button id="disconnect" disabled>Disconnetti</button>
@@ -37,17 +58,20 @@ small{color:#405268}
 <button id="clear">Svuota testo</button>
 <button id="copy-project" disabled>Copia progetto negli appunti</button>
 </section>
+</div>
 <dialog id="failure-modal" aria-labelledby="failure-title"><h2 id="failure-title">Progetto non valido</h2><p id="failure-message" style="white-space:pre-wrap"></p><button id="failure-close">Chiudi</button></dialog>
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.5';
+  const HARNESS_VERSION = '1.6';
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
   let abort = null, sessionId = '', browserToken = '';
   let validatedProjectText = '';
+  let previewPlan = null;
+  let setPreview = () => {};
   const setStatus = message => { el('status').textContent = message; };
   const ui = active => {
     el('connect').disabled = active;
@@ -143,6 +167,7 @@ small{color:#405268}
         corrected=repair.svg;changes=repair.changes;
       }
       const result=generaPiantaDaSvg(corrected);
+      previewPlan=result;
       return {handled:true,label:'Pianta SVG',detail:String(result.stats?.linee ?? '')+' linee',
         correctedText:changes.length?encodeSvgTransport(value,corrected):value,changes};
     }
@@ -198,6 +223,7 @@ small{color:#405268}
           el('dump').value=value;
           el('copy-project').disabled=true;
           validatedProjectText='';
+          previewPlan=null;
           el('size').textContent='Ricevuti ' + new Blob([value]).size + ' byte di testo UTF-8';
           setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
           let answer='OK: testo ricevuto nel dump (nessuna importazione).';
@@ -208,6 +234,7 @@ small{color:#405268}
               const report=validation.changes?.length?' CORRETTO: '+validation.changes.join('; ')+'.':'';
               if(validation.changes?.length)el('dump').value='ReadProject\n'+validatedProjectText;
               el('copy-project').disabled=false;
+              if(previewPlan) setPreview(previewPlan);
               let copied=false;
               try {
                 await navigator.clipboard.writeText(validatedProjectText);
@@ -298,6 +325,12 @@ small{color:#405268}
     window.open('https://claude.ai/new?q=' + encodeURIComponent(initial), '_blank', 'noopener');
   });
 
+  document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{
+    for(const tab of document.querySelectorAll('[data-tab]'))tab.setAttribute('aria-selected',String(tab===button));
+    for(const panel of document.querySelectorAll('.tab-panel'))panel.classList.toggle('active',panel.id==='tab-'+button.dataset.tab);
+    window.dispatchEvent(new Event('resize'));
+  }));
+  window.__termodelHarnessPreview = callback=>{setPreview=callback;};
   el('connect').addEventListener('click',()=>{void connect()});
   el('disconnect').addEventListener('click',()=>{
     abort?.abort(); setStatus('Disconnesso.');
@@ -307,7 +340,7 @@ small{color:#405268}
     try { await navigator.clipboard.writeText(sessionId); setStatus('Codice sessione copiato.'); }
     catch { window.prompt('Copia il codice sessione:',sessionId); }
   });
-  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';el('copy-project').disabled=true;validatedProjectText='';});
+  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';el('copy-project').disabled=true;validatedProjectText='';previewPlan=null;setPreview(null);});
   el('failure-close').addEventListener('click',()=>el('failure-modal').close());
   el('copy-project').addEventListener('click',async()=>{
     const project=validatedProjectText;
@@ -315,6 +348,76 @@ small{color:#405268}
     catch { el('dump').focus();el('dump').select();setStatus('Copia automatica non autorizzata: seleziona il testo e premi Ctrl+C.'); }
   });
 })();
+</script>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js';
+const host=document.getElementById('view3d');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xf3f6f8);
+const camera=new THREE.PerspectiveCamera(42,1,.1,10000);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));host.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
+scene.add(new THREE.HemisphereLight(0xffffff,0xb6bbc8,2.5));
+const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(30,65,70);scene.add(light);
+const root=new THREE.Group();scene.add(root);
+let objects={walls:[],floor:[],edges:[]};
+function addGeometry(shape,depth,material,group){
+ const geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false});
+ geometry.rotateX(-Math.PI/2);
+ const mesh=new THREE.Mesh(geometry,material);root.add(mesh);objects[group].push(mesh);
+ const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geometry),new THREE.LineBasicMaterial({color:0x54657d}));root.add(edges);objects.edges.push(edges);
+}
+function polygon(points){
+ const shape=new THREE.Shape();
+ points.forEach((p,i)=>i?shape.lineTo(p[0],p[1]):shape.moveTo(p[0],p[1]));shape.closePath();return shape;
+}
+function clear(){
+ while(root.children.length){const o=root.children[0];root.remove(o);o.geometry?.dispose();if(o.material)o.material.dispose();}
+ objects={walls:[],floor:[],edges:[]};
+}
+function redraw(plan){
+ clear();
+ const view2d=document.getElementById('view2d');view2d.replaceChildren();
+ if(!plan){document.getElementById('preview-info').textContent='In attesa di un progetto valido.';return;}
+ const doc=new DOMParser().parseFromString(plan.svgPulito,'image/svg+xml');
+ const svg=doc.documentElement;
+ if(svg.localName==='svg'){
+  const safe=svg.cloneNode(true);
+  safe.querySelectorAll('script,foreignObject,iframe').forEach(x=>x.remove());
+  view2d.appendChild(document.importNode(safe,true));
+ }
+ const all=(plan.edificio?.outerShell||[]);
+ const pts=all.map(p=>Array.isArray(p)?p:[p.x,p.y]).filter(p=>p.length===2&&p.every(Number.isFinite));
+ if(pts.length>=3){
+  const shape=polygon(pts);
+  addGeometry(shape,6,new THREE.MeshStandardMaterial({color:0xc9d8e7,side:THREE.DoubleSide}), 'floor');
+ }
+ // Use the source geometry determined by the existing Termodel planar engine.
+ for(const wall of plan.linee||[]){
+  const a=[wall.x1,wall.y1],b=[wall.x2,wall.y2],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);
+  if(len<.01)continue;
+  const t=(wall.thicknessCm||15)/2, nx=-dy/len*t,ny=dx/len*t;
+  addGeometry(polygon([[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]]),270,new THREE.MeshStandardMaterial({color:0x96acbd,side:THREE.DoubleSide}), 'walls');
+ }
+ const bounds=new THREE.Box3().setFromObject(root);
+ if(!bounds.isEmpty()){
+  const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
+  controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(size.x*.9+90,size.y*1.5+150,size.z*1.7+200));camera.lookAt(center);
+  camera.near=1;camera.far=Math.max(10000,size.length()*10);camera.updateProjectionMatrix();
+ }
+ document.getElementById('preview-info').textContent='Anteprima 3D sperimentale · '+(plan.stats?.linee||0)+' pareti · geometria validata da GeneraPianta.';
+ filters();
+}
+function filters(){
+ for(const [key,id] of [['walls','filter-walls'],['floor','filter-floor'],['edges','filter-edges']])
+  for(const object of objects[key])object.visible=document.getElementById(id).checked;
+}
+for(const input of document.querySelectorAll('.filters input'))input.addEventListener('change',filters);
+window.__termodelHarnessPreview?.(redraw);
+function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(host);resize();
+renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
 </script>
 </body>
 </html>
