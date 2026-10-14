@@ -120,7 +120,7 @@ small{color:#405268}
   function encodeSvgTransport(original,updated) {
     if(!original.toUpperCase().includes('[TERMODEL-SVG-TEXT-V1]'))return updated;
     const encoded=updated.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-    return '[TERMODEL-SVG-TEXT-V1]\\n'+encoded+'\\n[/TERMODEL-SVG-TEXT-V1]';
+    return '[TERMODEL-SVG-TEXT-V1]\n'+encoded+'\n[/TERMODEL-SVG-TEXT-V1]';
   }
   async function validateIncoming(command) {
     if (!/^ReadProject(?:\r?\n|$)/.test(command))
