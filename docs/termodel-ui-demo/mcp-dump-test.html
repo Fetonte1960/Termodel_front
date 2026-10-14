@@ -19,7 +19,7 @@ small{color:#405268}
 </head>
 <body>
 <h1>Termodel MCP — test indipendente di ricezione <small id="harness-version"></small></h1>
-<p>Questa pagina non carica Termodel, non legge gli appunti, non salva e non importa progetti. Visualizza soltanto il testo ricevuto da ChatGPT tramite il Gateway MCP.</p>
+<p>Questa pagina valida il testo ricevuto con i motori di Termodel, senza importarlo nel CAD. Se valido, puoi copiarlo negli appunti; se non valido compare un avviso.</p>
 <section>
 <button id="connect">Attiva comunicazione MCP</button>
 <button id="disconnect" disabled>Disconnetti</button>
@@ -35,11 +35,14 @@ small{color:#405268}
 <textarea id="dump" readonly spellcheck="false" placeholder="Il testo ricevuto tramite MCP apparirà qui."></textarea>
 <p id="size"></p>
 <button id="clear">Svuota testo</button>
+<button id="copy-project" disabled>Copia progetto negli appunti</button>
 </section>
+<dialog id="failure-modal" aria-labelledby="failure-title"><h2 id="failure-title">Progetto non valido</h2><p id="failure-message" style="white-space:pre-wrap"></p><button id="failure-close">Chiudi</button></dialog>
+<script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.2';
+  const HARNESS_VERSION = '1.3';
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
@@ -51,6 +54,48 @@ small{color:#405268}
     el('copy').disabled = !active;
     el('open-alt').disabled = !active;
   };
+  function svgPayload(text) {
+    const upper=text.toUpperCase();
+    const marker='[TERMODEL-SVG-TEXT-V1]';
+    const endMarker='[/TERMODEL-SVG-TEXT-V1]';
+    let source=text;
+    const start=upper.indexOf(marker);
+    if (start>=0) {
+      const end=upper.indexOf(endMarker,start+marker.length);
+      if (end<0) throw Error('Payload TERMODEL-SVG-TEXT-V1 incompleto: manca il marcatore finale.');
+      const html=text.slice(start+marker.length,end).trim();
+      if (!html) throw Error('Payload TERMODEL-SVG-TEXT-V1 vuoto.');
+      const field=document.createElement('textarea');
+      field.innerHTML=html;
+      source=field.value;
+    }
+    const begin=source.toLowerCase().indexOf('<svg');
+    const end=source.toLowerCase().lastIndexOf('</svg>');
+    if (begin<0 || end<begin) throw Error('Blocco SVG non trovato.');
+    return source.slice(begin,end+6).trim();
+  }
+  async function validateIncoming(command) {
+    if (!/^ReadProject(?:\\r?\\n|$)/.test(command))
+      return {handled:false};
+    const value=command.replace(/^ReadProject\\r?\\n?/, '');
+    if (!value.trim()) throw Error('ReadProject vuoto.');
+    if (value.toUpperCase().includes('[TERMODEL-PROJECT-TEXT-V1]')) {
+      const {loadTermodelProjectText}=await import('./archivio-web.js?v=0.82');
+      const project=await loadTermodelProjectText(value);
+      return {handled:true,label:'Progetto completo',detail:project.projectName};
+    }
+    if (value.toUpperCase().includes('[TERMODEL-SVG-TEXT-V1]') || /<svg\\b/i.test(value)) {
+      const {generaPiantaDaSvg}=await import('./genera-pianta.js?v=0.71');
+      const result=generaPiantaDaSvg(svgPayload(value));
+      return {handled:true,label:'Pianta SVG',detail:String(result.stats?.linee ?? '')+' linee'};
+    }
+    throw Error('Formato non riconosciuto: atteso TERMODEL-SVG-TEXT-V1 oppure TERMODEL-PROJECT-TEXT-V1.');
+  }
+  function failure(message) {
+    el('failure-message').textContent=message;
+    const dialog=el('failure-modal');
+    if (!dialog.open) dialog.showModal();
+  }
   async function connect() {
     if (abort) return;
     el('connect').disabled = true;
@@ -94,25 +139,23 @@ small{color:#405268}
           const value=packet.command;
           // Display the opaque incoming command, including any project text; never execute or import.
           el('dump').value=value;
+          el('copy-project').disabled=true;
           el('size').textContent='Ricevuti ' + new Blob([value]).size + ' byte di testo UTF-8';
           setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
-          let answer='OK: testo ricevuto e visualizzato nel dump MCP (' +
-            new Blob([value]).size + ' byte). Nessun progetto importato.';
-          if (/^ReadProject(?:\r?\n|$)/.test(value)) {
-            const projectText=value.replace(/^ReadProject\r?\n?/, '');
-            try {
-              // Reuse the real project's existing parser/validator in this separate page.
-              // No app.js, canvas, active CAD project, or persistent archives are involved.
-              const { loadTermodelProjectText }=await import('./archivio-web.js?v=0.82');
-              const project=await loadTermodelProjectText(projectText);
-              answer='VALIDO: progetto Termodel "'+project.projectName+
-                '" verificato dal lettore archivi. Testo visualizzato, nessuna importazione nel CAD.';
-              setStatus('VALIDO: '+project.projectName+' (nessuna importazione nel CAD).');
-            } catch (error) {
-              const reason=String(error?.message || error);
-              answer='NON VALIDO: '+reason+'. Nessun progetto importato.';
-              setStatus('NON VALIDO: '+reason);
+          let answer='OK: testo ricevuto nel dump (nessuna importazione).';
+          try {
+            const validation=await validateIncoming(value);
+            if (validation.handled) {
+              answer='VALIDO: '+validation.label+' ('+validation.detail+'). Testo pronto per la copia negli appunti; nessuna importazione nel CAD.';
+              el('copy-project').disabled=false;
+              setStatus('VALIDO: '+validation.label+'. Puoi copiare il testo negli appunti.');
             }
+          } catch (error) {
+            const reason=String(error?.message || error);
+            answer='NON VALIDO: '+reason+'. Nessun progetto importato.';
+            el('copy-project').disabled=true;
+            failure(reason);
+            setStatus('NON VALIDO: '+reason);
           }
           try {
             const reply=await fetch(base+'/browser/reply/'+encodeURIComponent(sessionId)+'/'+encodeURIComponent(packet.requestId),{
@@ -193,7 +236,14 @@ small{color:#405268}
     try { await navigator.clipboard.writeText(sessionId); setStatus('Codice sessione copiato.'); }
     catch { window.prompt('Copia il codice sessione:',sessionId); }
   });
-  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';});
+  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';el('copy-project').disabled=true;});
+  el('failure-close').addEventListener('click',()=>el('failure-modal').close());
+  el('copy-project').addEventListener('click',async()=>{
+    const command=el('dump').value;
+    const project=command.replace(/^ReadProject\\r?\\n?/, '');
+    try { await navigator.clipboard.writeText(project);setStatus('Progetto copiato negli appunti.'); }
+    catch { el('dump').focus();el('dump').select();setStatus('Copia automatica non autorizzata: seleziona il testo e premi Ctrl+C.'); }
+  });
 })();
 </script>
 </body>
