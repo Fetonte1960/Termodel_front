@@ -147,7 +147,16 @@ small{color:#405268}
   }
   el('open-gpt').addEventListener('click',openProgrammedGpt);
   el('open-alt').addEventListener('click', () => {
-    const initial = 'Leggi le istruzioni Termodel da https://www.termodel.it/ai/ .';
+    const active = Boolean(abort && !abort.signal.aborted && sessionId && !el('disconnect').disabled);
+    const initial = [
+      'Sei assistente AI di Termodel. Leggi le istruzioni su https://www.termodel.it/ai/ .',
+      'Per trasmettere il progetto usa soltanto il tool MCP CommandToTermodel con un unico parametro stringa command.',
+      'Non restituire il progetto come testo da copiare: usa la comunicazione MCP e attendi la risposta reale.',
+      'Il formato del parametro è: @CODICE_SESSIONE, newline, ReadProject, newline, testo integrale TERMODEL-PROJECT-TEXT-V1.',
+      'Il ricevitore di test mostra soltanto il testo e non importa progetti.',
+      active ? 'CODICE_SESSIONE = ' + sessionId : 'Sessione non attiva: chiedi di attivare il collegamento e comunicarti il codice.',
+      'Se non puoi accedere alla pagina o al tool, dichiaralo esplicitamente senza inventare un risultato.'
+    ].join('\\n');
     window.open('https://claude.ai/new?q=' + encodeURIComponent(initial), '_blank', 'noopener');
   });
 
