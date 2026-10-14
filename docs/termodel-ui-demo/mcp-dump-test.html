@@ -30,14 +30,29 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
 .filters label{font-size:12px;white-space:nowrap}
 #preview-info{font-size:.8rem;color:#536477}
+
+.workspace3d{display:flex;flex:1;min-height:0;gap:0}
+.workspace3d .view{flex:1;min-width:0}
+#harness-filter-panel{width:210px;flex:0 0 210px;box-sizing:border-box;background:#fff;border:1px solid #afb3b8;padding:7px;font:12px "Segoe UI",Arial,sans-serif;overflow-y:auto}
+#harness-filter-panel details{margin:0 0 3px}
+#harness-filter-panel summary{cursor:pointer;user-select:none}
+.filter-items{padding-left:19px;display:flex;flex-direction:column;gap:1px}
+.filter-items label{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.filter-items input{margin:0}
+#filter-note{border-top:1px solid #ddd;margin-top:12px;padding-top:9px;color:#777;font-size:10px;line-height:1.3}
 </style>
 </head>
 <body>
 <header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small></header>
 <nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
 <div id="tab-3d" class="tab-panel active" role="tabpanel">
-  <div class="filters"><label><input type="checkbox" id="filter-walls" checked> Pareti</label><label><input type="checkbox" id="filter-floor" checked> Pavimenti</label><label><input type="checkbox" id="filter-edges" checked> Spigoli</label></div>
-  <div id="view3d" class="view"></div><p id="preview-info">In attesa di un progetto valido. Anteprima 3D sperimentale.</p>
+  <div class="workspace3d"><div id="view3d" class="view"></div><aside id="harness-filter-panel" aria-label="Filtri grafici">
+  <details open><summary>Piani</summary><div class="filter-items" data-group="piani"></div></details>
+  <details open><summary>Componenti</summary><div class="filter-items" data-group="componenti"></div></details>
+  <details open><summary>Confini</summary><div class="filter-items" data-group="confini"></div></details>
+  <details open><summary>Separazione tra vani</summary><div class="filter-items" data-group="separazione"></div></details>
+  <p id="filter-note">Filtri Web applicati localmente alle primitive già caricate.</p>
+  </aside></div><p id="preview-info">In attesa di un progetto valido. Anteprima 3D sperimentale.</p>
 </div>
 <div id="tab-2d" class="tab-panel" role="tabpanel"><div id="view2d" class="view"></div></div>
 <div id="tab-comunicazione" class="tab-panel" role="tabpanel">
@@ -64,7 +79,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.7';
+  const HARNESS_VERSION = '1.8';
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
@@ -367,11 +382,46 @@ scene.add(new THREE.HemisphereLight(0xffffff,0xb6bbc8,2.5));
 const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(30,65,70);scene.add(light);
 const root=new THREE.Group();scene.add(root);
 let objects={walls:[],floor:[],edges:[]};
+const filterDefaults={
+ componenti:[['Parete',true],['Pavimento',true],['Soffitto',true],['Finestra',true],['Ponte',true],['Falda',true],['Mansardato',true],['Pannelli',false]],
+ confini:[['Esterno',true],['Terreno',true],['AmbienteNonClimatizzato',true],['AmbienteClimatizzato',true],['StessaZona',true]],
+ separazione:[['Separatori',true],['NonSeparatori',true],['Fittizie',false]]
+};
+const filterState=new Map();
+function checkbox(group,name,checked){
+ const label=document.createElement('label'),box=document.createElement('input');
+ box.type='checkbox';box.checked=checked;box.dataset.group=group;box.dataset.name=name;
+ label.append(box,document.createTextNode(name));
+ document.querySelector('[data-group="'+group+'"]').append(label);
+ filterState.set(group+':'+name,checked);
+ box.addEventListener('change',()=>{filterState.set(group+':'+name,box.checked);filters();});
+}
+for(const [group,items] of Object.entries(filterDefaults))for(const [name,checked] of items)checkbox(group,name,checked);
+checkbox('piani','Anteprima AI',true);
+const checked=(group,name,fallback=true)=>filterState.get(group+':'+name)??fallback;
+function passes(meta){
+ if(checked('componenti','Pannelli',false)&&meta.tipo!=='Ponte'&&meta.tipo!=='Pannelli')return false;
+ if(meta.tipo&&meta.tipo!=='Pannelli'&&!checked('componenti',meta.tipo,true))return false;
+ if(!meta.filterMetadata)return true;
+ if(meta.piano&&!checked('piani',meta.piano,true))return false;
+ if(meta.stessaZona&&!checked('confini','StessaZona',true))return false;
+ if(!meta.falda&&!meta.separatore){
+  if(meta.tipo==='Mansardato'){if(!checked('confini','Esterno',true))return false;}
+  else if(meta.confine&&!checked('confini',meta.confine,true))return false;
+ }
+ if(meta.tipo!=='Ponte'){
+  if(meta.separatore){if(!checked('separazione','Separatori',true))return false;}
+  else if(!checked('separazione','NonSeparatori',true))return false;
+ }
+ if(meta.separatore&&meta.fittizia&&!checked('separazione','Fittizie',false))return false;
+ return true;
+}
+
 function addGeometry(shape,depth,material,group){
  const geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false});
  geometry.rotateX(-Math.PI/2);
- const mesh=new THREE.Mesh(geometry,material);root.add(mesh);objects[group].push(mesh);
- const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geometry),new THREE.LineBasicMaterial({color:0x1abf9b}));root.add(edges);objects.edges.push(edges);
+ const mesh=new THREE.Mesh(geometry,material);mesh.userData.filter={tipo:group==='walls'?'Parete':'Pavimento',piano:'Anteprima AI',filterMetadata:false};root.add(mesh);objects[group].push(mesh);
+ const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geometry),new THREE.LineBasicMaterial({color:0x1abf9b}));edges.userData.filter={...mesh.userData.filter};root.add(edges);objects.edges.push(edges);
 }
 function polygon(points){
  const shape=new THREE.Shape();
@@ -398,9 +448,9 @@ function redraw(plan){
   const shape=polygon(pts);
   addGeometry(shape,6,new THREE.MeshStandardMaterial({color:0xb8b3af,side:THREE.DoubleSide,transparent:true,opacity:.85}), 'floor');
   const roof=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:20,bevelEnabled:false}),new THREE.MeshStandardMaterial({color:0xe4e2de,roughness:.9,side:THREE.DoubleSide}));
-  roof.geometry.rotateX(-Math.PI/2);roof.position.y=270;root.add(roof);objects.floor.push(roof);
+  roof.geometry.rotateX(-Math.PI/2);roof.position.y=270;roof.userData.filter={tipo:'Soffitto',piano:'Anteprima AI',filterMetadata:false};root.add(roof);objects.floor.push(roof);
   const roofOutline=new THREE.LineSegments(new THREE.EdgesGeometry(roof.geometry),new THREE.LineBasicMaterial({color:0x10c7a1}));
-  roofOutline.position.y=270;root.add(roofOutline);objects.edges.push(roofOutline);
+  roofOutline.position.y=270;roofOutline.userData.filter={...roof.userData.filter};root.add(roofOutline);objects.edges.push(roofOutline);
  }
  // Use the source geometry determined by the existing Termodel planar engine.
  for(const wall of plan.linee||[]){
@@ -419,10 +469,10 @@ function redraw(plan){
  filters();
 }
 function filters(){
- for(const [key,id] of [['walls','filter-walls'],['floor','filter-floor'],['edges','filter-edges']])
-  for(const object of objects[key])object.visible=document.getElementById(id).checked;
+ for(const group of Object.values(objects))for(const object of group)
+  object.visible=passes(object.userData.filter||{});
+ document.getElementById('filter-note').textContent='Filtri Web applicati localmente alle primitive già caricate. I filtri senza metadati specifici non modificano questa anteprima.';
 }
-for(const input of document.querySelectorAll('.filters input'))input.addEventListener('change',filters);
 window.__termodelHarnessPreview?.(redraw);
 function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(host);resize();
