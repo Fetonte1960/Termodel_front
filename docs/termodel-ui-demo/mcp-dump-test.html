@@ -39,24 +39,12 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 .filter-items{padding-left:19px;display:flex;flex-direction:column;gap:1px}
 .filter-items label{display:flex;align-items:center;gap:4px;white-space:nowrap}
 .filter-items input{margin:0}
-#dock-status{font-size:.72rem;color:#475569;margin-left:auto}#dock-test{padding:4px 8px;font-size:.72rem;margin:0}
 #filter-note{border-top:1px solid #ddd;margin-top:12px;padding-top:9px;color:#777;font-size:10px;line-height:1.3}
-
-/* Laboratorio split-screen: il pannello iframe e' separato da sessione e motori Termodel */
-#split-shell{display:flex;flex:1;min-height:0;min-width:0;gap:5px}
-#term-pane{display:flex;flex-direction:column;flex:1 1 50%;min-width:0;min-height:0}
-#split-handle{width:6px;flex:none;background:#b2bfce;cursor:col-resize}
-#ai-pane{display:flex;flex-direction:column;flex:1 1 50%;min-width:0;min-height:0;background:white;border:1px solid #cbd5e1}
-#ai-toolbar{display:flex;align-items:center;gap:6px;padding:5px;font-size:12px;flex-wrap:wrap}
-#ai-toolbar button{padding:5px 8px;margin:0}
-#ai-frame{border:0;flex:1;width:100%;min-height:0;background:white}
-#ai-result{font:11px system-ui;padding:5px;background:#f1f5f9;color:#334155}
-@media(max-width:700px){#split-shell{flex-direction:column}#term-pane,#ai-pane{flex:1 1 50%;min-height:160px}#split-handle{width:100%;height:6px;cursor:row-resize}}
 </style>
 </head>
 <body>
-<header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small><span id="dock-status" role="status">Affiancamento da avviare</span><button type="button" id="dock-test">Apri finestra vuota</button></header>
-<div id="split-shell"><div id="term-pane"><nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
+<header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small></header>
+<nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
 <div id="tab-3d" class="tab-panel active" role="tabpanel">
   <div class="workspace3d"><div id="view3d" class="view"></div><aside id="harness-filter-panel" aria-label="Filtri grafici">
   <details open><summary>Piani</summary><div class="filter-items" data-group="piani"></div></details>
@@ -86,85 +74,12 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 <button id="copy-project" disabled>Copia progetto negli appunti</button>
 </section>
 </div>
-</div><div id="split-handle" role="separator" aria-label="Separazione pannelli" tabindex="0"></div>
-<aside id="ai-pane" aria-label="Prova Chat AI incorporata">
- <div id="ai-toolbar"><strong>AI incorporata (test)</strong>
- <button type="button" data-ai-target="blank">Vuoto</button>
- <button type="button" data-ai-target="gpt">ChatGPT</button>
- <button type="button" data-ai-target="claude">Claude</button>
- <button type="button" id="ai-open-external">Apri fuori</button></div>
- <div id="ai-result" role="status">Pannello locale vuoto. Scegli ChatGPT o Claude per provare l'iframe.</div>
- <iframe id="ai-frame" title="Pannello di prova AI" referrerpolicy="no-referrer" src="about:blank"></iframe>
-</aside></div>
 <dialog id="failure-modal" aria-labelledby="failure-title"><h2 id="failure-title">Progetto non valido</h2><p id="failure-message" style="white-space:pre-wrap"></p><button id="failure-close">Chiudi</button></dialog>
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"></script>
 <script>
 (() => {
   'use strict';
-  // Test isolato di affiancamento: la pagina secondaria non contiene una chat e non usa il Gateway.
-  let dockWindow = null;
-  function dockTest() {
-    const status = document.getElementById('dock-status');
-    const width = Math.max(700, screen.availWidth || 1200);
-    const height = Math.max(500, screen.availHeight || 800);
-    const left = Number.isFinite(screen.availLeft) ? screen.availLeft : 0;
-    const top = Number.isFinite(screen.availTop) ? screen.availTop : 0;
-    const half = Math.floor(width / 2);
-    try {
-      if (!dockWindow || dockWindow.closed) {
-        dockWindow = window.open('about:blank','termodel-ai-empty-test',
-          'popup=yes,width='+ (width-half) +',height='+height+',left='+(left+half)+',top='+top);
-      }
-      if (!dockWindow) {
-        status.textContent = 'Popup bloccato: premi «Apri finestra vuota» e consenti i popup';
-        return;
-      }
-      dockWindow.document.title = 'Termodel — finestra AI (test vuoto)';
-      dockWindow.document.body.innerHTML = '<div style="font:20px system-ui;padding:30px">Finestra AI vuota — test affiancamento Termodel</div>';
-      dockWindow.moveTo(left+half, top);
-      dockWindow.resizeTo(width-half, height);
-      window.moveTo(left, top);
-      window.resizeTo(half, height);
-      status.textContent = 'Finestra aperta; verifica affiancamento in Chrome';
-    } catch (error) {
-      status.textContent = 'Finestra aperta; posizionamento limitato dal browser';
-    }
-  }
-  document.getElementById('dock-test').addEventListener('click', dockTest);
-  // Popup automatico disattivato durante il test iframe; pulsante manuale conservato.
-
-  const AI_URLS = {blank:'about:blank',gpt:'https://chatgpt.com/',claude:'https://claude.ai/'};
-  let currentAi = 'blank';
-  const aiFrame = document.getElementById('ai-frame');
-  const aiResult = document.getElementById('ai-result');
-  document.querySelectorAll('[data-ai-target]').forEach(button=>button.addEventListener('click',()=>{
-    currentAi = button.dataset.aiTarget;
-    aiResult.textContent = currentAi==='blank' ? 'Pagina locale vuota.' :
-      'Tentativo iframe: '+AI_URLS[currentAi]+'. Controlla il pannello e la Console Chrome: un evento load non certifica che il sito sia stato visualizzato.';
-    aiFrame.src=AI_URLS[currentAi];
-  }));
-  aiFrame.addEventListener('load',()=>{
-    if(currentAi!=='blank') aiResult.textContent='Evento iframe load ricevuto. Se la pagina resta bianca o mostra un errore, apri F12 → Console: controlla frame-ancestors / X-Frame-Options e cookie. Il load non dimostra successo.';
-  });
-  document.getElementById('ai-open-external').addEventListener('click',()=>{
-    if(currentAi!=='blank') window.open(AI_URLS[currentAi], '_blank', 'noopener,noreferrer');
-  });
-  const split = document.getElementById('split-shell'), leftPane=document.getElementById('term-pane'),rightPane=document.getElementById('ai-pane'),handle=document.getElementById('split-handle');
-  handle.addEventListener('pointerdown',event=>{
-    event.preventDefault(); handle.setPointerCapture(event.pointerId);
-    const move=e=>{
-      if(!handle.hasPointerCapture(e.pointerId))return;
-      const rect=split.getBoundingClientRect(),vertical=matchMedia('(max-width:700px)').matches;
-      const fraction=vertical?(e.clientY-rect.top)/rect.height:(e.clientX-rect.left)/rect.width;
-      const percent=Math.max(20,Math.min(80,fraction*100));
-      leftPane.style.flex='0 0 '+percent+'%';
-      rightPane.style.flex='1 1 0';
-      window.dispatchEvent(new Event('resize'));
-    };
-    const up=e=>{if(handle.hasPointerCapture(e.pointerId))handle.releasePointerCapture(e.pointerId);handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',up);};
-    handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up);
-  });
-  const HARNESS_VERSION = '1.9';
+  const HARNESS_VERSION = '1.8';
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
