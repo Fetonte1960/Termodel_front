@@ -326,6 +326,7 @@ const cadBackgroundCalibrationSection = document.getElementById('cadBackgroundCa
 const cadCalibrationReference = document.getElementById('cadCalibrationReference');
 const cadCalibrationRealMeters = document.getElementById('cadCalibrationRealMeters');
 const cadCalibrateBackground = document.getElementById('cadCalibrateBackground');
+const cadCalibrationHelp = document.getElementById('cadCalibrationHelp');
 const cadCalibrationNote = document.getElementById('cadCalibrationNote');
 const cadSymbolPropertiesSection = document.getElementById('cadSymbolPropertiesSection');
 const cadSymbolSectionTitle = document.getElementById('cadSymbolSectionTitle');
@@ -857,8 +858,26 @@ function buildGenericCommandHelpInfo(element, key = '') {
   };
 }
 
-function showCommandHelp(key, element = null) {
-  if (!explorationModeEnabled) return;
+COMMAND_HELP['Calibrazione sfondo'] = {
+  title: 'Calibrazione sfondo — guida passo passo',
+  body: `
+    <p><strong>Scopo.</strong> Correggere la scala dell'intero piano quando una pianta importata non ha misure reali corrette. Sfondo, pareti e simboli restano allineati tra loro: cambiano le loro dimensioni e coordinate espresse in metri/centimetri.</p>
+    <ol>
+      <li>Importa la pianta come sfondo del piano corrente.</li>
+      <li>Disegna almeno una parete lungo un tratto di cui conosci la <strong>lunghezza reale</strong>.</li>
+      <li>Seleziona quella parete: deve essere <strong>orizzontale o verticale</strong>. Il pannello mostra la sua misura attuale, anche se la scala è errata.</li>
+      <li>In <strong>Misura reale (m)</strong> inserisci la distanza corretta in metri (per esempio 4,00).</li>
+      <li>Premi <strong>Calibra</strong>. Il CAD calcola il rapporto fra misura reale e misura attuale e applica la stessa scala a tutto il piano.</li>
+      <li>Controlla la lunghezza della parete: ora deve corrispondere alla misura inserita. Prosegui con il disegno già calibrato.</li>
+    </ol>
+    <p><strong>Cosa cambia?</strong> Cambiano numericamente coordinate e lunghezze delle linee, posizioni dei simboli e posizione/dimensioni dello sfondo. Il primo estremo della parete di riferimento è il punto fisso. <strong>Cosa non cambia?</strong> L'allineamento reciproco di pianta e disegno e le loro proporzioni; l'inquadratura può adattarsi automaticamente.</p>
+    <p><strong>Attenzione ai DXF.</strong> I DXF importati con unità riconosciute sono di norma già in scala: calibra solo per correggere un'importazione o unità errata.</p>
+    <p><strong>Controlli.</strong> Il comando richiede uno sfondo, una parete orizzontale/verticale e una misura positiva. Se la misura è già corretta non modifica nulla. Per annullare una calibrazione effettuata usa <strong>Undo</strong> nel CAD.</p>
+  `
+};
+
+function showCommandHelp(key, element = null, force = false) {
+  if (!explorationModeEnabled && !force) return;
 
   const normalizedKey = String(key || '').trim();
   const info =
@@ -12768,6 +12787,7 @@ cadSnapBackground?.addEventListener('change', () => {
   cadSetStatus(enabled ? 'Snap sfondo vettoriale attivo · solo endpoint' : 'Snap sfondo vettoriale disattivato');
 });
 cadCalibrateBackground?.addEventListener('click', cadApplyBackgroundCalibration);
+cadCalibrationHelp?.addEventListener('click', () => showCommandHelp('Calibrazione sfondo', cadCalibrationHelp, true));
 cadCalibrationRealMeters?.addEventListener('keydown', event => {
   if (event.key === 'Enter' && !cadCalibrateBackground?.disabled)
     cadApplyBackgroundCalibration();
