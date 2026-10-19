@@ -12826,9 +12826,15 @@ cadModeSelect?.addEventListener('change', cadModeChanged);
 cadNetworkSelect?.addEventListener('change', cadNetworkChanged);
 cadPropPiano?.addEventListener('change', cadCurrentPlaneChanged);
 cadPropColore?.addEventListener('change', () => cadWallArchiveColorChanged(false));
-[cadPropTipoParete, cadPropConfineParete].forEach(control => {
-  control?.addEventListener('change', cadWallPropertySelectionChanged);
+cadPropTipoParete?.addEventListener('change', () => {
+  if (cadFindSourceLine(cadSelectedLineId)) {
+    const record = cadFindRecord(cadArchiveRecords('Pareti'), 'DescBreve', cadPropTipoParete.value);
+    if (record && cadPropColore) cadPropColore.value = cadText(record.Colore);
+    if (cadPropColorSwatch) cadPropColorSwatch.style.background = cadCssForArchiveColor(record?.Colore) || '#ccc';
+  }
+  cadWallPropertySelectionChanged(false);
 });
+cadPropConfineParete?.addEventListener('change', () => cadWallPropertySelectionChanged(false));
 cadOpenPianiArchive?.addEventListener('click', () => openArchivioWeb('Piani'));
 cadAddRoofPlane?.addEventListener('click', cadCreateCoveragePlane);
 cadMobilePropertiesToggle?.addEventListener('click', cadToggleMobileProperties);
