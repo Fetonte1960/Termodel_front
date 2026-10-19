@@ -16,6 +16,7 @@ import {
   openArchivioWeb,
   getArchivioWebRecords,
   addArchivioWebRecord,
+  updateArchivioWebRecord,
   getArchivioWebSchema,
   getArchivioWebState,
   markArchivioWebSaved
@@ -299,7 +300,7 @@ const cadInsertOpeningTwoPoint = document.getElementById('cadInsertOpeningTwoPoi
 const cadInsertBridge = document.getElementById('cadInsertBridge');
 const cadInsertRoom = document.getElementById('cadInsertRoom');
 const cadInsertRidge = document.getElementById('cadInsertRidge');
-const cadNewLineType = document.getElementById('cadNewLineType');
+const cadApplyTypeToAll = document.getElementById('cadApplyTypeToAll');
 const cadEntitySeparator = document.getElementById('cadEntitySeparator');
 const cadEditStatus = document.getElementById('cadEditStatus');
 const cadServiceGeometryErrorBanner = document.getElementById('cadServiceGeometryErrorBanner');
@@ -10247,6 +10248,7 @@ function cadUpdatePropertiesPanel() {
 
   if (cadPropColorSwatch)
     cadPropColorSwatch.style.background = derived.colorCss || '#ccc';
+  if (cadApplyTypeToAll && !line) cadApplyTypeToAll.checked = false;
 }
 
 function cadSetOptionalAttribute(element, name, value) {
@@ -10279,16 +10281,93 @@ function cadCommitToolbarToSelectedLine() {
 }
 
 function cadWallPropertySelectionChanged() {
-  cadToolbarState.tipoParete = cadText(cadPropTipoParete?.value);
-  cadToolbarState.confineParete = cadText(cadPropConfineParete?.value);
+  const line = cadFindSourceLine(cadSelectedLineId);
+  const requestedType = cadText(cadPropTipoParete?.value);
+  const requestedBoundary = cadText(cadPropConfineParete?.value);
+  const oldType = line ? cadStateFromLine(line).tipoParete : '';
+  const applyAll = !!line && !!cadApplyTypeToAll?.checked && oldType !== requestedType;
+  const candidates = applyAll
+    ? cadAllSourceLines().filter(item => cadStateFromLine(item).tipoParete === oldType)
+    : (line ? [line] : []);
 
+  if (applyAll && !window.confirm(
+    'Cambiare la tipologia da "' + oldType + '" a "' + requestedType +
+    '" per ' + candidates.length + ' pareti dello stesso tipo?'
+  )) {
+    cadUpdatePropertiesPanel();
+    return;
+  }
+
+  cadToolbarState.tipoParete = requestedType;
+  cadToolbarState.confineParete = requestedBoundary;
   cadRefreshToolbarControls();
 
-  if (cadFindSourceLine(cadSelectedLineId))
-    cadCommitToolbarToSelectedLine();
-  else
-    cadSetStatus(`Piano ${cadCurrentPlane()} · valori correnti aggiornati per ＋ Nuova parete`);
+  if (line) {
+    const before = cadSerializeWorkingSvg();
+    for (const item of candidates) {
+      const original = cadStateFromLine(item);
+      cadApplySemanticAttributes(item, {
+        ...original,
+        tipoParete: requestedType,
+        confineParete: item === line ? requestedBoundary : original.confineParete
+      });
+    }
+    const after = cadSerializeWorkingSvg();
+    if (after !== before) {
+      cadUndoStack.push(before);
+      cadRedoStack = [];
+      renderCadComparison();
+      cadSetStatus(candidates.length + ' parete/i aggiornate · modifica non rigenerata', 'dirty');
+    } else {
+      cadSetStatus('Proprietà invariate');
+    }
+    cadUpdatePropertiesPanel();
+    cadUpdateControls();
+  } else {
+    cadSetStatus('Valori correnti aggiornati per ＋ Nuova parete');
+  }
 }
+
+function cadWallArchiveColorChanged() {
+  const type = cadText(cadPropTipoParete?.value);
+  const record = cadFindRecord(cadArchiveRecords('Pareti'), 'DescBreve', type);
+  if (!record) return;
+  const original = cadText(record.Colore);
+  const requested = cadText(cadPropColore?.value);
+  const index = cadArchiveColorIndex(requested);
+  if (!CAD_ACI_COLORS[index]) {
+    window.alert('Colore non valido: selezionare un colore ACI da 1 a 9.');
+    cadRefreshToolbarControls();
+    return;
+  }
+  const names = {1:'Rosso',2:'Giallo',3:'Verde',4:'Ciano',5:'Blu',
+    6:'Magenta',7:'Bianco',8:'Grigio',9:'Grigio scuro'};
+  const next = index + ' - ' + names[index];
+  if (cadArchiveColorIndex(original) === index) {
+    cadRefreshToolbarControls();
+    return;
+  }
+  const count = cadAllSourceLines()
+    .filter(line => cadStateFromLine(line).tipoParete === type).length;
+  if (!window.confirm(
+    'Modificare il colore della tipologia "' + type + '" da "' +
+    original + '" a "' + next + '" nell’archivio Pareti?\n' +
+    'La modifica si applica a tutte le ' + count + ' pareti di questo tipo.'
+  )) {
+    cadRefreshToolbarControls();
+    return;
+  }
+  updateArchivioWebRecord('Pareti', 'DescBreve', type, { Colore: next });
+  // Normalizza anche i metadati SVG, non solo il rendering dall'archivio.
+  for (const line of cadAllSourceLines()) {
+    if (cadStateFromLine(line).tipoParete !== type) continue;
+    cadApplySemanticAttributes(line, cadStateFromLine(line));
+  }
+  renderCadComparison();
+  cadUpdatePropertiesPanel();
+  cadSetStatus('Colore archivio Pareti aggiornato per ' + type, 'dirty');
+}
+
 
 function cadPlaneRecord(planeName = cadCurrentPlane()) {
   return cadFindRecord(cadArchiveRecords('Piani'), 'Nome', planeName);
@@ -10594,7 +10673,7 @@ function cadUpdateControls() {
   const coverage = cadPlaneIsCoverage();
   const networkMode = cadToolbarState.modalita === 'rete';
 
-  if (cadNewLineType) cadNewLineType.hidden = networkMode;
+  if (cadApplyTypeToAll) cadApplyTypeToAll.hidden = networkMode;
   if (cadEntitySeparator) cadEntitySeparator.hidden = networkMode;
   if (cadInsertAlign) cadInsertAlign.hidden = networkMode;
   if (cadInsertOpening) cadInsertOpening.hidden = networkMode || coverage;
@@ -10665,7 +10744,7 @@ function cadUpdateControls() {
     cadCanvas.classList.toggle('symbol-insert-mode', insertingSymbol || drawingWindowTwoPoint);
     cadCanvas.classList.toggle('wall-insert-mode', drawingLine);
   }
-  if (cadNewLineType) cadNewLineType.disabled = !hasDoc || busy;
+  if (cadApplyTypeToAll) cadApplyTypeToAll.disabled = !hasDoc || busy;
   if (cadExportArchitectural) cadExportArchitectural.disabled = !lastGeneratedPlan || dirty || busy;
 
   // Un errore geometrico del Service rimane prioritario nello status CAD:
@@ -10674,7 +10753,7 @@ function cadUpdateControls() {
     cadSetStatus(cadFormatServiceGeometryError(cadServiceGeometryErrorState), 'error');
   else if (!hasDoc) cadSetStatus('Genera prima una pianta');
   else if (drawingLine) {
-    const tipo = (cadNewLineType?.value || 'W').toUpperCase();
+    const tipo = 'W'; // ID tecnico provvisorio, non classificazione geometrica.
     const lineLabel = networkMode
       ? ('Tubo · Rete ' + (cadNewLineState?.rete || cadToolbarState.rete))
       : (coverage ? 'Linea perimetro falde' : ('Parete ' + tipo));
@@ -11176,7 +11255,7 @@ function cadStartOrFinishNewLine(svg, rawPoint) {
     cadRenderNewLinePreview(svg, point, snapped.snapped);
     const lineLabel = pipeMode
       ? ('Tubo · Rete ' + cadToolbarState.rete + ' · Circuito ' + cadNewLineState.circuito)
-      : (cadPlaneIsCoverage() ? 'Linea perimetro falde' : ('Parete ' + (cadNewLineType?.value || 'W').toUpperCase()));
+      : (cadPlaneIsCoverage() ? 'Linea perimetro falde' : 'Parete');
     cadSetStatus(
       `${lineLabel} · punto iniziale${snapped.snapped ? ' · ' + cadSnapLabel(snapped) : ''}${cadOrtho?.checked ? ' · ORTO' : ''} · clicca il punto successivo`
     );
@@ -11210,7 +11289,7 @@ function cadStartOrFinishNewLine(svg, rawPoint) {
 
   const type = isPipeSequence
     ? 'T'
-    : ((cadNewLineType?.value || 'W').toUpperCase() === 'E' ? 'E' : 'W');
+    : 'W'; // Compatibilità legacy: il motore stabilisce interna/esterna.
   const id = cadNextLineId(type);
   const [x1, y1] = cadNewLineState.start;
 
@@ -11922,7 +12001,7 @@ function cadInstallPointerEditing(svg) {
       if (!cadNewLineState) {
         const snapped = cadRenderNewLineFirstPointPreview(svg, rawPoint);
         cadSetStatus(
-          `Parete ${(cadNewLineType?.value || 'W').toUpperCase()} · clicca il punto iniziale${snapped.snapped ? ' · ' + cadSnapLabel(snapped) : ''}`
+          `Nuova parete · clicca il punto iniziale${snapped.snapped ? ' · ' + cadSnapLabel(snapped) : ''}`
         );
         return;
       }
@@ -11930,7 +12009,7 @@ function cadInstallPointerEditing(svg) {
       const snapped = cadNewLineTargetPoint(rawPoint);
       cadRenderNewLinePreview(svg, snapped.point, snapped.snapped);
       cadSetStatus(
-        `Parete ${(cadNewLineType?.value || 'W').toUpperCase()} · clicca il punto successivo${snapped.ortho ? ' · ORTO' : ''}${snapped.snapped ? ' · ' + cadSnapLabel(snapped) : ''}`
+        `Nuova parete · clicca il punto successivo${snapped.ortho ? ' · ORTO' : ''}${snapped.snapped ? ' · ' + cadSnapLabel(snapped) : ''}`
       );
       return;
     }
@@ -12721,6 +12800,7 @@ cadNorthAngle?.addEventListener('change', () => {
 cadModeSelect?.addEventListener('change', cadModeChanged);
 cadNetworkSelect?.addEventListener('change', cadNetworkChanged);
 cadPropPiano?.addEventListener('change', cadCurrentPlaneChanged);
+cadPropColore?.addEventListener('change', cadWallArchiveColorChanged);
 [cadPropTipoParete, cadPropConfineParete].forEach(control => {
   control?.addEventListener('change', cadWallPropertySelectionChanged);
 });
