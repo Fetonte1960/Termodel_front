@@ -2520,18 +2520,15 @@
               </div>
             </section>
 
+            <div class="cad-prop-actions" id="cadWallConfirmActions">
+              <button id="cadPropConfirm" type="button">Conferma modifiche</button>
+            </div>
+
             <section id="cadWallGeometrySection" class="cad-properties-section">
               <div class="cad-properties-section-title">Geometria CAD</div>
               <div class="cad-prop-row"><label>X1 / Y1:</label><input id="cadPropStart" type="text" readonly /></div>
               <div class="cad-prop-row"><label>X2 / Y2:</label><input id="cadPropEnd" type="text" readonly /></div>
               <div class="cad-prop-row"><label>Lunghezza:</label><input id="cadPropLength" type="text" readonly /></div>
-              <div class="cad-prop-actions">
-                <button id="cadPropConfirm" type="button">Conferma modifiche</button>
-              </div>
-              <div class="cad-properties-note">
-                Conforme a <code>MainWindow.xaml → Grid_DatiCad / Grid_pareti</code>.
-                Il Piano corrente filtra la vista; le nuove entità ereditano automaticamente il piano. Layer, colore e tipo linea restano correlati readonly come nel desktop.
-              </div>
             </section>
 
             <section id="cadBackgroundCalibrationSection" class="cad-properties-section" hidden>
