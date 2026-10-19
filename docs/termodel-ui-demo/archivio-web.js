@@ -1089,6 +1089,25 @@ export function getArchivioWebRecords(name) {
   return archiveRecords(name).map(record => ({ ...record }));
 }
 
+export function updateArchivioWebRecord(name, keyField, keyValue, changes = {}) {
+  commitFormToRecord();
+  if (!archiveState.project || !archiveState.schema?.[name])
+    throw new Error('Archivio non disponibile: ' + name);
+  const records = archiveRecords(name);
+  const record = records.find(row => String(row?.[keyField] ?? '').trim() === String(keyValue ?? '').trim());
+  if (!record) throw new Error('Record non trovato nell’archivio ' + name);
+  for (const [field, value] of Object.entries(changes)) {
+    if (!Object.prototype.hasOwnProperty.call(record, field))
+      throw new Error('Campo non definito: ' + field);
+    record[field] = value;
+  }
+  archiveState.dirty = true;
+  if (archiveState.ui?.modal?.classList.contains('visible') && archiveState.currentArchive === name)
+    renderArchive();
+  window.dispatchEvent(new CustomEvent('termodel:archives-updated'));
+  return { ...record };
+}
+
 export function addArchivioWebRecord(name, overrides = {}) {
   commitFormToRecord();
 
