@@ -10287,8 +10287,12 @@ function cadCommitToolbarToSelectedLine() {
   cadUpdateControls();
 }
 
-function cadWallPropertySelectionChanged() {
+function cadWallPropertySelectionChanged(commit = false) {
   const line = cadFindSourceLine(cadSelectedLineId);
+  if (line && !commit) {
+    cadSetStatus('Proprietà modificate nel pannello · premi Conferma per applicare', 'dirty');
+    return;
+  }
   const requestedType = cadText(cadPropTipoParete?.value);
   const requestedBoundary = cadText(cadPropConfineParete?.value);
   const oldType = line ? cadStateFromLine(line).tipoParete : '';
@@ -10335,7 +10339,11 @@ function cadWallPropertySelectionChanged() {
   }
 }
 
-function cadWallArchiveColorChanged() {
+function cadWallArchiveColorChanged(commit = false) {
+  if (cadFindSourceLine(cadSelectedLineId) && !commit) {
+    cadSetStatus('Colore modificato nel pannello · premi Conferma per applicare', 'dirty');
+    return true;
+  }
   const type = cadText(cadPropTipoParete?.value);
   const record = cadFindRecord(cadArchiveRecords('Pareti'), 'DescBreve', type);
   if (!record) return;
@@ -10345,15 +10353,12 @@ function cadWallArchiveColorChanged() {
   if (!CAD_ACI_COLORS[index]) {
     window.alert('Colore non valido: selezionare un colore ACI da 1 a 9.');
     cadRefreshToolbarControls();
-    return;
+    return false;
   }
   const names = {1:'Rosso',2:'Giallo',3:'Verde',4:'Ciano',5:'Blu',
     6:'Magenta',7:'Bianco',8:'Grigio',9:'Grigio scuro'};
   const next = index + ' - ' + names[index];
-  if (cadArchiveColorIndex(original) === index) {
-    cadRefreshToolbarControls();
-    return;
-  }
+  if (cadArchiveColorIndex(original) === index) return true;
   const count = cadAllSourceLines()
     .filter(line => cadStateFromLine(line).tipoParete === type).length;
   if (!window.confirm(
@@ -10362,7 +10367,7 @@ function cadWallArchiveColorChanged() {
     'La modifica si applica a tutte le ' + count + ' pareti di questo tipo.'
   )) {
     cadRefreshToolbarControls();
-    return;
+    return false;
   }
   updateArchivioWebRecord('Pareti', 'DescBreve', type, { Colore: next });
   // Normalizza anche i metadati SVG, non solo il rendering dall'archivio.
@@ -10373,6 +10378,7 @@ function cadWallArchiveColorChanged() {
   renderCadComparison();
   cadUpdatePropertiesPanel();
   cadSetStatus('Colore archivio Pareti aggiornato per ' + type, 'dirty');
+  return true;
 }
 
 
@@ -10633,7 +10639,19 @@ function cadCurrentPlaneChanged() {
 }
 
 function cadApplyProperties() {
-  cadWallPropertySelectionChanged();
+  if (!cadFindSourceLine(cadSelectedLineId)) return;
+  // I valori restano nella form fino alla conferma: nessun evento change
+  // può modificare l'entità o l'archivio.
+  const pendingType = cadText(cadPropTipoParete?.value);
+  const pendingBoundary = cadText(cadPropConfineParete?.value);
+  const pendingColor = cadText(cadPropColore?.value);
+  const record = cadFindRecord(cadArchiveRecords('Pareti'), 'DescBreve', pendingType);
+  if (record && cadArchiveColorIndex(record.Colore) !== cadArchiveColorIndex(pendingColor)) {
+    if (!cadWallArchiveColorChanged(true)) return;
+  }
+  if (cadPropTipoParete) cadPropTipoParete.value = pendingType;
+  if (cadPropConfineParete) cadPropConfineParete.value = pendingBoundary;
+  cadWallPropertySelectionChanged(true);
 }
 
 function cadSetMobilePropertiesOpen(open) {
@@ -12807,7 +12825,7 @@ cadNorthAngle?.addEventListener('change', () => {
 cadModeSelect?.addEventListener('change', cadModeChanged);
 cadNetworkSelect?.addEventListener('change', cadNetworkChanged);
 cadPropPiano?.addEventListener('change', cadCurrentPlaneChanged);
-cadPropColore?.addEventListener('change', cadWallArchiveColorChanged);
+cadPropColore?.addEventListener('change', () => cadWallArchiveColorChanged(false));
 [cadPropTipoParete, cadPropConfineParete].forEach(control => {
   control?.addEventListener('change', cadWallPropertySelectionChanged);
 });
