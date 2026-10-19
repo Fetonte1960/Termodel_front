@@ -10097,9 +10097,11 @@ function cadUpdateCalibrationPanel(line, northOpen = false) {
   const dxfUnit = cadText(background?.getAttribute('data-termodel-dxf-unita'));
   if (cadCalibrateBackground) cadCalibrateBackground.disabled = !hasBackground;
 
-  if (cadCalibrationNote) {
-    if (!hasBackground) {
-      cadCalibratioceLine(cadSelectedLineId);
+
+}
+
+function cadApplyBackgroundCalibration() {
+  const line = cadFindSourceLine(cadSelectedLineId);
   const axis = cadLineCalibrationAxis(line);
   if (!line || !axis) {
     cadSetStatus('Calibrazione rifiutata: seleziona una parete orizzontale o verticale.', 'error');
