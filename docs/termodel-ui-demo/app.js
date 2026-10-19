@@ -4506,9 +4506,25 @@ async function saveCurrentProject(saveAs = false) {
   }
 
   currentProjectFileName = fileName;
+  // In questa fase solo admin usa il catalogo sperimentale Neon.
+  // Non Registrato e gli altri login mantengono il salvataggio su file locale.
+  // "Salva con nome" rimane sempre un'esportazione locale.
+  if (!saveAs && TERMODEL_USER_LOGIN === 'admin') {
+    setMainAiStatus('Salvataggio progetto admin su Neon in corso…');
+    try {
+      await saveLastRegisteredProject(text);
+    } catch (error) {
+      setMainAiStatus('⚠ Salvataggio su Neon non riuscito: ' + error.message);
+      throw error;
+    }
+    markArchivioWebSaved();
+    setMainAiStatus('✓ Progetto admin salvato su Neon: ' + state.projectName);
+    return;
+  }
+
   downloadProjectText(text, fileName);
   markArchivioWebSaved();
-  setMainAiStatus('✓ Progetto salvato localmente: ' + fileName);
+  setMainAiStatus('✓ Progetto esportato su file locale: ' + fileName);
 }
 
 async function openProjectFile(file) {
