@@ -4493,8 +4493,17 @@ function downloadProjectText(text, fileName) {
 }
 
 async function saveCurrentProject(saveAs = false) {
-  const text = await buildCurrentProjectText();
-  const state = getArchivioWebState();
+  let text = await buildCurrentProjectText();
+  let state = getArchivioWebState();
+  // Sostituisce il nome generico soltanto in modalità admin; preserva
+  // i nomi assegnati dall'operatore e non cambia Non Registrato.
+  if (!saveAs && TERMODEL_USER_LOGIN === 'admin' && state.projectName === 'Progetto vuoto') {
+    const manifest = readProjectManifest(text);
+    text = setProjectManifestIdentity(text, manifest.projectId, 'Progetto admin');
+    await loadTermodelProjectText(text);
+    currentProjectText = text;
+    state = getArchivioWebState();
+  }
   let fileName =
     currentProjectFileName || projectFileNameFromName(state.projectName);
 
