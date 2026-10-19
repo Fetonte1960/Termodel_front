@@ -327,7 +327,7 @@ const cadCalibrationReference = document.getElementById('cadCalibrationReference
 const cadCalibrationRealMeters = document.getElementById('cadCalibrationRealMeters');
 const cadCalibrateBackground = document.getElementById('cadCalibrateBackground');
 const cadCalibrationHelp = document.getElementById('cadCalibrationHelp');
-const cadCalibrationNote = document.getElementById('cadCalibrationNote');
+
 const cadSymbolPropertiesSection = document.getElementById('cadSymbolPropertiesSection');
 const cadSymbolSectionTitle = document.getElementById('cadSymbolSectionTitle');
 const cadSymbolPosition = document.getElementById('cadSymbolPosition');
@@ -10099,22 +10099,7 @@ function cadUpdateCalibrationPanel(line, northOpen = false) {
 
   if (cadCalibrationNote) {
     if (!hasBackground) {
-      cadCalibrationNote.textContent =
-        'Aggiungi prima uno sfondo al piano corrente. Le pareti inclinate non sono ammesse come riferimento.';
-    } else if (autoDxfScale) {
-      cadCalibrationNote.textContent =
-        'DXF già in scala automatica' +
-        (dxfUnit ? ' (' + dxfUnit + ' → cm)' : '') +
-        '. Usa Calibra solo per correggere un DXF o una unità dichiarata in modo errato.';
-    } else {
-      cadCalibrationNote.textContent =
-        'Calibra usa questa parete come riferimento e ridimensiona sfondo, linee e posizioni dei simboli del piano corrente.';
-    }
-  }
-}
-
-function cadApplyBackgroundCalibration() {
-  const line = cadFindSourceLine(cadSelectedLineId);
+      cadCalibratioceLine(cadSelectedLineId);
   const axis = cadLineCalibrationAxis(line);
   if (!line || !axis) {
     cadSetStatus('Calibrazione rifiutata: seleziona una parete orizzontale o verticale.', 'error');
