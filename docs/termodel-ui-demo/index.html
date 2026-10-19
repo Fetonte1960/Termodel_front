@@ -2372,10 +2372,7 @@
           <details class="cad-tool-menu">
             <summary>✎ Disegna</summary>
             <div class="cad-tool-dropdown">
-              <select id="cadNewLineType" title="Tipo della nuova parete">
-                <option value="W" selected>W interna</option>
-                <option value="E">E esterna</option>
-              </select>
+
               <button id="cadNewLine" type="button" title="Clicca il punto iniziale e poi i punti successivi">＋ Nuova parete</button>
               <div id="cadEntitySeparator" class="cad-tool-separator"></div>
               <button id="cadInsertAlign" type="button" title="Inserisci Allinea sul piano/layer corrente">＋ Allinea</button>
@@ -2492,10 +2489,21 @@
                   <button id="cadOpenParetiArchive" class="cad-prop-arc" type="button" title="Apri archivio Pareti">Arc</button>
                 </div>
               </div>
+              <label class="cad-prop-row" title="Modifica tutte le pareti con la tipologia originaria, previa conferma">
+                <span>Applica a tutte le pareti dello stesso tipo</span>
+                <input id="cadApplyTypeToAll" type="checkbox" />
+              </label>
               <div class="cad-prop-row">
                 <label for="cadPropColore">Colore:</label>
                 <div class="cad-prop-color">
-                  <input id="cadPropColore" type="text" readonly />
+                  <input id="cadPropColore" type="text" list="cadWallColors" title="Modifica il colore della tipologia nell'archivio Pareti" />
+                  <datalist id="cadWallColors">
+                    <option value="1 - Rosso"></option><option value="2 - Giallo"></option>
+                    <option value="3 - Verde"></option><option value="4 - Ciano"></option>
+                    <option value="5 - Blu"></option><option value="6 - Magenta"></option>
+                    <option value="7 - Bianco"></option><option value="8 - Grigio"></option>
+                    <option value="9 - Grigio scuro"></option>
+                  </datalist>
                   <i id="cadPropColorSwatch" class="cad-prop-swatch" aria-hidden="true"></i>
                 </div>
               </div>
