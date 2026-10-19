@@ -10163,8 +10163,15 @@ function cadApplyBackgroundCalibration() {
   );
 }
 
+let cadLastPropertiesSelectionId = '';
+
 function cadUpdatePropertiesPanel() {
   const line = cadFindSourceLine(cadSelectedLineId);
+  const nextSelectionId = line?.id || '';
+  if (nextSelectionId !== cadLastPropertiesSelectionId) {
+    if (cadApplyTypeToAll) cadApplyTypeToAll.checked = false;
+    cadLastPropertiesSelectionId = nextSelectionId;
+  }
   const symbol = cadFindSourceSymbol(cadSelectedSymbolId);
   const hasDoc = !!cadWorkingDoc;
 
