@@ -10732,10 +10732,10 @@ function cadUpdateControls() {
   if (cadUndo) cadUndo.disabled = !cadUndoStack.length || busy;
   if (cadRedo) cadRedo.disabled = !cadRedoStack.length || busy;
   if (cadDelete) {
-    cadDelete.disabled = !selected || busy;
+    cadDelete.disabled = !(selected || (!networkMode && selectedSymbol)) || busy;
     cadDelete.title = networkMode
       ? 'Elimina il tubo selezionato'
-      : 'Elimina la parete selezionata';
+      : selectedSymbol ? 'Elimina il simbolo selezionato' : 'Elimina la parete selezionata';
   }
   if (cadRegenerate) {
     cadRegenerate.disabled = !hasDoc || !dirty || busy;
@@ -12329,20 +12329,26 @@ function renderCadComparison() {
 
 function cadDeleteSelected() {
   const line = cadFindSelectableLine(cadSelectedLineId);
-  if (!line) return;
+  const symbol = cadToolbarState?.modalita === 'rete' ? null : cadFindSourceSymbol(cadSelectedSymbolId);
+  const target = line || symbol;
+  if (!target) return;
 
-  const deletedId = line.id || cadSelectedLineId;
-  const pipe = cadIsPipeLine(line);
+  const deletedId = target.id || (line ? cadSelectedLineId : cadSelectedSymbolId);
+  const pipe = !!line && cadIsPipeLine(line);
+  const symbolType = symbol ? cadSymbolBlockType(symbol) : '';
   const before = cadSerializeWorkingSvg();
-  line.remove();
+  target.remove();
   cadUndoStack.push(before);
   cadRedoStack = [];
   cadSelectedLineId = '';
+  cadSelectedSymbolId = '';
   renderCadComparison();
   cadSetStatus(
-    pipe
-      ? ('Tubo ' + deletedId + ' eliminato · premi Consolida rete')
-      : ('Parete ' + deletedId + ' eliminata · premi Rigenera pianta'),
+    symbol
+      ? ('Simbolo ' + symbolType + ' ' + deletedId + ' eliminato')
+      : pipe
+        ? ('Tubo ' + deletedId + ' eliminato · premi Consolida rete')
+        : ('Parete ' + deletedId + ' eliminata · premi Rigenera pianta'),
     'dirty'
   );
 }
@@ -12881,7 +12887,7 @@ document.addEventListener('keydown', event => {
   }
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
 
-  if ((event.key === 'Delete' || event.key === 'Backspace') && cadSelectedLineId) {
+  if ((event.key === 'Delete' || event.key === 'Backspace') && (cadSelectedLineId || cadSelectedSymbolId)) {
     event.preventDefault();
     cadDeleteSelected();
     return;
