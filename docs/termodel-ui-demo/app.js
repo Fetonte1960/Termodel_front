@@ -245,6 +245,7 @@ const modelPage = document.getElementById('modelPage');
 const cadPage = document.getElementById('cadPage');
 const cadCanvas = document.getElementById('cadCanvas');
 const cadContextMenu = document.getElementById('cadContextMenu');
+const cadContextDeleteSymbol = document.getElementById('cadContextDeleteSymbol');
 const cadRepeatLastCommand = document.getElementById('cadRepeatLastCommand');
 const cadExtendTrim = document.getElementById('cadExtendTrim');
 const cadCloseSequence = document.getElementById('cadCloseSequence');
@@ -11117,12 +11118,15 @@ function cadShowIdleContextMenu(event) {
   const selectedWall = cadFindSourceLine(cadSelectedLineId);
   const canExtendTrim = !!selectedWall && /^[EW]/i.test(selectedWall.id || '') && cadEntityBelongsToCurrentPlane(selectedWall);
   if (cadExtendTrim) cadExtendTrim.hidden = !canExtendTrim;
-  cadPositionContextMenu(event, canExtendTrim ? 72 : 36);
+  const selectedSymbol = cadToolbarState?.modalita !== 'rete' && cadFindSourceSymbol(cadSelectedSymbolId);
+  if (cadContextDeleteSymbol) cadContextDeleteSymbol.hidden = !selectedSymbol;
+  cadPositionContextMenu(event, 36 + (canExtendTrim ? 36 : 0) + (selectedSymbol ? 36 : 0));
 }
 
 function cadShowLineContextMenu(event) {
   if (!cadContextMenu || cadToolMode !== 'line') return;
   if (cadExtendTrim) cadExtendTrim.hidden = true;
+  if (cadContextDeleteSymbol) cadContextDeleteSymbol.hidden = true;
   const canClose = cadCanCloseWallSequence();
   const pipeMode = cadToolbarState.modalita === 'rete';
   if (cadRepeatLastCommand) cadRepeatLastCommand.hidden = true;
@@ -11134,6 +11138,7 @@ function cadShowLineContextMenu(event) {
 }
 
 function cadShowWindowSequenceContextMenu(event) {
+  if (cadContextDeleteSymbol) cadContextDeleteSymbol.hidden = true;
   if (cadExtendTrim) cadExtendTrim.hidden = true;
   const activeWindowSequence =
     (cadToolMode === 'symbol' && cadSymbolInsertType === 'FIN') ||
@@ -12813,6 +12818,10 @@ cadStopSequence?.addEventListener('click', () => {
 document.addEventListener('pointerdown', event => {
   if (!cadContextMenu || cadContextMenu.hidden) return;
   if (!cadContextMenu.contains(event.target)) cadHideContextMenu();
+});
+cadContextDeleteSymbol?.addEventListener('click', () => {
+  cadHideContextMenu();
+  if (cadFindSourceSymbol(cadSelectedSymbolId)) cadDeleteSelected();
 });
 cadInsertAlign?.addEventListener('click', () => cadToggleSymbolInsert('ALLINEA'));
 cadInsertOpening?.addEventListener('click', () => cadToggleSymbolInsert('FIN'));
