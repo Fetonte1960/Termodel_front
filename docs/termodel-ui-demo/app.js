@@ -55,6 +55,7 @@ const openProjectButton = document.getElementById('openProjectButton');
 const openExampleButton = document.getElementById('openExampleButton');
 const openProjectFileInput = document.getElementById('openProjectFileInput');
 const saveProjectButton = document.getElementById('saveProjectButton');
+const cadSaveProject = document.getElementById('cadSaveProject');
 const saveProjectAsButton = document.getElementById('saveProjectAsButton');
 const helpOpenWebHelp = document.getElementById('helpOpenWebHelp');
 const helpExplorationMode = document.getElementById('helpExplorationMode');
@@ -3582,6 +3583,7 @@ function setStructuredProjectState(enabled) {
   }
 
   if (saveProjectButton) saveProjectButton.disabled = needsProject;
+  if (cadSaveProject) cadSaveProject.disabled = needsProject;
   if (saveProjectAsButton) saveProjectAsButton.disabled = needsProject;
   if (helpCopyProjectClipboard) {
     helpCopyProjectClipboard.disabled = needsProject;
@@ -12983,6 +12985,8 @@ openExampleButton?.addEventListener('click', async event => {
     window.alert('Impossibile aprire l’esempio Termodel.\n\n' + error.message);
   }
 });
+
+cadSaveProject?.addEventListener('click', () => saveProjectButton?.click());
 
 saveProjectButton?.addEventListener('click', async event => {
   event.preventDefault();
