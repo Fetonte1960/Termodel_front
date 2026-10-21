@@ -13263,7 +13263,7 @@ document.getElementById('exportNationalXmlButton')?.addEventListener('click', as
     if (response.headers.get('X-Termodel-Artifact-Stale') === 'true')
       throw new Error('XML nazionale non aggiornato: premi Aggiorna Modello.');
     const xmlText = await response.text();
-    if (!/^\\s*<\\?xml\\b|^\\s*<documento(?:\\s|>)/i.test(xmlText))
+    if (!/^\s*(?:<\?xml\b|<documento(?:\s|>))/i.test(xmlText))
       throw new Error('L’artefatto restituito non sembra un XML nazionale valido.');
     const url = URL.createObjectURL(new Blob([xmlText], { type: 'application/xml;charset=utf-8' }));
     try {
