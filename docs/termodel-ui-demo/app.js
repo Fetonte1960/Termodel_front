@@ -9204,6 +9204,14 @@ function cadCancelSymbolInsert() {
   cadUpdateControls();
 }
 
+let cadSymbolDraftValues = {};
+let cadSymbolDraftType = '';
+
+function cadDraftSymbol(type) {
+  const { id, rows } = cadPrepareSymbol(type);
+  return id && rows.length ? cadCreateSymbolText(id, 0, 0, rows) : null;
+}
+
 function cadToggleSymbolInsert(type) {
   if (!cadWorkingDoc) {
     cadSetStatus('Disegno CAD non disponibile.', 'error');
@@ -9234,6 +9242,9 @@ function cadToggleSymbolInsert(type) {
   cadLastRepeatableCommand = 'symbol:' + normalized;
   cadToolMode = 'symbol';
   cadSymbolInsertType = normalized;
+  cadSymbolDraftType = normalized;
+  cadSymbolDraftValues = {};
+  cadSelectedSymbolId = '';
   cadSelectedLineId = '';
   cadNewLineState = null;
 
@@ -9507,6 +9518,16 @@ function cadInsertSymbolAtPoint(rawPoint) {
   const { id, rows } = cadPrepareSymbol(cadSymbolInsertType);
   if (!id || !rows.length) return;
   const symbol = cadCreateSymbolText(id, point[0], point[1], rows);
+  if (cadSymbolDraftType === cadSymbolInsertType &&
+      Object.keys(cadSymbolDraftValues).length) {
+    const type = cadSymbolInsertType;
+    cadWriteSymbolPanelFields(symbol, key => {
+      if (Object.prototype.hasOwnProperty.call(cadSymbolDraftValues, key))
+        return cadSymbolDraftValues[key];
+      const config = cadSymbolPanelConfig(type).find(item => item.key === key);
+      return config ? cadSymbolPanelValue(symbol, type, config) : '';
+    });
+  }
   group.appendChild(symbol);
   cadUndoStack.push(before);
   cadRedoStack = [];
@@ -10194,6 +10215,8 @@ function cadUpdatePropertiesPanel() {
     cadLastPropertiesSelectionId = nextSelectionId;
   }
   const symbol = cadFindSourceSymbol(cadSelectedSymbolId);
+  const draftMode = cadToolMode === 'symbol' && !!cadSymbolInsertType && !symbol;
+  const visibleSymbol = symbol || (draftMode ? cadDraftSymbol(cadSymbolInsertType) : null);
   const hasDoc = !!cadWorkingDoc;
 
   if (cadPropertiesEmpty) cadPropertiesEmpty.hidden = hasDoc;
@@ -10209,12 +10232,12 @@ function cadUpdatePropertiesPanel() {
   }
 
   const derived = cadRefreshToolbarControls();
-  const symbolType = symbol ? cadSymbolBlockType(symbol) : '';
+  const symbolType = visibleSymbol ? cadSymbolBlockType(visibleSymbol) : '';
   const northOpen = cadNorthPanelIsOpen();
 
-  if (cadWallPropertiesSection) cadWallPropertiesSection.hidden = Boolean(symbol) || northOpen;
-  if (cadWallGeometrySection) cadWallGeometrySection.hidden = Boolean(symbol) || northOpen;
-  if (cadSymbolPropertiesSection) cadSymbolPropertiesSection.hidden = !symbol || northOpen;
+  if (cadWallPropertiesSection) cadWallPropertiesSection.hidden = Boolean(visibleSymbol) || northOpen;
+  if (cadWallGeometrySection) cadWallGeometrySection.hidden = Boolean(visibleSymbol) || northOpen;
+  if (cadSymbolPropertiesSection) cadSymbolPropertiesSection.hidden = !visibleSymbol || northOpen;
   cadUpdateCalibrationPanel(line, northOpen);
 
   if (cadWallPropertiesSection) {
@@ -10228,8 +10251,8 @@ function cadUpdatePropertiesPanel() {
   if (cadPropertiesHead) {
     if (northOpen)
       cadPropertiesHead.textContent = 'Dati CAD · Nord';
-    else if (symbol)
-      cadPropertiesHead.textContent = 'Dati CAD · ' + cadSymbolInsertLabel(symbolType) + ' ' + symbol.id;
+    else if (visibleSymbol)
+      cadPropertiesHead.textContent = draftMode ? 'Dati CAD · Nuovo ' + cadSymbolInsertLabel(symbolType) + ' (prima dell’inserimento)' : 'Dati CAD · ' + cadSymbolInsertLabel(symbolType) + ' ' + symbol.id;
     else if (cadPlaneIsCoverage())
       cadPropertiesHead.textContent = line
         ? `Dati CAD · Linea perimetro falde ${line.id}`
@@ -10238,14 +10261,23 @@ function cadUpdatePropertiesPanel() {
       cadPropertiesHead.textContent = line ? `Dati CAD · Parete ${line.id}` : 'Dati CAD · Nuova parete';
   }
 
-  if (symbol) {
-    const x = Number(symbol.getAttribute('x'));
-    const y = Number(symbol.getAttribute('y'));
+  if (visibleSymbol) {
+    const x = Number(visibleSymbol.getAttribute('x'));
+    const y = Number(visibleSymbol.getAttribute('y'));
     if (cadSymbolPosition)
       cadSymbolPosition.value = Number.isFinite(x) && Number.isFinite(y)
         ? `${x.toFixed(1)} / ${y.toFixed(1)} cm`
         : '';
-    cadRenderSelectedSymbolFields(symbol);
+    if (draftMode && cadSymbolPosition) cadSymbolPosition.value = 'Da posizionare';
+    cadRenderSelectedSymbolFields(visibleSymbol);
+    if (draftMode && cadSymbolDraftType === cadSymbolInsertType) {
+      for (const control of cadSymbolFields?.querySelectorAll('[data-cad-symbol-config-key]') || []) {
+        const key = control.dataset.cadSymbolConfigKey;
+        if (Object.prototype.hasOwnProperty.call(cadSymbolDraftValues, key))
+          control.value = cadSymbolDraftValues[key];
+      }
+      cadUpdateSymbolPanelDependencies(symbolType);
+    }
 
     if (cadPropStart) cadPropStart.value = '';
     if (cadPropEnd) cadPropEnd.value = '';
@@ -12845,6 +12877,15 @@ cadInsertRoom?.addEventListener('click', () => cadToggleSymbolInsert('LOC'));
 cadInsertRidge?.addEventListener('click', () => cadToggleSymbolInsert('COLMO'));
 if (cadPropConfirm)
   cadPropConfirm.addEventListener('click', cadApplyProperties);
+for (const eventName of ['input','change']) {
+  cadSymbolFields?.addEventListener(eventName, event => {
+    if (cadToolMode !== 'symbol' || !cadSymbolInsertType) return;
+    const control = event.target.closest?.('[data-cad-symbol-config-key]');
+    if (!control) return;
+    cadSymbolDraftType = cadSymbolInsertType;
+    cadSymbolDraftValues[control.dataset.cadSymbolConfigKey] = control.value;
+  });
+}
 cadSymbolApply?.addEventListener('click', cadApplySelectedSymbolProperties);
 cadNorthClose?.addEventListener('click', () => cadCloseNorthPanel(true));
 cadNorthDefined?.addEventListener('change', () => {
