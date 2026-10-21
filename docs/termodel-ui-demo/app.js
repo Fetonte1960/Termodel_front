@@ -4837,6 +4837,44 @@ function termodelSetCalculationReport(message, rawRtf = null, kind = '') {
   }
 }
 
+function termodelSelectCalculationSubtab(kind) {
+  const dispersion = kind !== 'radiant';
+  const a = document.getElementById('calculationDispersionTab');
+  const b = document.getElementById('calculationRadiantTab');
+  const first = document.getElementById('calculationDispersionPanel');
+  const second = document.getElementById('calculationRadiantPanel');
+  if (a) a.setAttribute('aria-selected', String(dispersion));
+  if (b) b.setAttribute('aria-selected', String(!dispersion));
+  if (first) first.hidden = !dispersion;
+  if (second) second.hidden = dispersion;
+}
+
+document.getElementById('calculationDispersionTab')?.addEventListener('click', () => termodelSelectCalculationSubtab('dispersion'));
+document.getElementById('calculationRadiantTab')?.addEventListener('click', () => termodelSelectCalculationSubtab('radiant'));
+
+function termodelCalculationSectionHtml(html, section) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const headers = [...doc.body.querySelectorAll('h2')];
+  const heading = headers.find(h => section === 'radiant'
+    ? /pannelli radianti/i.test(h.textContent || '')
+    : /dispersioni termiche/i.test(h.textContent || ''));
+  if (!heading) {
+    doc.body.innerHTML = '<p>Sezione non disponibile nel report prodotto dal Service.</p>';
+    return '<!doctype html>' + doc.documentElement.outerHTML;
+  }
+  const block = doc.createElement('div');
+  block.appendChild(heading.cloneNode(true));
+  for (let node = heading.nextSibling; node && !(node.nodeType === 1 && node.tagName === 'H2'); node = node.nextSibling)
+    block.appendChild(node.cloneNode(true));
+  const disclaimer = doc.createElement('p');
+  disclaimer.textContent = section === 'radiant'
+    ? 'Risultati del motore pannelli del Service; equivalenza numerica Desktop da verificare.'
+    : 'Le dispersioni rimangono non calcolate finché il motore Desktop non sarà collegato al Service.';
+  block.appendChild(disclaimer);
+  doc.body.replaceChildren(block);
+  return '<!doctype html>' + doc.documentElement.outerHTML;
+}
+
 function termodelSetCalculationHtml(html) {
   const preview = document.getElementById('serviceCalculationHtmlPreview');
   const output = document.getElementById('serviceCalculationReport');
@@ -4846,8 +4884,14 @@ function termodelSetCalculationHtml(html) {
   if (!preview || !note || !download || !print) return;
   // Sandboxed srcdoc: output is always rendered without script execution.
   preview.setAttribute('sandbox', 'allow-same-origin allow-modals');
-  preview.srcdoc = html;
+  preview.srcdoc = termodelCalculationSectionHtml(html, 'dispersion');
   preview.hidden = false;
+  const radiantPreview = document.getElementById('serviceCalculationRadiantPreview');
+  if (radiantPreview) {
+    radiantPreview.setAttribute('sandbox', 'allow-same-origin allow-modals');
+    radiantPreview.srcdoc = termodelCalculationSectionHtml(html, 'radiant');
+    radiantPreview.hidden = false;
+  }
   if (output) output.hidden = true;
   if (download.dataset.objectUrl) URL.revokeObjectURL(download.dataset.objectUrl);
   const href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
@@ -4856,7 +4900,9 @@ function termodelSetCalculationHtml(html) {
   download.hidden = false;
   print.hidden = false;
   print.onclick = () => {
-    const frameWindow = preview.contentWindow;
+    const activeRadiant = document.getElementById('calculationRadiantTab')?.getAttribute('aria-selected') === 'true';
+    const activeFrame = activeRadiant ? radiantPreview : preview;
+    const frameWindow = activeFrame?.contentWindow;
     if (frameWindow) { frameWindow.focus(); frameWindow.print(); }
   };
   note.textContent = 'Anteprima stampa del documento HTML generato dal Service; i contenuti non sono ancora equivalenti al Desktop.';
