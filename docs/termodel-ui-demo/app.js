@@ -9848,6 +9848,68 @@ function cadSymbolPanelControlValue(key) {
   );
 }
 
+function cadWriteSymbolPanelFields(symbol, get) {
+  const type = cadSymbolBlockType(symbol);
+  if (type === 'FIN') {
+    cadSetSymbolAttribute(symbol, 'PORTA', get('PORTA'));
+    cadSetSymbolAttribute(symbol, 'TIPO', get('TIPO'));
+    ['LARGHEZZA','ALTEZZA','SOTTOFINESTRA','SOPRALUCE'].forEach(key => {
+      cadSetSymbolAttribute(symbol, key, cadMetersToSvgCm(get(key)));
+    });
+    cadSetSymbolAttribute(symbol, 'NUMEROANTE', get('NUMEROANTE'));
+  }
+
+  if (type === 'PON') {
+    const orientamento = get('ORIENTAMENTO');
+    const fonte = get('__FONTE_LUNGHEZZA');
+    cadSetSymbolAttribute(symbol, 'TIPO', get('TIPO'));
+    cadSetSymbolAttribute(symbol, 'ORIENTAMENTO', orientamento);
+    cadSetSymbolAttribute(
+      symbol,
+      'LUNGHEZZA',
+      fonte === 'Valore imposto'
+        ? get('LUNGHEZZA')
+        : (orientamento === 'Orizzontale' ? 'Lunghezza parete' : 'Altezza parete')
+    );
+  }
+
+  if (type === 'LOC') {
+    const fonteAltezza = get('__FONTE_ALTEZZA');
+    const fonteQuota = get('__FONTE_QUOTA');
+
+    cadSetSymbolAttribute(symbol, 'DESCR.', get('DESCR.'));
+    cadSetSymbolAttribute(symbol, 'ZONA', get('ZONA'));
+    cadSetSymbolAttribute(symbol, 'TSOF', get('TSOF'));
+    cadSetSymbolAttribute(symbol, 'CSOF', get('CSOF'));
+    cadSetSymbolAttribute(symbol, 'CCOPERTURA', get('CCOPERTURA'));
+    cadSetSymbolAttribute(symbol, 'TPAV', get('TPAV'));
+    cadSetSymbolAttribute(symbol, 'CPAV', get('CPAV'));
+
+    cadSetSymbolAttribute(
+      symbol,
+      'ALTEZZALORDA',
+      fonteAltezza === 'Da piano' ? 'Da piano' : get('ALTEZZALORDA')
+    );
+    cadSetSymbolAttribute(
+      symbol,
+      'ALTEZZANETTA',
+      fonteAltezza === 'Da piano' ? 'Da piano' : get('ALTEZZANETTA')
+    );
+    cadSetSymbolAttribute(
+      symbol,
+      'QUOTAPAVIMENTO',
+      fonteQuota === 'Da piano' ? 'Da piano' : get('QUOTAPAVIMENTO')
+    );
+  }
+
+  if (type === 'COLMO') {
+    ['QUOTACOLMO','QUOTAGRONDA','QUOTASHED','LATOPARTEBASSA','PARETESHED']
+      .forEach(key => cadSetSymbolAttribute(symbol, key, get(key)));
+  }
+
+
+}
+
 function cadApplySelectedSymbolProperties() {
   const symbol = cadFindSourceSymbol(cadSelectedSymbolId);
   if (!symbol || !cadSymbolFields) return;
@@ -9855,62 +9917,7 @@ function cadApplySelectedSymbolProperties() {
   const type = cadSymbolBlockType(symbol);
   const before = cadSerializeWorkingSvg();
 
-  if (type === 'FIN') {
-    cadSetSymbolAttribute(symbol, 'PORTA', cadSymbolPanelControlValue('PORTA'));
-    cadSetSymbolAttribute(symbol, 'TIPO', cadSymbolPanelControlValue('TIPO'));
-    ['LARGHEZZA','ALTEZZA','SOTTOFINESTRA','SOPRALUCE'].forEach(key => {
-      cadSetSymbolAttribute(symbol, key, cadMetersToSvgCm(cadSymbolPanelControlValue(key)));
-    });
-    cadSetSymbolAttribute(symbol, 'NUMEROANTE', cadSymbolPanelControlValue('NUMEROANTE'));
-  }
-
-  if (type === 'PON') {
-    const orientamento = cadSymbolPanelControlValue('ORIENTAMENTO');
-    const fonte = cadSymbolPanelControlValue('__FONTE_LUNGHEZZA');
-    cadSetSymbolAttribute(symbol, 'TIPO', cadSymbolPanelControlValue('TIPO'));
-    cadSetSymbolAttribute(symbol, 'ORIENTAMENTO', orientamento);
-    cadSetSymbolAttribute(
-      symbol,
-      'LUNGHEZZA',
-      fonte === 'Valore imposto'
-        ? cadSymbolPanelControlValue('LUNGHEZZA')
-        : (orientamento === 'Orizzontale' ? 'Lunghezza parete' : 'Altezza parete')
-    );
-  }
-
-  if (type === 'LOC') {
-    const fonteAltezza = cadSymbolPanelControlValue('__FONTE_ALTEZZA');
-    const fonteQuota = cadSymbolPanelControlValue('__FONTE_QUOTA');
-
-    cadSetSymbolAttribute(symbol, 'DESCR.', cadSymbolPanelControlValue('DESCR.'));
-    cadSetSymbolAttribute(symbol, 'ZONA', cadSymbolPanelControlValue('ZONA'));
-    cadSetSymbolAttribute(symbol, 'TSOF', cadSymbolPanelControlValue('TSOF'));
-    cadSetSymbolAttribute(symbol, 'CSOF', cadSymbolPanelControlValue('CSOF'));
-    cadSetSymbolAttribute(symbol, 'CCOPERTURA', cadSymbolPanelControlValue('CCOPERTURA'));
-    cadSetSymbolAttribute(symbol, 'TPAV', cadSymbolPanelControlValue('TPAV'));
-    cadSetSymbolAttribute(symbol, 'CPAV', cadSymbolPanelControlValue('CPAV'));
-
-    cadSetSymbolAttribute(
-      symbol,
-      'ALTEZZALORDA',
-      fonteAltezza === 'Da piano' ? 'Da piano' : cadSymbolPanelControlValue('ALTEZZALORDA')
-    );
-    cadSetSymbolAttribute(
-      symbol,
-      'ALTEZZANETTA',
-      fonteAltezza === 'Da piano' ? 'Da piano' : cadSymbolPanelControlValue('ALTEZZANETTA')
-    );
-    cadSetSymbolAttribute(
-      symbol,
-      'QUOTAPAVIMENTO',
-      fonteQuota === 'Da piano' ? 'Da piano' : cadSymbolPanelControlValue('QUOTAPAVIMENTO')
-    );
-  }
-
-  if (type === 'COLMO') {
-    ['QUOTACOLMO','QUOTAGRONDA','QUOTASHED','LATOPARTEBASSA','PARETESHED']
-      .forEach(key => cadSetSymbolAttribute(symbol, key, cadSymbolPanelControlValue(key)));
-  }
+  cadWriteSymbolPanelFields(symbol, cadSymbolPanelControlValue);
 
   const after = cadSerializeWorkingSvg();
   if (after !== before) {
