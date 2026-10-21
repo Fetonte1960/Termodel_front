@@ -4837,10 +4837,57 @@ function termodelSetCalculationReport(message, rawRtf = null, kind = '') {
   }
 }
 
+function termodelSetCalculationHtml(html) {
+  const preview = document.getElementById('serviceCalculationHtmlPreview');
+  const output = document.getElementById('serviceCalculationReport');
+  const note = document.getElementById('serviceCalculationReportStatus');
+  const download = document.getElementById('serviceCalculationHtmlDownload');
+  const print = document.getElementById('serviceCalculationHtmlPrint');
+  if (!preview || !note || !download || !print) return;
+  // Sandboxed srcdoc: output is always rendered without script execution.
+  preview.setAttribute('sandbox', 'allow-same-origin allow-modals');
+  preview.srcdoc = html;
+  preview.hidden = false;
+  if (output) output.hidden = true;
+  if (download.dataset.objectUrl) URL.revokeObjectURL(download.dataset.objectUrl);
+  const href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  download.href = href;
+  download.dataset.objectUrl = href;
+  download.hidden = false;
+  print.hidden = false;
+  print.onclick = () => {
+    const frameWindow = preview.contentWindow;
+    if (frameWindow) { frameWindow.focus(); frameWindow.print(); }
+  };
+  note.textContent = 'Anteprima stampa del documento HTML generato dal Service; i contenuti non sono ancora equivalenti al Desktop.';
+}
+
 async function termodelLoadCalculationReport(projectId) {
   termodelSetCalculationReport('Ricerca risultati documentali…');
   try {
     const catalog = await termodelGeneratedFilesCatalog(projectId);
+    const htmlFile = catalog.files.find(item =>
+      String(item?.path || '').toLowerCase() === 'artifacts/relazione-tecnica.html'
+    );
+    const preview = document.getElementById('serviceCalculationHtmlPreview');
+    const htmlDownload = document.getElementById('serviceCalculationHtmlDownload');
+    const printButton = document.getElementById('serviceCalculationHtmlPrint');
+    if (preview) preview.hidden = true;
+    if (htmlDownload) htmlDownload.hidden = true;
+    if (printButton) printButton.hidden = true;
+    const output = document.getElementById('serviceCalculationReport');
+    if (output) output.hidden = false;
+    if (htmlFile && !catalog.artifactsStale && !htmlFile.stale) {
+      const htmlResponse = await fetchTermodelService(String(htmlFile.href), { cache: 'no-store' });
+      if (!htmlResponse.ok) throw new Error(await readTermodelServiceError(htmlResponse));
+      if (htmlResponse.headers.get('X-Termodel-Artifact-Stale') === 'true')
+        throw new Error('Il report HTML restituito dal Service non è aggiornato.');
+      const html = await htmlResponse.text();
+      if (!/^\\s*<!doctype html|^\\s*<html/i.test(html))
+        throw new Error('Il file HTML ricevuto non è valido.');
+      termodelSetCalculationHtml(html);
+      return;
+    }
     const file = catalog.files.find(item =>
       String(item?.path || '').toLowerCase() === 'artifacts/risultati-calcolo.rtf'
     );
