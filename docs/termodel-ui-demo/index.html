@@ -101,6 +101,23 @@
     #viewer canvas { display: block; width: 100%; height: 100%; }
 
     .info-page, .calc-page { padding: 22px; overflow: auto; background: #e5e5e5; }
+    /* Calcoli: usa tutto lo spazio disponibile, senza limitazione dei pannelli Informazioni. */
+    .calc-page.active { display: flex; flex-direction: column; overflow: hidden; padding: 10px; }
+    .calc-page > .classic-group {
+      box-sizing: border-box; max-width: none; width: 100%; min-width: 0;
+      flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+    }
+    #serviceCalculationHtmlPreview {
+      box-sizing: border-box; flex: 1 1 auto; min-height: 0;
+      width: 100%; height: 100%; border: 1px solid #9aa8b6; background: #fff;
+    }
+    #serviceCalculationHtmlPreview[hidden] { display: none; }
+    #serviceCalculationReport { flex: 1 1 auto; min-height: 0; }
+    .calc-page > .classic-group > h3,
+    .calc-page > .classic-group > p,
+    .calc-page > .classic-group > a,
+    .calc-page > .classic-group > div { flex: 0 0 auto; }
+
     .classic-group { max-width: 650px; border: 1px solid #999; background: #efefef; padding: 14px; }
     .classic-group h3 { margin: -23px 0 12px 4px; display: inline-block; padding: 0 5px; background: #e5e5e5; font-size: 12px; font-weight: 400; }
     .classic-row { display: grid; grid-template-columns: 180px 1fr; padding: 4px 0; }
@@ -2578,7 +2595,7 @@
             <button id="serviceCalculationHtmlPrint" type="button" hidden>Stampa / Salva PDF</button>
             <a id="serviceCalculationHtmlDownload" href="#" download="relazione-tecnica.html" hidden>Scarica HTML</a>
           </div>
-          <iframe id="serviceCalculationHtmlPreview" title="Anteprima di stampa Termodel" hidden style="width:100%;min-height:800px;border:1px solid #9aa8b6;background:white" referrerpolicy="no-referrer"></iframe>
+          <iframe id="serviceCalculationHtmlPreview" title="Anteprima di stampa Termodel" hidden  referrerpolicy="no-referrer"></iframe>
           <pre id="serviceCalculationReport" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:60vh;overflow:auto;padding:14px;border:1px solid #9aa8b6;background:#f7fbff" aria-label="Risultati dell'ultima elaborazione"></pre>
         </div>
       </section>
