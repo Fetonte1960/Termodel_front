@@ -9426,29 +9426,14 @@ function cadStartOrFinishWindowTwoPoint(svg, rawPoint) {
   );
 }
 
-function cadInsertSymbolAtPoint(rawPoint) {
-  if (!cadWorkingDoc || cadToolMode !== 'symbol' || !cadSymbolInsertType) return;
-  const group = cadCalpestabile();
-  if (!group) { cadSetStatus('Gruppo calpestabile non trovato nello SVG.', 'error'); return; }
-  const plane = cadCurrentPlane();
-  const layer = cadCurrentLayer();
-  if (!plane || !layer) { cadSetStatus('Piano/LayerCad corrente non disponibile: impossibile inserire il simbolo.', 'error'); return; }
-  let point = rawPoint.slice();
-  let wallSnapped = false;
-  if (cadSymbolInsertType === 'FIN' || cadSymbolInsertType === 'PON' || cadSymbolInsertType === 'COLMO') {
-    const snap = cadNearestWallPoint(rawPoint);
-    if (!snap.snapped) { cadSetStatus(cadSymbolInsertLabel(cadSymbolInsertType) + ': clicca vicino a una parete del piano corrente.', 'error'); return; }
-    point = snap.point;
-    wallSnapped = true;
-  }
-  const before = cadSerializeWorkingSvg();
+function cadPrepareSymbol(type) {
   const dati = cadDatiCadRecord();
   let id = '';
   let rows = [];
-  if (cadSymbolInsertType === 'ALLINEA') {
+  if (type === 'ALLINEA') {
     id = cadNextSymbolId('A');
     rows = ['BLOCCO,ALLINEA'];
-  } else if (cadSymbolInsertType === 'FIN') {
+  } else if (type === 'FIN') {
     id = cadNextSymbolId('F');
     rows = [
       'BLOCCO,FIN',
@@ -9460,7 +9445,7 @@ function cadInsertSymbolAtPoint(rawPoint) {
       'SOTTOFINESTRA,' + cadMetersToSvgCm(dati.SottoFinestra),
       'SOPRALUCE,' + cadMetersToSvgCm(dati.SopraLuce)
     ];
-  } else if (cadSymbolInsertType === 'PON') {
+  } else if (type === 'PON') {
     id = cadNextSymbolId('PON');
     const orientamento = cadText(dati.OrientamentoPonte) || 'Orizzontale';
     const lunghezza = cadText(dati.FonteLunghezzaPonte) === 'Valore imposto'
@@ -9472,7 +9457,7 @@ function cadInsertSymbolAtPoint(rawPoint) {
       'ORIENTAMENTO,' + orientamento,
       'LUNGHEZZA,' + lunghezza
     ];
-  } else if (cadSymbolInsertType === 'LOC') {
+  } else if (type === 'LOC') {
     id = cadNextSymbolId('R');
     const altezzaDaPiano = cadText(dati.FonteAltezza) === 'Da piano';
     const quotaDaPiano = cadText(dati.FonteQuotaPavimento) === 'Da piano';
@@ -9489,7 +9474,7 @@ function cadInsertSymbolAtPoint(rawPoint) {
       'ALTEZZANETTA,' + (altezzaDaPiano ? 'Da piano' : cadText(dati.AltezzaNetta)),
       'QUOTAPAVIMENTO,' + (quotaDaPiano ? 'Da piano' : cadText(dati.QuotaPavimento))
     ];
-  } else if (cadSymbolInsertType === 'COLMO') {
+  } else if (type === 'COLMO') {
     id = cadNextSymbolId('COL');
     rows = [
       'BLOCCO,Colmo',
@@ -9500,6 +9485,26 @@ function cadInsertSymbolAtPoint(rawPoint) {
       'PARETESHED,' + (cadText(dati.PareteShed) || 'Dal piano sottostante')
     ];
   }
+  return {id, rows};
+}
+
+function cadInsertSymbolAtPoint(rawPoint) {
+  if (!cadWorkingDoc || cadToolMode !== 'symbol' || !cadSymbolInsertType) return;
+  const group = cadCalpestabile();
+  if (!group) { cadSetStatus('Gruppo calpestabile non trovato nello SVG.', 'error'); return; }
+  const plane = cadCurrentPlane();
+  const layer = cadCurrentLayer();
+  if (!plane || !layer) { cadSetStatus('Piano/LayerCad corrente non disponibile: impossibile inserire il simbolo.', 'error'); return; }
+  let point = rawPoint.slice();
+  let wallSnapped = false;
+  if (cadSymbolInsertType === 'FIN' || cadSymbolInsertType === 'PON' || cadSymbolInsertType === 'COLMO') {
+    const snap = cadNearestWallPoint(rawPoint);
+    if (!snap.snapped) { cadSetStatus(cadSymbolInsertLabel(cadSymbolInsertType) + ': clicca vicino a una parete del piano corrente.', 'error'); return; }
+    point = snap.point;
+    wallSnapped = true;
+  }
+  const before = cadSerializeWorkingSvg();
+  const { id, rows } = cadPrepareSymbol(cadSymbolInsertType);
   if (!id || !rows.length) return;
   const symbol = cadCreateSymbolText(id, point[0], point[1], rows);
   group.appendChild(symbol);
