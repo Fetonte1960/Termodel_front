@@ -13243,20 +13243,45 @@ helpCopyLogClipboard?.addEventListener('click', async event => {
   }
 });
 
-// L'XML nazionale deve provenire dall'ultima elaborazione del Service.
-// Finché il Service non espone un generatore XML nazionale, non avviare
-// un download fittizio né consegnare il file XML originale come risultato.
-document.getElementById('exportNationalXmlButton')?.addEventListener('click', event => {
+// Il menu recupera esclusivamente l'artefatto prodotto da Aggiorna Modello.
+// Non avvia calcoli e non esporta mai la base XML importata come risultato.
+document.getElementById('exportNationalXmlButton')?.addEventListener('click', async event => {
   event.preventDefault();
   event.stopPropagation();
   document.querySelectorAll('.menu').forEach(menu => menu.classList.remove('open'));
-  const message = 'Esportazione XML nazionale non ancora disponibile: ' +
-    'il Service attuale non genera l’artefatto xml-nazionale. ' +
-    'L’esportazione richiederà una nuova elaborazione del progetto ' +
-    'e il download del relativo XML nella stessa richiesta, ' +
-    'senza affidarsi alla persistenza dei file Render.';
-  setMainAiStatus(message);
-  window.alert(message);
+  try {
+    if (!currentProjectId) throw new Error('Nessun progetto corrente. Apri un progetto e premi Aggiorna Modello.');
+    const catalog = await termodelGeneratedFilesCatalog(currentProjectId);
+    if (catalog.artifactsStale) throw new Error('I risultati non sono aggiornati: premi Aggiorna Modello.');
+    const xmlFile = catalog.files.find(item =>
+      String(item?.path || '').toLowerCase() === 'artifacts/xml-nazionale.xml'
+    );
+    if (!xmlFile) throw new Error('XML nazionale non ancora generato dal Service. La generazione Desktop-equivalente deve essere completata.');
+    if (xmlFile.stale) throw new Error('XML nazionale non aggiornato: premi Aggiorna Modello.');
+    const response = await fetchTermodelService(String(xmlFile.href), { cache: 'no-store' });
+    if (!response.ok) throw new Error(await readTermodelServiceError(response));
+    if (response.headers.get('X-Termodel-Artifact-Stale') === 'true')
+      throw new Error('XML nazionale non aggiornato: premi Aggiorna Modello.');
+    const xmlText = await response.text();
+    if (!/^\\s*<\\?xml\\b|^\\s*<documento(?:\\s|>)/i.test(xmlText))
+      throw new Error('L’artefatto restituito non sembra un XML nazionale valido.');
+    const url = URL.createObjectURL(new Blob([xmlText], { type: 'application/xml;charset=utf-8' }));
+    try {
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'xml-nazionale.xml';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } finally {
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    setMainAiStatus('XML nazionale scaricato dall’ultima elaborazione Service.');
+  } catch (error) {
+    const message = 'Esporta XML nazionale: ' + error.message;
+    setMainAiStatus(message);
+    window.alert(message);
+  }
 });
 
 newProjectButton?.addEventListener('click', event => {
