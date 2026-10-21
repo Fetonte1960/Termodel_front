@@ -9539,7 +9539,7 @@ function cadInsertSymbolAtPoint(rawPoint) {
   }
 
   cadSelectedLineId = '';
-  cadSelectedSymbolId = id;
+  cadSelectedSymbolId = continueWindows ? '' : id;
   if (cadCanvas && !continueWindows) cadCanvas.classList.remove('symbol-insert-mode');
 
   renderCadComparison();
