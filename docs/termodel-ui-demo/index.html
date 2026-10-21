@@ -2589,13 +2589,22 @@
       </section>
       <section id="calcPage" class="page calc-page">
         <div class="classic-group"><h3>Calcoli</h3>
+          <div class="calculation-subtabs" role="tablist" aria-label="Tipologia calcolo" style="display:flex;gap:8px;margin:8px 0 14px">
+            <button id="calculationDispersionTab" type="button" role="tab" aria-selected="true" aria-controls="calculationDispersionPanel" style="font-weight:bold">Dispersioni</button>
+            <button id="calculationRadiantTab" type="button" role="tab" aria-selected="false" aria-controls="calculationRadiantPanel">Pannelli radianti</button>
+          </div>
           <p id="serviceCalculationReportStatus" role="status" aria-live="polite">Esegui Aggiorna Modello per caricare il report documentale dal Service.</p>
           <a id="serviceCalculationReportDownload" href="#" download="risultati-calcolo.rtf" hidden>Scarica report RTF</a>
           <div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0">
             <button id="serviceCalculationHtmlPrint" type="button" hidden>Stampa / Salva PDF</button>
             <a id="serviceCalculationHtmlDownload" href="#" download="relazione-tecnica.html" hidden>Scarica HTML</a>
           </div>
-          <iframe id="serviceCalculationHtmlPreview" title="Anteprima di stampa Termodel" hidden  referrerpolicy="no-referrer"></iframe>
+          <div id="calculationDispersionPanel" role="tabpanel" aria-labelledby="calculationDispersionTab">
+            <iframe id="serviceCalculationHtmlPreview" title="Risultati dispersioni termiche" hidden referrerpolicy="no-referrer" style="width:100%;min-height:65vh;border:0"></iframe>
+          </div>
+          <div id="calculationRadiantPanel" role="tabpanel" aria-labelledby="calculationRadiantTab" hidden>
+            <iframe id="serviceCalculationRadiantPreview" title="Risultati pannelli radianti" hidden referrerpolicy="no-referrer" style="width:100%;min-height:65vh;border:0"></iframe>
+          </div>
           <pre id="serviceCalculationReport" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:60vh;overflow:auto;padding:14px;border:1px solid #9aa8b6;background:#f7fbff" aria-label="Risultati dell'ultima elaborazione"></pre>
         </div>
       </section>
