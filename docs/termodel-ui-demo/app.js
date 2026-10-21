@@ -4784,6 +4784,86 @@ async function termodelGeneratedFilesCatalog(projectId) {
   return data;
 }
 
+// Report calcolo prodotto dal Service: artefatto opzionale, indipendente dal modello 3D.
+function termodelRtfToPlainText(rtf) {
+  let output = '';
+  let ignorable = false;
+  const stack = [];
+  const tokens = String(rtf || '').match(/\\'[0-9a-fA-F]{2}|\\[a-zA-Z]+-?\d* ?|\\[^a-zA-Z]|[{}]|[^{}\\]+/g) || [];
+  for (const token of tokens) {
+    if (token === '{') { stack.push(ignorable); continue; }
+    if (token === '}') { ignorable = stack.pop() ?? false; continue; }
+    if (token.startsWith('\\')) {
+      if (token === '\\*') { ignorable = true; continue; }
+      if (/^\\(?:fonttbl|colortbl|stylesheet|info|pict|object)\b/.test(token)) {
+        ignorable = true; continue;
+      }
+      if (ignorable) continue;
+      if (/^\\(?:par|line)\b/.test(token)) output += '\n';
+      else if (/^\\tab\b/.test(token)) output += '\t';
+      else if (token === '\\\\') output += '\\';
+      else if (token === '\\{') output += '{';
+      else if (token === '\\}') output += '}';
+      else if (/^\\u-?\d+/.test(token)) {
+        const n = Number(token.match(/-?\d+/)[0]);
+        output += String.fromCharCode((n + 65536) % 65536);
+      } else if (/^\\'[0-9a-fA-F]{2}$/.test(token)) {
+        output += String.fromCharCode(parseInt(token.slice(2), 16));
+      }
+      continue;
+    }
+    if (!ignorable) output += token;
+  }
+  return output.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function termodelSetCalculationReport(message, rawRtf = null, kind = '') {
+  const output = document.getElementById('serviceCalculationReport');
+  const note = document.getElementById('serviceCalculationReportStatus');
+  const download = document.getElementById('serviceCalculationReportDownload');
+  if (!output || !note || !download) return;
+  if (download.dataset.objectUrl) {
+    URL.revokeObjectURL(download.dataset.objectUrl);
+    delete download.dataset.objectUrl;
+  }
+  note.textContent = message;
+  note.dataset.kind = kind;
+  output.textContent = rawRtf === null ? '' : termodelRtfToPlainText(rawRtf);
+  download.hidden = rawRtf === null;
+  if (rawRtf !== null) {
+    const objectUrl = URL.createObjectURL(new Blob([rawRtf], { type: 'application/rtf' }));
+    download.href = objectUrl;
+    download.dataset.objectUrl = objectUrl;
+  }
+}
+
+async function termodelLoadCalculationReport(projectId) {
+  termodelSetCalculationReport('Ricerca risultati documentali…');
+  try {
+    const catalog = await termodelGeneratedFilesCatalog(projectId);
+    const file = catalog.files.find(item =>
+      String(item?.path || '').toLowerCase() === 'artifacts/risultati-calcolo.rtf'
+    );
+    if (!file) {
+      termodelSetCalculationReport('Report non disponibile: il Service non ha prodotto risultati-calcolo.rtf.');
+      return;
+    }
+    if (catalog.artifactsStale || file.stale) {
+      termodelSetCalculationReport('Report non aggiornato: eseguire nuovamente Aggiorna Modello.', null, 'error');
+      return;
+    }
+    const response = await fetchTermodelService(String(file.href), { cache: 'no-store' });
+    if (!response.ok) throw new Error(await readTermodelServiceError(response));
+    if (response.headers.get('X-Termodel-Artifact-Stale') === 'true')
+      throw new Error('Il file restituito dal Service non è aggiornato.');
+    const rtf = await response.text();
+    if (!rtf.startsWith('{\\rtf')) throw new Error('Il file ricevuto non è un documento RTF.');
+    termodelSetCalculationReport('Risultati dell’ultima elaborazione · report Service (RTF)', rtf);
+  } catch (error) {
+    termodelSetCalculationReport('Impossibile leggere il report: ' + error.message, null, 'error');
+  }
+}
+
 async function termodelGeneratedFileText(fileRecord) {
   const href = String(fileRecord?.href || '').trim();
   if (!href) throw new Error('Href file generato mancante.');
@@ -4940,6 +5020,7 @@ async function ensureTermodelServiceReady(force = false) {
       : 'Contatto Termodel Service Cloud…',
     8
   );
+  termodelSetCalculationReport('Aggiorna Modello in corso: il report precedente non è più valido.');
   status.textContent =
     'Connessione al Termodel Service ' +
     (localService ? 'locale…' : 'Cloud…');
@@ -5369,6 +5450,8 @@ async function loadCalculatedModelFromService() {
       automatic: true,
       silentMissing: true
     });
+
+    await termodelLoadCalculationReport(projectId);
 
     await refreshCurrentTermodelLog(projectId);
 
