@@ -4883,7 +4883,7 @@ async function termodelLoadCalculationReport(projectId) {
       if (htmlResponse.headers.get('X-Termodel-Artifact-Stale') === 'true')
         throw new Error('Il report HTML restituito dal Service non è aggiornato.');
       const html = await htmlResponse.text();
-      if (!/^\\s*<!doctype html|^\\s*<html/i.test(html))
+      if (!/^\s*(?:<!doctype\s+html|<html)\b/i.test(html))
         throw new Error('Il file HTML ricevuto non è valido.');
       termodelSetCalculationHtml(html);
       return;
