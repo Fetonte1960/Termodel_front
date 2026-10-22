@@ -4573,15 +4573,15 @@ async function openAdminProjectCatalog() {
   const caption = projects.map((item, i) =>
     (i + 1) + '. ' + (item.name || 'Senza nome') + ' (' + String(item.projectId).slice(0,8) + ')' +
     (item.projectId === catalog.lastProjectId ? ' · ultimo salvato' : '')
-  ).join('\\n');
+  ).join('\n');
   const choice = window.prompt(
-    'Progetti Admin su Neon (solo test)\\n\\n' + caption +
-    '\\n\\nInserisci il numero del progetto da aprire. Annulla per uscire:',
+    'Progetti Admin su Neon (solo test)\n\n' + caption +
+    '\n\nInserisci il numero del progetto da aprire. Annulla per uscire:',
     '1'
   );
   if (choice === null) return;
   const selected = projects[Number(choice) - 1];
-  if (!selected || !/^\\d+$/.test(choice.trim()))
+  if (!selected || !/^\d+$/.test(choice.trim()))
     throw new Error('Numero progetto non valido.');
 
   // Prima di cambiare progetto, crea obbligatoriamente una copia locale del
