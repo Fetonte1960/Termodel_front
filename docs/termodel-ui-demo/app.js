@@ -56,6 +56,7 @@ const openExampleButton = document.getElementById('openExampleButton');
 const openProjectFileInput = document.getElementById('openProjectFileInput');
 const saveProjectButton = document.getElementById('saveProjectButton');
 const cadSaveProject = document.getElementById('cadSaveProject');
+const cadAdminProjects = document.getElementById('cadAdminProjects');
 const saveProjectAsButton = document.getElementById('saveProjectAsButton');
 const helpOpenWebHelp = document.getElementById('helpOpenWebHelp');
 const helpExplorationMode = document.getElementById('helpExplorationMode');
@@ -4557,6 +4558,55 @@ async function saveCurrentProject(saveAs = false) {
   downloadProjectText(text, fileName);
   markArchivioWebSaved();
   setMainAiStatus('✓ Progetto esportato su file locale: ' + fileName);
+}
+
+async function openAdminProjectCatalog() {
+  if (TERMODEL_USER_LOGIN !== 'admin') return;
+  const response = await fetchTermodelService('/api/registered/admin/projects', { cache: 'no-store' });
+  if (!response.ok) throw new Error('Catalogo Admin non disponibile: HTTP ' + response.status);
+  const catalog = await response.json();
+  const projects = Array.isArray(catalog.projects) ? catalog.projects : [];
+  if (!projects.length) {
+    window.alert('Nessun progetto salvato nel catalogo Admin. Salva un progetto per aggiungerlo.');
+    return;
+  }
+  const caption = projects.map((item, i) =>
+    (i + 1) + '. ' + (item.name || 'Senza nome') + ' (' + String(item.projectId).slice(0,8) + ')' +
+    (item.projectId === catalog.lastProjectId ? ' · ultimo salvato' : '')
+  ).join('\\n');
+  const choice = window.prompt(
+    'Progetti Admin su Neon (solo test)\\n\\n' + caption +
+    '\\n\\nInserisci il numero del progetto da aprire. Annulla per uscire:',
+    '1'
+  );
+  if (choice === null) return;
+  const selected = projects[Number(choice) - 1];
+  if (!selected || !/^\\d+$/.test(choice.trim()))
+    throw new Error('Numero progetto non valido.');
+
+  // Prima di cambiare progetto, crea obbligatoriamente una copia locale del
+  // lavoro corrente: è la salvaguardia dei test anche se il salvataggio Neon fallisce.
+  if (structuredProjectActive && cadWorkingDoc) {
+    const backupText = await buildCurrentProjectText();
+    const name = getArchivioWebState().projectName || 'progetto';
+    downloadProjectText(backupText,
+      'Backup-prima-apertura-' + projectFileNameFromName(name));
+    if (!window.confirm(
+      'È stata generata una copia locale del progetto corrente. ' +
+      'Verifica il download prima di confermare l’apertura di "' + selected.name + '".'
+    )) return;
+  }
+  const opened = await fetchTermodelService(
+    '/api/registered/admin/projects/' + encodeURIComponent(selected.projectId),
+    { cache: 'no-store' }
+  );
+  if (!opened.ok) throw new Error('Apertura progetto Neon fallita: HTTP ' + opened.status);
+  const data = await opened.json();
+  if (!isCompleteTermodelProjectText(data.projectText))
+    throw new Error('Progetto Neon non valido: il progetto corrente non verrà sostituito.');
+  await loadProjectTextIntoFrontend(data.projectText, { buildPreview: true });
+  setMainAiStatus('✓ Aperto progetto Admin: ' + selected.name);
+  activateModelPage();
 }
 
 async function openProjectFile(file) {
@@ -13233,6 +13283,17 @@ openExampleButton?.addEventListener('click', async event => {
   }
 });
 
+if (cadAdminProjects) {
+  cadAdminProjects.hidden = TERMODEL_USER_LOGIN !== 'admin';
+  cadAdminProjects.addEventListener('click', async () => {
+    try {
+      await openAdminProjectCatalog();
+    } catch (error) {
+      console.error('Catalogo progetti Admin:', error);
+      window.alert(error.message || String(error));
+    }
+  });
+}
 cadSaveProject?.addEventListener('click', () => saveProjectButton?.click());
 
 saveProjectButton?.addEventListener('click', async event => {
