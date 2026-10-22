@@ -112,9 +112,9 @@ function termodelCurrentProjectCaptionName() {
   }
 }
 
-function buildTermodelCaption(area) {
+function buildTermodelCaption(area, includeProject = true) {
   const normalizedArea = String(area || '').trim();
-  const name = termodelCurrentProjectCaptionName();
+  const name = includeProject ? termodelCurrentProjectCaptionName() : '';
   return `Termodel V:${APP_VERSION}${normalizedArea ? ` — ${normalizedArea}` : ''} — Utente: ${TERMODEL_USER_CAPTION}${name ? ' — Progetto: ' + name : ''}`;
 }
 function syncTermodelCaption() {
@@ -123,8 +123,8 @@ function syncTermodelCaption() {
   document.title = title;
   if (appTitleText) appTitleText.textContent = title;
 }
-const APP_MAIN_TITLE = buildTermodelCaption('Web');
-const APP_CAD_TITLE = buildTermodelCaption('CAD 2D');
+const APP_MAIN_TITLE = buildTermodelCaption('Web', false);
+const APP_CAD_TITLE = buildTermodelCaption('CAD 2D', false);
 const TERMODEL_FRONTEND_VERSION_URL = './frontend-version.txt';
 
 document.title = APP_MAIN_TITLE;
