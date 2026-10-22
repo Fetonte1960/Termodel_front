@@ -55,6 +55,8 @@ const openProjectButton = document.getElementById('openProjectButton');
 const openExampleButton = document.getElementById('openExampleButton');
 const openProjectFileInput = document.getElementById('openProjectFileInput');
 const saveProjectButton = document.getElementById('saveProjectButton');
+const saveLocalProjectButton = document.getElementById('saveLocalProjectButton');
+const saveCloudProjectAsButton = document.getElementById('saveCloudProjectAsButton');
 const cadSaveProject = document.getElementById('cadSaveProject');
 const cadAdminProjects = document.getElementById('cadAdminProjects');
 const saveProjectAsButton = document.getElementById('saveProjectAsButton');
@@ -3583,7 +3585,9 @@ function setStructuredProjectState(enabled) {
     cadButton.setAttribute('aria-disabled', needsProject ? 'true' : 'false');
   }
 
-  if (saveProjectButton) saveProjectButton.disabled = needsProject;
+  if (saveProjectButton) saveProjectButton.disabled = needsProject || TERMODEL_USER_LOGIN !== 'admin';
+  if (saveCloudProjectAsButton) saveCloudProjectAsButton.disabled = needsProject || TERMODEL_USER_LOGIN !== 'admin';
+  if (saveLocalProjectButton) saveLocalProjectButton.disabled = needsProject;
   if (cadSaveProject) cadSaveProject.disabled = needsProject;
   if (saveProjectAsButton) saveProjectAsButton.disabled = needsProject;
   if (helpCopyProjectClipboard) {
@@ -4516,12 +4520,12 @@ function downloadProjectText(text, fileName) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function saveCurrentProject(saveAs = false) {
+async function saveCurrentProject(saveAs = false, destination = 'auto') {
   let text = await buildCurrentProjectText();
   let state = getArchivioWebState();
   // Sostituisce il nome generico soltanto in modalità admin; preserva
   // i nomi assegnati dall'operatore e non cambia Non Registrato.
-  if (!saveAs && TERMODEL_USER_LOGIN === 'admin' && state.projectName === 'Progetto vuoto') {
+  if (!saveAs && destination !== 'local' && TERMODEL_USER_LOGIN === 'admin' && state.projectName === 'Progetto vuoto') {
     const manifest = readProjectManifest(text);
     text = setProjectManifestIdentity(text, manifest.projectId, 'Progetto admin');
     await loadTermodelProjectText(text);
@@ -4542,7 +4546,7 @@ async function saveCurrentProject(saveAs = false) {
   // In questa fase solo admin usa il catalogo sperimentale Neon.
   // Non Registrato e gli altri login mantengono il salvataggio su file locale.
   // "Salva con nome" rimane sempre un'esportazione locale.
-  if (!saveAs && TERMODEL_USER_LOGIN === 'admin') {
+  if (!saveAs && destination !== 'local' && TERMODEL_USER_LOGIN === 'admin') {
     setMainAiStatus('Salvataggio progetto admin su Neon in corso…');
     try {
       await saveLastRegisteredProject(text);
@@ -4558,6 +4562,26 @@ async function saveCurrentProject(saveAs = false) {
   downloadProjectText(text, fileName);
   markArchivioWebSaved();
   setMainAiStatus('✓ Progetto esportato su file locale: ' + fileName);
+}
+
+async function saveCloudProjectAs() {
+  if (TERMODEL_USER_LOGIN !== 'admin')
+    throw new Error('Salvataggio Cloud non disponibile per Non Registrato.');
+  const sourceText = await buildCurrentProjectText();
+  const sourceManifest = readProjectManifest(sourceText);
+  const requestedName = window.prompt('Nome del nuovo progetto Cloud:', (sourceManifest.projectName || 'Copia progetto') + ' - copia');
+  if (requestedName === null) return;
+  const newName = requestedName.trim();
+  if (!newName) throw new Error('Il nome del nuovo progetto non può essere vuoto.');
+  const newText = setProjectManifestIdentity(sourceText, createLocalProjectId(), newName);
+  // Salva prima la nuova copia: se Neon fallisce il progetto attuale resta intatto.
+  await saveLastRegisteredProject(newText);
+  await loadProjectTextIntoFrontend(newText, {
+    fileName: projectFileNameFromName(newName),
+    buildPreview: true
+  });
+  markArchivioWebSaved();
+  setMainAiStatus('✓ Nuovo progetto Cloud salvato: ' + newName);
 }
 
 async function openAdminProjectCatalog() {
@@ -13294,7 +13318,28 @@ if (cadAdminProjects) {
     }
   });
 }
-cadSaveProject?.addEventListener('click', () => saveProjectButton?.click());
+cadSaveProject?.addEventListener('click', () =>
+  (TERMODEL_USER_LOGIN === 'admin' ? saveProjectButton : saveLocalProjectButton)?.click());
+saveLocalProjectButton?.addEventListener('click', async event => {
+  event.preventDefault();
+  event.stopPropagation();
+  try {
+    await saveCurrentProject(false, 'local');
+  } catch (error) {
+    console.error('Salvataggio locale non riuscito:', error);
+    window.alert('Impossibile salvare il progetto locale.\\n\\n' + error.message);
+  }
+});
+saveCloudProjectAsButton?.addEventListener('click', async event => {
+  event.preventDefault();
+  event.stopPropagation();
+  try {
+    await saveCloudProjectAs();
+  } catch (error) {
+    console.error('Salva con nome Cloud non riuscito:', error);
+    window.alert('Impossibile creare la copia Cloud.\\n\\n' + error.message);
+  }
+});
 
 saveProjectButton?.addEventListener('click', async event => {
   event.preventDefault();
