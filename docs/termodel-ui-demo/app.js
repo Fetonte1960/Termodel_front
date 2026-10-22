@@ -52,6 +52,7 @@ const appRoot = document.getElementById('app');
 const appTitleText = document.getElementById('appTitleText');
 const renderOriginBadge = document.getElementById('renderOriginBadge');
 const openProjectButton = document.getElementById('openProjectButton');
+const openCloudProjectButton = document.getElementById('openCloudProjectButton');
 const openExampleButton = document.getElementById('openExampleButton');
 const openProjectFileInput = document.getElementById('openProjectFileInput');
 const saveProjectButton = document.getElementById('saveProjectButton');
@@ -3585,6 +3586,7 @@ function setStructuredProjectState(enabled) {
     cadButton.setAttribute('aria-disabled', needsProject ? 'true' : 'false');
   }
 
+  if (openCloudProjectButton) openCloudProjectButton.disabled = TERMODEL_USER_LOGIN !== 'admin';
   if (saveProjectButton) saveProjectButton.disabled = needsProject || TERMODEL_USER_LOGIN !== 'admin';
   if (saveCloudProjectAsButton) saveCloudProjectAsButton.disabled = needsProject || TERMODEL_USER_LOGIN !== 'admin';
   if (saveLocalProjectButton) saveLocalProjectButton.disabled = needsProject;
@@ -13276,6 +13278,17 @@ projectStartImportAi?.addEventListener('click', async event => {
     await continueAfterProjectStart();
   }
 });
+openCloudProjectButton?.addEventListener('click', async event => {
+  event.preventDefault();
+  event.stopPropagation();
+  try {
+    await openAdminProjectCatalog();
+  } catch (error) {
+    console.error('Apertura Cloud fallita:', error);
+    window.alert('Impossibile aprire il progetto Cloud.\\n\\n' + error.message);
+  }
+});
+
 openProjectButton?.addEventListener('click', event => {
   event.preventDefault();
   event.stopPropagation();
