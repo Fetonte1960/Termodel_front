@@ -31,7 +31,21 @@ jobs:
           grep -q 'aiImportConnectMcp' docs/termodel-ui-demo/index.html
           grep -q 'startTermodelMcpImportSession' docs/termodel-ui-demo/app.js
           grep -q "importAiText(payload, { source: 'mcp' })" docs/termodel-ui-demo/app.js
-          test "$(tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt)" = "1.85"
+          # La versione del frontend evolve indipendentemente dalla suite MCP.
+          # Verificare il formato, non bloccare un valore storico (1.85).
+          tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt | grep -Eq '^[0-9]+\\.[0-9]+
+      - name: Report result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "$JOB_STATUS" = "success" ]; then
+            gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" -f state=success -f context=Termodel/job -f description="MCP browser syntax OK" > /dev/null
+          else
+            gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" -f state=failure -f context=Termodel/job -f description="MCP browser check failed" > /dev/null
+          fi
+
       - name: Report result
         if: always()
         env:
