@@ -521,7 +521,7 @@ const COMMAND_HELP = {
   },
   'Esporta XML nazionale': {
     title: 'File → Esporta XML nazionale',
-    body: '<p>Produce il file XML Nazionale completo del modello termico. Il file può poi essere importato nei programmi di calcolo energetico compatibili con questo standard.</p>'
+    body: '<p>Scarica l’XML nazionale prodotto dall’ultima elaborazione <strong>Aggiorna Modello</strong> eseguita dal Service. Se il progetto è cambiato, occorre ricalcolarlo prima di esportare. Non viene esportato il solo XML di base importato.</p>'
   },
   'Esporta BIM (ifc)': {
     title: 'File → Esporta BIM (IFC)',
@@ -585,11 +585,11 @@ const COMMAND_HELP = {
   },
   'Calcoli': {
     title: 'Menu Calcoli',
-    body: '<p>Raccoglie le funzioni collegate ai risultati di calcolo. La documentazione AI pubblica è concentrata soprattutto sul flusso CAD → modello → XML.</p>'
+    body: '<p>Presenta i risultati dell’ultimo calcolo Service in due sottoschede: prima <strong>Dispersioni</strong>, poi <strong>Pannelli radianti</strong>. Per aggiornarli utilizza <strong>Aggiorna Modello</strong>.</p>'
   },
   'Visualizza risultati dell\'ultimo calcolo': {
     title: 'Risultati dell’ultimo calcolo',
-    body: '<p>Richiama i risultati disponibili dell\'ultima elaborazione. Nella WebApp la sezione è illustrativa e non esegue il motore di calcolo desktop.</p>'
+    body: '<p>Mostra i risultati prodotti dal Termodel Service dopo <strong>Aggiorna Modello</strong>: <strong>Dispersioni</strong> nella prima sottoscheda e <strong>Pannelli radianti</strong> nella seconda. Le dispersioni derivano dal percorso headless del calcolo Desktop; la parità numerica finale con il Desktop resta da convalidare.</p>'
   },
   'Gestione Piani': {
     title: 'Gestione Piani',
@@ -4828,6 +4828,24 @@ function termodelSetCalculationReport(message, rawRtf = null, kind = '') {
   }
   note.textContent = message;
   note.dataset.kind = kind;
+  // Un nuovo calcolo o un errore non deve lasciare visibile la relazione precedente.
+  output.hidden = false;
+  for (const id of ['serviceCalculationHtmlPreview', 'serviceCalculationRadiantPreview']) {
+    const frame = document.getElementById(id);
+    if (frame) {
+      frame.hidden = true;
+      frame.removeAttribute('srcdoc');
+    }
+  }
+  for (const id of ['serviceCalculationHtmlDownload', 'serviceCalculationHtmlPrint']) {
+    const control = document.getElementById(id);
+    if (control) control.hidden = true;
+  }
+  const htmlDownload = document.getElementById('serviceCalculationHtmlDownload');
+  if (htmlDownload?.dataset.objectUrl) {
+    URL.revokeObjectURL(htmlDownload.dataset.objectUrl);
+    delete htmlDownload.dataset.objectUrl;
+  }
   output.textContent = rawRtf === null ? '' : termodelRtfToPlainText(rawRtf);
   download.hidden = rawRtf === null;
   if (rawRtf !== null) {
@@ -4863,14 +4881,14 @@ function termodelCalculationSectionHtml(html, section) {
     return '<!doctype html>' + doc.documentElement.outerHTML;
   }
   const block = doc.createElement('div');
+  // Mostra l'avviso originale del Service, non un messaggio hard-coded e ormai superato.
+  if (section === 'dispersion') {
+    const serviceNotice = doc.body.querySelector('.notice');
+    if (serviceNotice) block.appendChild(serviceNotice.cloneNode(true));
+  }
   block.appendChild(heading.cloneNode(true));
   for (let node = heading.nextSibling; node && !(node.nodeType === 1 && node.tagName === 'H2'); node = node.nextSibling)
     block.appendChild(node.cloneNode(true));
-  const disclaimer = doc.createElement('p');
-  disclaimer.textContent = section === 'radiant'
-    ? 'Risultati del motore pannelli del Service; equivalenza numerica Desktop da verificare.'
-    : 'Le dispersioni rimangono non calcolate finché il motore Desktop non sarà collegato al Service.';
-  block.appendChild(disclaimer);
   doc.body.replaceChildren(block);
   return '<!doctype html>' + doc.documentElement.outerHTML;
 }
@@ -4905,7 +4923,7 @@ function termodelSetCalculationHtml(html) {
     const frameWindow = activeFrame?.contentWindow;
     if (frameWindow) { frameWindow.focus(); frameWindow.print(); }
   };
-  note.textContent = 'Anteprima stampa del documento HTML generato dal Service; i contenuti non sono ancora equivalenti al Desktop.';
+  note.textContent = 'Relazione HTML dell’ultima elaborazione del Service. Il confronto numerico finale con Desktop resta da convalidare.';
 }
 
 async function termodelLoadCalculationReport(projectId) {
@@ -13302,7 +13320,7 @@ document.getElementById('exportNationalXmlButton')?.addEventListener('click', as
     const xmlFile = catalog.files.find(item =>
       String(item?.path || '').toLowerCase() === 'artifacts/xml-nazionale.xml'
     );
-    if (!xmlFile) throw new Error('XML nazionale non ancora generato dal Service. La generazione Desktop-equivalente deve essere completata.');
+    if (!xmlFile) throw new Error('XML nazionale assente nell’ultima elaborazione. Premi Aggiorna Modello e verifica l’esito del calcolo Service.');
     if (xmlFile.stale) throw new Error('XML nazionale non aggiornato: premi Aggiorna Modello.');
     const response = await fetchTermodelService(String(xmlFile.href), { cache: 'no-store' });
     if (!response.ok) throw new Error(await readTermodelServiceError(response));
