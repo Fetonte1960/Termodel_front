@@ -103,9 +103,25 @@ const TERMODEL_USER_LOGIN =
     : '';
 const TERMODEL_USER_REGISTERED = !!TERMODEL_USER_LOGIN;
 const TERMODEL_USER_CAPTION = TERMODEL_USER_REGISTERED ? TERMODEL_USER_LOGIN : 'Non Registrato';
+function termodelCurrentProjectCaptionName() {
+  if (!structuredProjectActive) return '';
+  try {
+    return String(getArchivioWebState()?.projectName || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
 function buildTermodelCaption(area) {
   const normalizedArea = String(area || '').trim();
-  return `Termodel V:${APP_VERSION}${normalizedArea ? ` — ${normalizedArea}` : ''} — Utente: ${TERMODEL_USER_CAPTION}`;
+  const name = termodelCurrentProjectCaptionName();
+  return `Termodel V:${APP_VERSION}${normalizedArea ? ` — ${normalizedArea}` : ''} — Utente: ${TERMODEL_USER_CAPTION}${name ? ' — Progetto: ' + name : ''}`;
+}
+function syncTermodelCaption() {
+  const cad = Boolean(appRoot?.classList.contains('cad-layout-mode'));
+  const title = buildTermodelCaption(cad ? 'CAD 2D' : 'Web');
+  document.title = title;
+  if (appTitleText) appTitleText.textContent = title;
 }
 const APP_MAIN_TITLE = buildTermodelCaption('Web');
 const APP_CAD_TITLE = buildTermodelCaption('CAD 2D');
@@ -3568,6 +3584,7 @@ function resetView() {
 
 function setStructuredProjectState(enabled) {
   structuredProjectActive = Boolean(enabled);
+  syncTermodelCaption();
   if (structuredProjectActive)
     setInitialModelExplorationLocked(false);
   const needsProject = !structuredProjectActive;
@@ -7320,8 +7337,7 @@ function createAiPreviewModelFromPlan(plan) {
 
 function setCadLayoutMode(active) {
   appRoot?.classList.toggle('cad-layout-mode', active);
-  if (appTitleText)
-    appTitleText.textContent = active ? APP_CAD_TITLE : APP_MAIN_TITLE;
+  syncTermodelCaption();
 
   if (TERMODEL_ANDROID_DEVICE)
     syncAndroidViewportLayout();
@@ -11013,6 +11029,7 @@ function cadUpdateControls() {
   const hasDoc = !!cadWorkingDoc;
   const selected = !!cadFindSelectableLine(cadSelectedLineId);
   const selectedSymbol = cadFindSourceSymbol(cadSelectedSymbolId);
+  syncTermodelCaption();
   const dirty = cadIsDirty();
   const drawingLine = cadToolMode === 'line';
   const insertingSymbol = cadToolMode === 'symbol';
