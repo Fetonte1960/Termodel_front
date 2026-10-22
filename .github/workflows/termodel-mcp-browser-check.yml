@@ -33,7 +33,7 @@ jobs:
           grep -q "importAiText(payload, { source: 'mcp' })" docs/termodel-ui-demo/app.js
           # La versione del frontend evolve indipendentemente dalla suite MCP.
           # Verificare il formato, non bloccare un valore storico (1.85).
-          tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt | grep -Eq '^[0-9]+\\.[0-9]+
+          tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt | grep -Eq "^[0-9]+[.][0-9]+"
       - name: Report result
         if: always()
         env:
