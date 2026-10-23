@@ -65,6 +65,7 @@ const helpOpenWebHelp = document.getElementById('helpOpenWebHelp');
 const helpExplorationMode = document.getElementById('helpExplorationMode');
 const helpLocalService = document.getElementById('helpLocalService');
 const helpCopyProjectClipboard = document.getElementById('helpCopyProjectClipboard');
+const helpCopyTopologyClipboard = document.getElementById('helpCopyTopologyClipboard');
 const helpCopyLogClipboard = document.getElementById('helpCopyLogClipboard');
 const helpSpiralEngine = document.getElementById('helpSpiralEngine');
 const helpSpiralClosure = document.getElementById('helpSpiralClosure');
@@ -406,6 +407,7 @@ let currentProjectText = '';
 let currentProjectFileName = '';
 let currentProjectId = '';
 let currentServiceManifest = null;
+let lastCalculatedTopologyProjectText = '';
 let currentCalculationSpiralEngine = '';
 let lastTermodelLogText = '';
 let lastTermodelLogProjectId = '';
@@ -3609,6 +3611,12 @@ function setStructuredProjectState(enabled) {
   if (saveLocalProjectButton) saveLocalProjectButton.disabled = needsProject;
   if (cadSaveProject) cadSaveProject.disabled = needsProject;
   if (saveProjectAsButton) saveProjectAsButton.disabled = needsProject;
+  if (helpCopyTopologyClipboard) {
+    helpCopyTopologyClipboard.disabled = needsProject;
+    helpCopyTopologyClipboard.title = needsProject
+      ? inviteTitle
+      : 'Copia il file topologia-ai.json generato da Aggiorna Modello per il progetto corrente.';
+  }
   if (helpCopyProjectClipboard) {
     helpCopyProjectClipboard.disabled = needsProject;
     helpCopyProjectClipboard.title = needsProject ? inviteTitle : 'Copia il TERMODEL-PROJECT-TEXT-V1 corrente negli appunti.';
@@ -4449,6 +4457,7 @@ async function createStructuredProjectFromSvg(svgText) {
   currentProjectFileName = '';
   syncCurrentProjectIdFromText(currentProjectText);
   currentServiceManifest = null;
+  lastCalculatedTopologyProjectText = '';
   currentCalculationSpiralEngine = '';
   cadGeneratedExecutiveOverlay = null;
   setStructuredProjectState(true);
@@ -4472,6 +4481,7 @@ async function loadProjectTextIntoFrontend(text, options = {}) {
   currentProjectFileName = options.fileName || currentProjectFileName || projectFileNameFromName(project.projectName);
   syncCurrentProjectIdFromText(currentProjectText);
   currentServiceManifest = null;
+  lastCalculatedTopologyProjectText = '';
   currentCalculationSpiralEngine = '';
   cadGeneratedExecutiveOverlay = null;
 
@@ -5466,6 +5476,87 @@ async function copyCurrentProjectToClipboard() {
   return text;
 }
 
+
+// Non ricostruisce confini o percorsi nel frontend: copia solo il JSON V3
+// prodotto da Polig3D e persistito dal Service per il calcolo corrente.
+async function copyCurrentTopologyToClipboard() {
+  if (!structuredProjectActive || !currentProjectText)
+    throw new Error('Apri prima un progetto Termodel.');
+
+  const projectId = String(currentProjectId || '').trim();
+  if (!projectId ||
+      String(currentServiceManifest?.projectId || '').toLowerCase() !== projectId.toLowerCase() ||
+      !lastCalculatedTopologyProjectText)
+    throw new Error('Esegui prima Aggiorna Modello per generare la topologia di questo progetto.');
+
+  if (loading)
+    throw new Error('Aggiorna Modello è ancora in corso.');
+
+  if (cadIsDirty())
+    throw new Error('Ci sono modifiche CAD non confermate. Confermale ed esegui Aggiorna Modello.');
+
+  const currentText = await buildCurrentProjectText();
+  if (currentText !== lastCalculatedTopologyProjectText)
+    throw new Error('Il progetto è stato modificato dopo il calcolo. Esegui nuovamente Aggiorna Modello.');
+
+  const catalog = await termodelGeneratedFilesCatalog(projectId);
+  if (String(catalog.projectId || '').toLowerCase() !== projectId.toLowerCase())
+    throw new Error('Il catalogo Service appartiene a un progetto diverso.');
+  if (catalog.artifactsStale === true)
+    throw new Error('Gli artefatti sono obsoleti. Esegui Aggiorna Modello.');
+
+  const matches = catalog.files.filter(file =>
+    String(file?.path || '').trim().toLowerCase() === 'artifacts/topologia-ai.json'
+  );
+  if (matches.length !== 1)
+    throw new Error('Artefatto topologia-ai.json non trovato o non univoco: esegui Aggiorna Modello.');
+
+  const record = matches[0];
+  if (record.stale === true)
+    throw new Error('Il modello topologico è obsoleto. Esegui Aggiorna Modello.');
+
+  const expectedPrefix = '/api/projects/' + encodeURIComponent(projectId) + '/generated-files/';
+  if (!String(record.href || '').toLowerCase().startsWith(expectedPrefix.toLowerCase()))
+    throw new Error('Percorso artefatto diverso dal progetto corrente.');
+
+  const fetched = await termodelGeneratedFileText(record);
+  if (fetched.stale)
+    throw new Error('Il Service ha invalidato il modello topologico. Esegui Aggiorna Modello.');
+
+  // I risultati asincroni non devono essere copiati se nel frattempo
+  // l'operatore ha cambiato progetto o avviato un altro calcolo.
+  if (projectId.toLowerCase() !== String(currentProjectId || '').toLowerCase() ||
+      String(currentServiceManifest?.projectId || '').toLowerCase() !== projectId.toLowerCase() ||
+      currentProjectText !== lastCalculatedTopologyProjectText || loading)
+    throw new Error('Il progetto o il calcolo è cambiato durante la copia. Riprova.');
+
+  let topology;
+  try {
+    topology = JSON.parse(fetched.text);
+  } catch {
+    throw new Error('Il file topologico restituito dal Service non contiene JSON valido.');
+  }
+  if (topology?.format !== 'TermodelTopologyAI' ||
+      topology?.source !== 'Polig3D' ||
+      topology?.version !== 3 ||
+      !Array.isArray(topology.rooms) ||
+      !Array.isArray(topology.walls) ||
+      !Array.isArray(topology.doors) ||
+      !Array.isArray(topology.links) ||
+      !Array.isArray(topology.access))
+    throw new Error('Il Service non ha restituito il modello topologico Polig3D V3 atteso.');
+
+  if (!await copyTextToClipboard(fetched.text, 'il modello topologico AI'))
+    throw new Error('Il browser non ha consentito la copia negli appunti.');
+
+  setMainAiStatus(
+    '✓ Topologia V3 copiata negli appunti: ' +
+    topology.rooms.length + ' locali, ' +
+    topology.links.length + ' collegamenti (inclusi eventuali candidati).'
+  );
+  return fetched.text;
+}
+
 async function readTermodelServiceError(response) {
   const contentType = response.headers.get('content-type') || '';
   try {
@@ -5627,6 +5718,7 @@ async function loadCalculatedModelFromService() {
 
     const data = await modelResponse.json();
     currentServiceManifest = calculation;
+    lastCalculatedTopologyProjectText = completeProjectText;
     currentCalculationSpiralEngine = String(
       calculation.spiralEngine || termodelServiceRuntimeEngine || ''
     ).trim();
@@ -5674,6 +5766,7 @@ async function loadCalculatedModelFromService() {
   } catch (error) {
     console.error(error);
     currentServiceManifest = null;
+    lastCalculatedTopologyProjectText = '';
     currentCalculationSpiralEngine = '';
     exchange.error = error?.message || String(error);
     const copied = await copyTermodelServerExchange(exchange);
@@ -13403,6 +13496,21 @@ helpCopyProjectClipboard?.addEventListener('click', async event => {
   } catch (error) {
     console.error('Copia progetto negli appunti non riuscita:', error);
     window.alert('Impossibile copiare il progetto negli appunti.\n\n' + error.message);
+  }
+});
+
+helpCopyTopologyClipboard?.addEventListener('click', async event => {
+  event.preventDefault();
+  event.stopPropagation();
+  helpCopyTopologyClipboard.closest('.menu')?.classList.remove('open');
+  helpCopyTopologyClipboard.disabled = true;
+  try {
+    await copyCurrentTopologyToClipboard();
+  } catch (error) {
+    console.error('Copia modello topologico non riuscita:', error);
+    window.alert('Impossibile copiare il modello topologico per AI.\n\n' + error.message);
+  } finally {
+    helpCopyTopologyClipboard.disabled = !structuredProjectActive;
   }
 });
 
