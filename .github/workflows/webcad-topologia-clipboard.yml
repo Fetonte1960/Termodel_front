@@ -1,4 +1,4 @@
-name: Termodel WebCAD Topologia Clipboard V2.08
+name: Termodel WebCAD Topologia Clipboard V2.09
 
 on:
   pull_request:
@@ -35,5 +35,5 @@ jobs:
       - name: Versione frontend pubblica
         shell: bash
         run: |
-          test "$(tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt)" = "2.08"
+          test "$(tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt)" = "2.09"
           grep -F -q 'TERMODEL_FRONTEND_BOOT_VERSION' docs/termodel-ui-demo/index.html

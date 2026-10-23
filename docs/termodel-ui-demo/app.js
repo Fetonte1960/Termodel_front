@@ -5479,6 +5479,22 @@ async function copyCurrentProjectToClipboard() {
 
 // Non ricostruisce confini o percorsi nel frontend: copia solo il JSON V3
 // prodotto da Polig3D e persistito dal Service per il calcolo corrente.
+// refreshManifest() aggiorna generatedAtUtc a ogni build, anche senza
+// modifiche ai contenuti. Escludiamo SOLO questo metadato volatile dal
+// confronto, mantenendo verifiche integrali di manifest, archivi e geometria.
+function termodelTopologyComparableProjectText(projectText) {
+  const rawManifest = getTermodelProjectSection(projectText, 'manifest.json');
+  if (!rawManifest)
+    throw new Error('Il progetto non contiene manifest.json.');
+  const manifest = JSON.parse(rawManifest);
+  delete manifest.generatedAtUtc;
+  return replaceTermodelProjectSection(
+    projectText,
+    'manifest.json',
+    JSON.stringify(manifest, null, 2)
+  );
+}
+
 async function copyCurrentTopologyToClipboard() {
   if (!structuredProjectActive || !currentProjectText)
     throw new Error('Apri prima un progetto Termodel.');
@@ -5496,7 +5512,9 @@ async function copyCurrentTopologyToClipboard() {
     throw new Error('Ci sono modifiche CAD non confermate. Confermale ed esegui Aggiorna Modello.');
 
   const currentText = await buildCurrentProjectText();
-  if (currentText !== lastCalculatedTopologyProjectText)
+  const calculatedSource = termodelTopologyComparableProjectText(lastCalculatedTopologyProjectText);
+  const currentSource = termodelTopologyComparableProjectText(currentText);
+  if (currentSource !== calculatedSource)
     throw new Error('Il progetto è stato modificato dopo il calcolo. Esegui nuovamente Aggiorna Modello.');
 
   const catalog = await termodelGeneratedFilesCatalog(projectId);
@@ -5527,7 +5545,7 @@ async function copyCurrentTopologyToClipboard() {
   // l'operatore ha cambiato progetto o avviato un altro calcolo.
   if (projectId.toLowerCase() !== String(currentProjectId || '').toLowerCase() ||
       String(currentServiceManifest?.projectId || '').toLowerCase() !== projectId.toLowerCase() ||
-      currentProjectText !== lastCalculatedTopologyProjectText || loading)
+      termodelTopologyComparableProjectText(currentProjectText) !== currentSource || loading)
     throw new Error('Il progetto o il calcolo è cambiato durante la copia. Riprova.');
 
   let topology;
