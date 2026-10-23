@@ -1,0 +1,39 @@
+name: Termodel WebCAD Topologia Clipboard V2.08
+
+on:
+  pull_request:
+    paths:
+      - 'docs/termodel-ui-demo/app.js'
+      - 'docs/termodel-ui-demo/index.html'
+      - 'docs/termodel-ui-demo/frontend-version.txt'
+      - 'docs/termodel-ui-demo/tests/topology-clipboard-smoke.cjs'
+      - '.github/workflows/webcad-topologia-clipboard.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/termodel-ui-demo/app.js'
+      - 'docs/termodel-ui-demo/index.html'
+      - 'docs/termodel-ui-demo/frontend-version.txt'
+      - 'docs/termodel-ui-demo/tests/topology-clipboard-smoke.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  topology-clipboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Controllo sintassi app.js
+        run: node --check docs/termodel-ui-demo/app.js
+      - name: Prova funzionale clipboard topologia V3
+        run: node docs/termodel-ui-demo/tests/topology-clipboard-smoke.cjs
+      - name: Versione frontend pubblica
+        shell: bash
+        run: |
+          test "$(tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt)" = "2.08"
+          grep -F -q 'TERMODEL_FRONTEND_BOOT_VERSION' docs/termodel-ui-demo/index.html
