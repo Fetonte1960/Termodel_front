@@ -95,6 +95,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 .sos-guided-options button:hover:not(:disabled){background:#3b6379;border-color:#8bcadf}
 .sos-guided-options button:focus-visible{outline:2px solid #a3ddf1;outline-offset:2px}
 .sos-guided-options .sos-guided-back{background:#303030;color:#dadde2;border-color:#555}
+.sos-guided-options .sos-guided-review{background:#253a39;border-color:#518b81;color:#eef9f5}
 .sos-guided-options button:disabled{opacity:.45;cursor:default}
 body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!important}
 </style>
@@ -696,14 +697,17 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
               const data=detail.data;
               const events=Array.isArray(data.eventi)?data.eventi.map(e=>e.tipo).join(', '):'';
               addShBubble('assistant',
-                'Richiesta: '+data.id+'\\n'+
-                'Oggetto: '+String(data.oggetto||'')+'\\n'+
-                'Stato operativo: '+String(data.statoOperativo||'')+'\\n'+
-                'Stato monitoraggio: '+String(data.statoMonitoraggio||'')+'\\n'+
-                'Specializzazione: '+String(data.specializzazione||'')+'\\n'+
-                'Locale: '+String(data.locale||'Da accertare')+'\\n'+
-                'Urgenza: '+String(data.urgenza||'Da accertare')+'\\n'+
-                'Tecnico assegnato: '+(data.tecnicoAssegnato?'Sì':'No')+'\\n'+
+                'Richiesta: '+data.id+'\n'+
+                'Oggetto: '+String(data.oggetto||'')+'\n'+
+                'Descrizione: '+String(data.descrizione||'Non disponibile')+'\n'+
+                'Tipo danno: '+String(data.tipoDanno||'Da accertare')+'\n'+
+                'Rischio dichiarato: '+(data.rischioPersone?'Sì':'No')+'\n'+
+                'Stato operativo: '+String(data.statoOperativo||'')+'\n'+
+                'Stato monitoraggio: '+String(data.statoMonitoraggio||'')+'\n'+
+                'Specializzazione: '+String(data.specializzazione||'')+'\n'+
+                'Locale: '+String(data.locale||'Da accertare')+'\n'+
+                'Urgenza: '+String(data.urgenza||'Da accertare')+'\n'+
+                'Tecnico assegnato: '+(data.tecnicoAssegnato?'Sì':'No')+'\n'+
                 'Eventi: '+(events||'Nessuno'),
                 'SOS · dettaglio verificato in Neon');
             }catch(e){
