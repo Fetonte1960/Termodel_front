@@ -672,10 +672,15 @@ function redrawService(model){
  if(bounds.isEmpty())throw Error('Dimensioni del modello Service non valide');
  const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
  controls.target.copy(center);
+ // Native TermodelWebModel V3 is in metres: frame model extents.
+ const radius=Math.max(size.x,size.y,size.z,1);
  camera.position.copy(center).add(new THREE.Vector3(
-   size.x*.9+90,size.y*1.5+150,size.z*1.7+200));
- camera.lookAt(center);camera.near=1;camera.far=Math.max(10000,size.length()*10);
- camera.updateProjectionMatrix();
+   radius*1.0,radius*1.1,radius*1.45));
+ camera.lookAt(center);camera.near=Math.max(.01,radius/1000);
+ camera.far=Math.max(1000,radius*100);camera.updateProjectionMatrix();
+ for(const floor of new Set(model.primitives.map(p=>p?.piano).filter(p=>typeof p==='string'&&p.length&&p.length<150))){
+  if(!filterState.has('piani:'+floor))checkbox('piani',floor,true);
+ }
  document.getElementById('preview-info').textContent=
    'Modello Termodel Service V3 · '+count+' mesh · '+triangles+' triangoli';
  filters();
