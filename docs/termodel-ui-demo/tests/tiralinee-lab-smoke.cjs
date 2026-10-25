@@ -44,9 +44,10 @@ assert.ok(demo.primitives.every(p=>p.filterMetadata===true));
 const html=fs.readFileSync(path.join(root,'mcp-dump-test.html'),'utf8');
 for(const part of ["HARNESS_VERSION = '1.14.0'","chatMode==='sh'&&!handoffRequested","chatMode==='lab'",
  "window.__termodelLabReady?.({execute:executeLab})","fetch('./TermodelWebModel.json'",
- "fetch(gateway+'/browser/lab/register'","/browser/lab/engine/"]){
+ "fetch(host+'/browser/lab/register'","/browser/lab/interpret/","/browser/viewer/interpret/"]){
  assert.ok(html.includes(part),'missing integration '+part);
 }
+assert.ok(!html.includes("SH: domanda"),'UI must not require prefixes');
 console.log('TIRALINEE_LAB_SMOKE_OK commands='+cases.length+
  ' primitives='+demo.primitives.length+
  ' piani='+new Set(demo.primitives.map(p=>p.piano)).size);
