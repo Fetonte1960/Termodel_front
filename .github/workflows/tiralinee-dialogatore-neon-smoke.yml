@@ -158,18 +158,39 @@ jobs:
           assert.equal(burglary.status,200);
           assert.equal(burglary.data.choices.length,7);
           assert(burglary.data.choices.every(x=>x.id.startsWith('sos.room.effrazione.')));
-          const winList=await get('sos.room.effrazione.locale_3');
-          assert.equal(winList.status,200);
-          assert.equal(winList.data.choices.length,9);
-          assert.equal(winList.data.choices.at(-1).label,'Scegli un altro locale');
-          const finChoice=await get(winList.data.choices[0].id);
-          assert.equal(finChoice.status,200);
-          assert.equal(finChoice.data.node.openingSelection,true);
-          assert.equal(finChoice.data.node.canRequestAssistance,false);
-          const confirm=finChoice.data.choices.find(x=>x.id.startsWith('sos.fin.yes.'));
-          assert(confirm);
-          const yesResult=await get(confirm.id);
-          assert.equal(yesResult.data.node.openingConfirmed,true);
+          const direction=await get('sos.room.effrazione.locale_3');
+          assert.equal(direction.status,200);
+          assert.equal(direction.data.node.message,
+            "L'infisso interessato dà verso l'esterno?");
+          assert.deepEqual(direction.data.choices.map(c=>c.label),[
+            "Sì, verso l'esterno","No, verso un locale interno",
+            "Non lo so, mostra tutti gli infissi"
+          ]);
+          const external=await get('sos.fin.boundary.ext.locale_3');
+          const internal=await get('sos.fin.boundary.int.locale_3');
+          const unknown=await get('sos.fin.boundary.all.locale_3');
+          assert.equal(external.status,200);
+          assert.equal(internal.status,200);
+          assert.equal(unknown.status,200);
+          const candidates=r=>r.data.choices.filter(x=>x.id.startsWith('sos.fin.pick.'));
+          assert.equal(candidates(external).length,2);
+          assert.equal(candidates(internal).length,6);
+          assert.equal(candidates(unknown).length,8);
+          assert(candidates(external).every(x=>x.id.includes('.ext.')));
+          assert(candidates(internal).every(x=>x.id.includes('.int.')));
+          const window=await get(candidates(external)[0].id);
+          assert.equal(window.status,200,'Valid P3D-O uppercase IDs must no longer get HTTP 400');
+          assert.equal(window.data.node.openingSelection,true);
+          assert.equal(window.data.node.canRequestAssistance,false);
+          const yes=window.data.choices.find(x=>x.id.startsWith('sos.fin.yes.ext.'));
+          const no=window.data.choices.find(x=>x.label.startsWith('No,'));
+          assert(yes&&no);
+          assert.equal(no.id,'sos.fin.boundary.ext.locale_3');
+          const confirmed=await get(yes.id);
+          assert.equal(confirmed.status,200);
+          assert.equal(confirmed.data.node.openingConfirmed,true);
+          assert.equal((await get('sos.fin.pick.ext.locale_3.P3D-O9999')).status,404);
+          assert.equal((await get('sos.fin.pick.int.locale_3.P3D-O0009')).status,404);
           assert.equal((await get('sos.room.perdita.locale_999')).status,404);
           assert.equal((await get('sos')).status,404);
           assert.equal((await get('filtri')).status,404);
