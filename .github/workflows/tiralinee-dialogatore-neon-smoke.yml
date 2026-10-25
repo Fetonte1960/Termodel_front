@@ -13,9 +13,59 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify root navigation and explicit guided assistance CTA
+        shell: bash
+        run: |
+          node <<'NODE'
+          const assert=(await import('node:assert/strict')).default;
+          const {readFileSync}=await import('node:fs');
+          const script=readFileSync('docs/termodel-ui-demo/tiralinee-guided-chat.js','utf8');
+          new Function('window','document',script);
+          class Element {
+            constructor(tag){this.tag=tag;this.children=[];this.listeners={};this.disabled=false;}
+            appendChild(x){this.children.push(x);}
+            remove(){this.removed=true;}
+            setAttribute(){}
+            addEventListener(name,callback){this.listeners[name]=callback;}
+            querySelectorAll(){return this.children.filter(x=>x.tag==='button');}
+          }
+          const target={};const document={createElement:tag=>new Element(tag)};
+          new Function('window','document',script)(target,document);
+          const box=new Element('container');
+          let reads=0,request=null;
+          const chat=target.SosGuidedChat.create({
+            container:box,available:()=>true,addMessage:()=>new Element('message'),
+            read:async id=>{
+              reads++;
+              return id==='inizio'
+                ?{node:{id,message:'Che tipo di disservizio hai?'},choices:[
+                    {id:'disservizi.idrico',label:'Nella rete idrica'}]}
+                :{node:{id,message:'Disservizio idrico confermato'},choices:[]};
+            },
+            onNoAction:()=>{},onRequestAssistance:p=>{request=p;}
+          });
+          const current=()=>box.children.at(-1).children;
+          const labels=()=>current().map(x=>x.textContent);
+          await chat.start();
+          assert.deepEqual(labels(),['Nella rete idrica']);
+          current()[0].listeners.click();
+          await new Promise(r=>setTimeout(r,10));
+          assert(labels().includes('Attiva una richiesta di assistenza con i dati raccolti'));
+          assert(labels().includes('Torna al menu iniziale'));
+          const action=current().find(x=>x.textContent.startsWith('Attiva una richiesta'));
+          await action.listeners.click();
+          assert.equal(request.categoryNodeId,'disservizi.idrico');
+          assert.equal(request.steps[0].answer,'Nella rete idrica');
+          current().find(x=>x.textContent==='Torna al menu iniziale').listeners.click();
+          await new Promise(r=>setTimeout(r,10));
+          assert.deepEqual(labels(),['Nella rete idrica']);
+          assert.equal(reads,3);
+          console.log('GUIDED_ROOT_AND_REQUEST_UI_OK');
+          NODE
       - name: Verify dynamic Neon tree and protected Gateway actions
         shell: bash
         run: |
@@ -76,5 +126,15 @@ jobs:
           const tamper=await fetch(base+'/execute/disservizi.idrico',{
             method:'POST',headers,body:JSON.stringify({action:'delete'})});
           assert.equal(tamper.status,400);
+          const unauthorizedIntake=await fetch(root+
+            '/browser/sos/guided-assistance/'+'0'.repeat(40),{
+              method:'POST',
+              headers:{Origin:origin,'Content-Type':'application/json'},
+              body:JSON.stringify({categoryNodeId:'disservizi.idrico',
+                steps:[{id:'disservizi.idrico',answer:'Nella rete idrica'}],
+                rischioPersone:false,urgenza:'ordinaria',confermaEsplicita:true})
+            });
+          assert.equal(unauthorizedIntake.status,401,
+            'Unpaired request must never create a SOS intervention');
           console.log('SOS_NEON_DIALOGUE_OK nodes=root/four incident types classification=no-action paired-hidden=404 invalid=401');
           NODE
