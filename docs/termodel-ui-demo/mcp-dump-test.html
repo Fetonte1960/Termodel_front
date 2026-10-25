@@ -161,11 +161,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.0"></script>
-<script src="./tiralinee-guided-chat.js?v=1.0.2"></script>
+<script src="./tiralinee-guided-chat.js?v=1.0.3"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.16.4';
+  const HARNESS_VERSION = '1.16.5';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
