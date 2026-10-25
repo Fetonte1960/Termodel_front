@@ -179,6 +179,18 @@ jobs:
           assert.equal(model.format,'TermodelWebModel');
           assert.equal(model.version,3);
           assert.equal(model.primitives.length,386);
+          const floor=await fetch(root+'/browser/lab/clean-floor/'+cred.id+'/Unico',{headers});
+          assert([200,404].includes(floor.status),
+            'Clean floor may not yet have been saved for approved 3D revision');
+          if(floor.status===200){
+            assert.match(floor.headers.get('content-type')||'',/image\/svg\+xml/);
+            assert.equal(floor.headers.get('X-SOS-Import-Id'),service.headers.get('X-SOS-Import-Id'));
+            assert.equal(floor.headers.get('X-SOS-Project-Revision'),
+              service.headers.get('X-SOS-Project-Revision'));
+            assert.match(await floor.text(),/TERMODEL-CLEAN-FLOOR-SVG-V1/);
+          }else{
+            assert.equal((await floor.json()).error,'clean_floor_not_imported');
+          }
           const rev=decodeURIComponent(service.headers.get('X-SOS-Project-Revision')||'');
           assert.equal(selected.data.node.topologyRevision,rev);
           for(const choice of leak.data.choices){
