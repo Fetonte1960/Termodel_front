@@ -528,6 +528,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       return;
     }
     guidedAssistanceBusy=true;
+    let intakePending=null;
     try{
       const risk=await guidedAssistanceQuestion(
         'Prima di inoltrare la richiesta: ci sono pericoli attuali per le persone?',
@@ -558,7 +559,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         return;
       }
       const requestId=crypto.randomUUID();
-      const pending=addShBubble('assistant','Registro la richiesta nel servizio SOS…',
+      intakePending=addShBubble('assistant','Registro la richiesta nel servizio SOS…',
         'Attendo ricevuta');
       const response=await new Promise((resolve,reject)=>{
         let timer;
@@ -587,7 +588,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
           confermaEsplicita:true
         },SOS_ORIGIN);
       });
-      pending.remove();
+      intakePending?.remove();intakePending=null;
       if(response.status==='received'&&typeof response.id==='string'){
         const card=response.scheda||{};
         const receipt='Richiesta di assistenza acquisita dal servizio SOS. '+
@@ -609,7 +610,10 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         String(error?.message||error)+
         '. Verifica la lista delle tue richieste prima di riprovare.',
         'SOS · esito non confermato');
-    }finally{guidedAssistanceBusy=false;}
+    }finally{
+      intakePending?.remove();
+      guidedAssistanceBusy=false;
+    }
   }
   // One transcript: the guided Neon tree and free-form SH interpretation.
   let sosGuidedController=null;
