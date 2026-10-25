@@ -148,10 +148,11 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 </aside>
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"></script>
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
+<script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.15.0';
+  const HARNESS_VERSION = '1.15.1';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -260,11 +261,39 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   }
 
   const labGatewayHost='https://termodel-mcp-gateway.onrender.com';
+  let labWakePromise=null;
+  async function gatewayRequest(path,init,stage){
+    if(!window.TiralineeGatewayRetry?.request)
+      throw Error('Modulo di riattivazione Gateway non caricato');
+    return window.TiralineeGatewayRetry.request(labGatewayHost+path,init,{
+      timeoutMs:35000,
+      onAttempt:(attempt,total)=>{
+        if(labChatMode){
+          setLabReady(false,stage+' · tentativo '+attempt+'/'+total);
+          document.getElementById('launch-state').textContent=
+            'SOS-TEST-001 · '+stage+' ('+attempt+'/'+total+')';
+        }
+      },
+      onRetry:()=>{
+        if(labChatMode)setLabReady(false,stage+' · attendo il Gateway…');
+      }
+    });
+  }
+  async function ensureGatewayAwake(){
+    if(!labWakePromise){
+      labWakePromise=gatewayRequest('/health',{method:'GET',cache:'no-store'},
+        'Riattivazione Gateway MCP').then(response=>{
+        if(!response.ok)throw Error('Gateway non pronto: HTTP '+response.status);
+      }).catch(error=>{labWakePromise=null;throw error;});
+    }
+    return labWakePromise;
+  }
   async function ensureLabAccess(){
     if(labAccess)return labAccess;
-    const response=await fetch(labGatewayHost+'/browser/lab/register',{
+    await ensureGatewayAwake();
+    const response=await gatewayRequest('/browser/lab/register',{
       method:'POST',cache:'no-store'
-    });
+    },'Apertura sessione laboratorio');
     if(!response.ok)throw Error('Gateway MCP: registrazione HTTP '+response.status);
     const credentials=await response.json();
     if(!/^[a-f0-9]{32}$/.test(credentials.id||'')||
@@ -276,13 +305,19 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   async function loadPharmacyTestModel(){
     if(!labGraphics?.loadSosModel)throw Error('Renderer Termodel Service non pronto');
     const credentials=await ensureLabAccess();
-    const response=await fetch(labGatewayHost+
-      '/browser/lab/model/'+encodeURIComponent(credentials.id),{
+    async function readModel(token){
+      return gatewayRequest('/browser/lab/model/'+encodeURIComponent(token.id),{
         method:'GET',cache:'no-store',headers:{
-          'Authorization':'Bearer '+credentials.token
+          'Authorization':'Bearer '+token.token
         }
-      });
-    if(response.status===401||response.status===410)labAccess=null;
+      },'Lettura modello Termodel Service');
+    }
+    let response=await readModel(credentials);
+    if(response.status===401||response.status===410){
+      // A Render Free restart loses the in-memory lab token; re-register once.
+      labAccess=null;
+      response=await readModel(await ensureLabAccess());
+    }
     if(!response.ok){
       let reason='';
       try{reason=(await response.json()).error||'';}catch{}
