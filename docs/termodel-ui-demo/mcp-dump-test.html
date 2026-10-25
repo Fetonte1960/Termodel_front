@@ -653,11 +653,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         if(!result.ok)throw Error('Claim HTTP '+result.status);
         // Bootstrapped SOS guidance is accepted only from the exact, previously
         // verified Shell message and after the one-time Gateway claim succeeds.
-        if(typeof data.expertBootstrap==='string'&&data.expertBootstrap.length<=7000)
-          trustedSosExpertBootstrap=data.expertBootstrap;
         const claimed=await result.json();
         if(claimed.sessionId!==requestedSession || claimed.capability!=='sos.viewer.read-only' ||
           typeof claimed.viewerToken!=='string')throw Error('Risposta autorizzazione non valida');
+        if(typeof data.expertBootstrap==='string'&&data.expertBootstrap.length<=7000)
+          trustedSosExpertBootstrap=data.expertBootstrap;
         await runViewer(claimed.viewerToken);
       }catch(error){
         const detail=String(error?.message||error);
