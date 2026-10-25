@@ -79,5 +79,8 @@ jobs:
           const restricted=await call('quante pratiche aperte ci sono');
           assert.equal(restricted.status,403,JSON.stringify(restricted));
           assert.equal(restricted.answer.reason,'sos_session_required');
-          console.log('SH_TIRALINEE_STARTUP_OK Service_model='+modelCount+' zoom/local=200 pareti/local=200 farmacia/no-session=403');
+          const unrecognized=await call('aiutami a riparare una navicella spaziale su marte');
+          assert.equal(unrecognized.status,200,JSON.stringify(unrecognized));
+          assert.equal(unrecognized.answer.esito,'FAULT','Unknown intent must invite expert consent');
+          console.log('SH_TIRALINEE_STARTUP_OK Service_model='+modelCount+' zoom/local=200 pareti/local=200 farmacia/no-session=403 unknown=FAULT');
           NODE
