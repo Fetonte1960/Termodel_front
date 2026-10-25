@@ -161,11 +161,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.0"></script>
-<script src="./tiralinee-guided-chat.js?v=1.0.4"></script>
+<script src="./tiralinee-guided-chat.js?v=1.0.5"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.16.6';
+  const HARNESS_VERSION = '1.16.7';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -783,6 +783,17 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         });
         return {message:'Locale '+node.label+' evidenziato nel 3D: '+
           result.primitiveCount+' superfici di '+result.wallCount+' pareti.'};
+      },
+      onOpeningSelected:async node=>{
+        if(!loaded3DRevision || node.topologyRevision!==loaded3DRevision)
+          throw Error('Revisione topologica diversa da quella del modello 3D');
+        if(typeof window.__termodelHighlightOpening!=='function')
+          throw Error('Renderer 3D non pronto');
+        const result=window.__termodelHighlightOpening(node.geometry,node.openingId);
+        return {message:node.openingConfirmed
+          ?'Confermato l’infisso '+node.openingId+'; resta evidenziato in 3D.'
+          :'Infisso '+node.openingId+' evidenziato in 3D ('+
+            result.meshCount+' superfici). È quello interessato?'};
       },
       onNoAction:summary=>{
         // The database supplied no next question and no executable action.
