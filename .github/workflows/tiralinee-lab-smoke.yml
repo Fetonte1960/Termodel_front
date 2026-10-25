@@ -1,0 +1,25 @@
+name: Tiralinee standalone lab smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/termodel-ui-demo/mcp-dump-test.html'
+      - 'docs/termodel-ui-demo/tiralinee-lab.js'
+      - 'docs/termodel-ui-demo/TermodelWebModel.json'
+      - 'docs/termodel-ui-demo/tests/tiralinee-lab-smoke.cjs'
+      - '.github/workflows/tiralinee-lab-smoke.yml'
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Standalone lab contract tests
+        run: node docs/termodel-ui-demo/tests/tiralinee-lab-smoke.cjs
