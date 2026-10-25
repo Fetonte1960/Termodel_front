@@ -193,6 +193,13 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
         (event.key==='ArrowLeft'?-step:step));
     });
   }
+  if (!handoffRequested && requestedSession) {
+    // The autonomous lab never uses a leaked SOS routing identifier.
+    launchParams.delete('sessionId');
+    const remaining=launchParams.toString();
+    history.replaceState(null,'',window.location.pathname+
+      (remaining?'?'+remaining:'')+window.location.hash);
+  }
   if (handoffRequested) {
     launchParams.delete('sessionId');
     const remaining = launchParams.toString();
