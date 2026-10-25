@@ -43,7 +43,7 @@ assert.equal(new Set(demo.primitives.map(p=>p.piano)).size,4);
 assert.ok(demo.primitives.every(p=>p.filterMetadata===true));
 const html=fs.readFileSync(path.join(root,'mcp-dump-test.html'),'utf8');
 for(const part of ["HARNESS_VERSION = '1.14.1'","chatMode==='sh'&&!handoffRequested","chatMode==='lab'",
- "window.__termodelLabReady?.({execute:executeLab})","fetch('./TermodelWebModel.json'",
+ "window.__termodelLabReady?.({execute:executeLab,isModelLoaded:","fetch('./TermodelWebModel.json'",
  "fetch(host+'/browser/lab/register'","/browser/lab/interpret/","/browser/viewer/interpret/"]){
  assert.ok(html.includes(part),'missing integration '+part);
 }
