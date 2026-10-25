@@ -1449,6 +1449,21 @@ function highlightOpening(g,id){
   mesh.material.emissive.setHex(0x8a4500);
   mesh.material.emissiveIntensity=.8;
  }
+ for(const m of objects.walls)if(m.userData.filter?.tipo==='Soffitto'){
+  rememberOpeningMaterial(m);
+  m.material.transparent=true;m.material.opacity=Math.min(m.material.opacity,.12);
+  m.material.depthWrite=false;
+ }
+ const bounds=new THREE.Box3();
+ meshes.forEach(m=>bounds.expandByObject(m));
+ const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
+ let delta=camera.position.clone().sub(controls.target).normalize();
+ if(delta.lengthSq()<.5)delta.set(1,1,1).normalize();
+ controls.target.copy(center);
+ camera.position.copy(center).add(delta.multiplyScalar(Math.max(2.5,size.length()*2.5)));
+ camera.lookAt(center);controls.update();resize();renderer.render(scene,camera);
+ document.getElementById('preview-info').textContent=
+   'Infisso '+id+' evidenziato · '+meshes.length+' superfici';
  return {meshCount:meshes.length};
 }
 window.__termodelHighlightOpening=(data,id)=>{if(!data||!id)throw Error('FIN assente');return highlightOpening(data,id);};
