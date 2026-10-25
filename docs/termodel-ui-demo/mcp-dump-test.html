@@ -1337,7 +1337,83 @@ function polygon(points){
  const shape=new THREE.Shape();
  points.forEach((p,i)=>i?shape.lineTo(p[0],p[1]):shape.moveTo(p[0],p[1]));shape.closePath();return shape;
 }
+// Local SOS highlight: map verified topological wall sourceIds to the
+// native Termodel Service meshes. Temporary rendering only, no model changes.
+let highlightedRoomStyles=[];
+function clearRoomHighlight(){
+ for(const change of highlightedRoomStyles){
+  const {mesh,color,emissive,emissiveIntensity,opacity,transparent,depthWrite}=change;
+  if(!mesh.material)continue;
+  mesh.material.color.copy(color);
+  mesh.material.emissive.copy(emissive);
+  mesh.material.emissiveIntensity=emissiveIntensity;
+  mesh.material.opacity=opacity;
+  mesh.material.transparent=transparent;
+  mesh.material.depthWrite=depthWrite;
+ }
+ highlightedRoomStyles=[];
+}
+function highlightRoom({roomId,wallSourceIds}={}){
+ if(!labFixtureLoaded||!root.children.length)
+  throw Error('Modello Termodel Service non caricato.');
+ if(typeof roomId!=='string'||!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)||
+    !Array.isArray(wallSourceIds)||wallSourceIds.length<1||wallSourceIds.length>80||
+    wallSourceIds.some(id=>typeof id!=='string'||id.length<1||id.length>128))
+  throw Error('Identificativi delle pareti del locale non validi.');
+ const requested=new Set(wallSourceIds);
+ if(requested.size!==wallSourceIds.length)throw Error('Identificativi pareti duplicati.');
+ const selected=objects.walls.filter(mesh=>
+  mesh.userData.filter?.tipo==='Parete'&&requested.has(mesh.userData.serviceId));
+ const actual=new Set(selected.map(mesh=>mesh.userData.serviceId));
+ if(actual.size!==requested.size)
+  throw Error('Alcune pareti topologiche non esistono in questa revisione 3D.');
+ // Only after every ID has been checked, clear the previous selection.
+ clearRoomHighlight();
+ function remember(mesh){
+  const material=mesh.material;
+  highlightedRoomStyles.push({mesh,color:material.color.clone(),
+   emissive:material.emissive.clone(),emissiveIntensity:material.emissiveIntensity,
+   opacity:material.opacity,transparent:material.transparent,
+   depthWrite:material.depthWrite});
+ }
+ for(const mesh of selected){
+  remember(mesh);
+  mesh.material.color.setHex(0x10b9ee);
+  mesh.material.emissive.setHex(0x0a5f88);
+  mesh.material.emissiveIntensity=.65;
+ }
+ // The ceiling can obscure a selected interior room from the default
+ // overhead perspective. Temporarily soften it and restore on navigation.
+ for(const mesh of objects.walls){
+  if(mesh.userData.filter?.tipo!=='Soffitto')continue;
+  remember(mesh);
+  mesh.material.transparent=true;
+  mesh.material.opacity=Math.min(mesh.material.opacity,.13);
+  mesh.material.depthWrite=false;
+ }
+ const bounds=new THREE.Box3();
+ for(const mesh of selected)bounds.expandByObject(mesh);
+ if(!bounds.isEmpty()){
+  const center=bounds.getCenter(new THREE.Vector3());
+  const size=bounds.getSize(new THREE.Vector3());
+  const direction=camera.position.clone().sub(controls.target).normalize();
+  if(direction.lengthSq()<.5)direction.set(1,1,1).normalize();
+  const distance=Math.max(2.7,size.length()*2.2);
+  controls.target.copy(center);
+  camera.position.copy(center).add(direction.multiplyScalar(distance));
+  camera.lookAt(center);controls.update();
+ }
+ resize();renderer.render(scene,camera);
+ document.getElementById('preview-info').textContent=
+  'Locale '+roomId+' evidenziato · '+actual.size+
+  ' pareti, '+selected.length+' primitive · selezione SOS temporanea';
+ return {wallCount:actual.size,primitiveCount:selected.length};
+}
+window.__termodelHighlightRoom=highlightRoom;
+window.__termodelClearRoomHighlight=clearRoomHighlight;
+
 function clear(){
+ clearRoomHighlight();
  while(root.children.length){const o=root.children[0];root.remove(o);o.geometry?.dispose();if(o.material)o.material.dispose();}
  objects={walls:[],floor:[],edges:[]};
 }
