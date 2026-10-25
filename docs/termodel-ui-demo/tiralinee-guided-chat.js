@@ -6,7 +6,7 @@
 (function(root){
   'use strict';
   function create(config){
-    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance,onReviewRequests,onRoomSelected}=config;
+    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance,onReviewRequests,onRoomSelected,onOpeningSelected}=config;
     const route=[];
     let busy=false,currentButtons=null,active=true;
     function button(label,click,cls){
@@ -17,7 +17,7 @@
       el.addEventListener('click',click);
       return el;
     }
-    function showOptions(choices,nodeId){
+    function showOptions(choices,nodeId,nodeAllowsIntake=true){
       if(currentButtons)currentButtons.remove();
       const choicesRow=document.createElement('div');
       choicesRow.className='sos-guided-options';
@@ -42,7 +42,7 @@
       // The root is already the initial menu: no nonsensical "back" button.
       // After at least one CONFIRMED response, always offer intake, including
       // on nonterminal nodes with further choices. Never register on navigation.
-      if(route.some(step=>step.answer) && typeof onRequestAssistance==='function'){
+      if(route.some(step=>step.answer) && nodeAllowsIntake && typeof onRequestAssistance==='function'){
         const request=button('Attiva una richiesta di assistenza con i dati raccolti',async()=>{
           if(busy||!active)return;
           request.disabled=true;
@@ -111,13 +111,23 @@
               String(error?.message||error),'Visualizzazione 3D');
           }
         }
+        let displayChoices=data.choices;
+        if(data.node.openingSelection && typeof onOpeningSelected==='function'){
+          try{const result=await onOpeningSelected(data.node);
+            if(result?.message)addMessage('assistant',result.message,'Infisso evidenziato');}
+          catch(error){
+            addMessage('assistant','Evidenziazione non verificata: '+String(error?.message||error),
+              'Verifica grafica');
+            displayChoices=data.choices.filter(x=>!x.id.startsWith('sos.fin.yes.'));
+          }
+        }
         if(data.node.canExecute){
           const response=await execute(data.node.id);
           const result=await act(response);
           addMessage('assistant',result.message||'Operazione completata.',
             result.source||'Tiralinee / SOS');
         }
-        const terminal=!data.node.canExecute&&data.choices.length===0&&data.node.id!=='inizio' && data.node.roomSelection!==true;
+        const terminal=!data.node.canExecute&&displayChoices.length===0&&data.node.id!=='inizio' && data.node.roomSelection!==true && data.node.openingSelection!==true;
         if(terminal&&typeof onNoAction==='function'){
           // Offer an expert, but do not open an external chat or issue a ticket.
           // Only confirmed path choices are forwarded, not provisional notes.
@@ -132,7 +142,7 @@
             actionExecuted:false
           });
         }
-        showOptions(data.choices,data.node.id);
+        showOptions(displayChoices,data.node.id,data.node.canRequestAssistance!==false);
       }catch(error){
         pending.remove();
         addMessage('assistant','Il percorso guidato non è disponibile: '+
