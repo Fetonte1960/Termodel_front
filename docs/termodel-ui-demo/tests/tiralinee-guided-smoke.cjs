@@ -56,5 +56,44 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(queried,['inizio','filtri','filtri.nascondi','inizio']);
  dialogue.stop();
  assert.equal(history.querySelectorAll('button').length,0);
+ // Confirmed question-answer context from a terminal node with NO action.
+ let offered=[],noActionPerformed=0,navigations=0;
+ const simulated=new Element('section');
+ const data={
+  inizio:{treeId:'farmacia_test_v1',node:{id:'inizio',
+   message:'Che tipo di disservizio hai?',canExecute:false},
+   choices:[{id:'disservizi.idrico',label:'Nella rete idrica'}]},
+  'disservizi.idrico':{treeId:'farmacia_test_v1',
+   node:{id:'disservizi.idrico',message:'Nessuna azione automatica disponibile.',
+    canExecute:false},choices:[]}
+ };
+ const guided=window.SosGuidedChat.create({
+  container:simulated,available:()=>true,
+  read:async id=>data[id],
+  execute:async()=>{noActionPerformed++;throw Error('never execute empty action');},
+  act:async()=>{throw Error('never dispatch empty action');},
+  addMessage:(role,message)=>{
+    const row=new Element('p');row.textContent=role+': '+message;
+    simulated.appendChild(row);return row;
+  },
+  onNoAction:value=>offered.push(value),
+  onNavigate:()=>navigations++
+ });
+ await guided.start();
+ const choose=simulated.querySelectorAll('button').find(x=>x.textContent==='Nella rete idrica');
+ assert.ok(choose);choose.click();await flush();
+ assert.equal(offered.length,1);
+ assert.equal(offered[0].steps.length,1);
+ assert.equal(offered[0].steps[0].question,'Che tipo di disservizio hai?');
+ assert.equal(offered[0].steps[0].answer,'Nella rete idrica');
+ assert.equal(offered[0].actionExecuted,false);
+ assert.equal(noActionPerformed,0);
+ const back=simulated.querySelectorAll('button').find(x=>
+  x.textContent==='Torna alle domande iniziali'&&!x.disabled);
+ back.click();await flush();
+ assert.equal(navigations,2);
+ assert.equal(offered.length,1);
+ guided.stop();
+ console.log('SOS_GUIDED_HANDOFF_OK root question + confirmed selection + no automatic execution');
  console.log('SOS_NEON_CHAT_UI_SMOKE_OK root -> filter -> action -> back -> stop');
 })().catch(error=>{console.error(error);process.exitCode=1;});
