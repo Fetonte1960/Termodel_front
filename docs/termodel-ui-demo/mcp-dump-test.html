@@ -74,6 +74,19 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
  .api-chat-header{padding:11px 12px}.api-chat-footer{padding:8px 10px 13px}
  .api-chat-welcome h2{font-size:19px}.api-chat-conversation{padding:12px}
 }
+.api-chat-conversation.sh-active{justify-content:flex-start;align-items:stretch;gap:14px}
+.sh-message{display:flex;flex-direction:column;gap:5px;max-width:96%}
+.sh-message.sh-user{align-self:flex-end;align-items:flex-end}
+.sh-message.sh-assistant{align-self:flex-start}
+.sh-bubble{white-space:pre-wrap;overflow-wrap:anywhere;padding:11px 14px;border-radius:16px;background:#303030;line-height:1.55;font-size:14px}
+.sh-user .sh-bubble{background:#454545;border-radius:16px 16px 4px 16px}
+.sh-meta{font-size:10px;color:#abaeb3;padding-left:9px}
+.sh-candidates{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin:0 0 4px}
+.sh-candidates small{color:#b2b5bd}
+.sh-candidates button{margin:0;background:#353535;border:1px solid #595959;color:#f5f5f5;border-radius:9px;padding:8px 10px;text-align:left;font:inherit;font-size:13px;cursor:pointer}
+.sh-candidates button:hover{background:#474747}
+#api-chat-compose:not(:disabled){cursor:text}
+#api-chat-send:not(:disabled){cursor:pointer;opacity:1}
 </style>
 </head>
 <body>
@@ -112,7 +125,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 <dialog id="failure-modal" aria-labelledby="failure-title"><h2 id="failure-title">Progetto non valido</h2><p id="failure-message" style="white-space:pre-wrap"></p><button id="failure-close">Chiudi</button></dialog>
 </div>
 <div id="api-chat-divider" role="separator" aria-label="Ridimensiona viewer e chat" aria-orientation="vertical" tabindex="0" title="Trascina per ridimensionare. Doppio clic per ripristinare."></div>
-<aside id="api-chat-pane" aria-label="Chat GPT API, anteprima non collegata">
+<aside id="api-chat-pane" aria-label="Chat SOS integrata">
   <header class="api-chat-header">
     <div class="api-chat-brand">Chat GPT <small>· API / prototipo</small></div>
     <span class="api-chat-state" role="status">Non connessa</span>
@@ -137,15 +150,16 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.11.0';
+  const HARNESS_VERSION = '1.12.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
   const handoffRequested = Boolean(requestedSession);
-  // Modalita' ottica API: puo' coesistere con il pairing SOS, ma NON apre
-  // alcun client GPT/API. Il parametro resta nell'URL; sessionId viene rimosso.
-  const apiChatMode = ['api','apis'].includes(
-    (launchParams.get('chat') || '').trim().toLowerCase());
+  // chat=api: preview non collegata. chat=sh: interrogazioni SOS con viewer
+  // token monouso; SH-IntelligenceEngine resta invariato e separato.
+  const chatMode=(launchParams.get('chat') || '').trim().toLowerCase();
+  const shChatMode=chatMode==='sh';
+  const apiChatMode=['api','apis','sh'].includes(chatMode);
   document.body.classList.toggle('api-chat-mode', apiChatMode);
   if (apiChatMode) {
     const splitter=document.getElementById('api-chat-divider');
@@ -196,6 +210,131 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 
   // SOS DEMO: session handoff from the exact originating Service Shell window.
   const SOS_ORIGIN = 'https://fetonte1960.github.io';
+  let shChatToken=null, shChatController=null, shBusy=false;
+  const chatPane=document.getElementById('api-chat-pane');
+  const chatHistory=document.getElementById('api-chat-history');
+  const chatInput=document.getElementById('api-chat-compose');
+  const chatSend=document.getElementById('api-chat-send');
+  const chatState=document.querySelector('.api-chat-state');
+  const chatTitle=document.querySelector('.api-chat-brand');
+  const chatDescription=document.querySelector('.api-chat-welcome p');
+  const chatPlaceholder=document.querySelector('.api-chat-placeholder');
+  const chatFooter=document.querySelector('.api-chat-disclaimer');
+  if(shChatMode) {
+    chatTitle.textContent='Chat SOS · SH Engine';
+    chatState.textContent='In attesa della sessione';
+    chatDescription.textContent='Interrogazioni FastPharmaSOS già disponibili e visualizzazione del modello Termodel Service.';
+    chatPlaceholder.textContent='Apri questa finestra dalla Service Shell SOS dopo aver ottenuto il ticket. La chat si attiverà al collegamento sicuro del viewer.';
+    chatFooter.textContent='SH-IntelligenceEngine v0.4.0 · risposte deterministiche, nessuna GPT API';
+    chatInput.placeholder='In attesa del collegamento alla farmacia…';
+    chatInput.setAttribute('aria-label','Messaggio SOS');
+    chatSend.title='Invia a SOS';
+  }
+  function setShActive(on, message) {
+    if(!shChatMode)return;
+    chatInput.disabled=!on || shBusy;
+    chatSend.disabled=!on || shBusy;
+    chatState.textContent=message||(on?'SOS collegato':'Sessione SOS scollegata');
+    if(on)chatInput.placeholder='Scrivi a SOS (es. Visualizza modello)…';
+  }
+  function addShBubble(role, text, meta='') {
+    chatHistory.classList.add('sh-active');
+    const welcome=chatHistory.querySelector('.api-chat-welcome');
+    if(welcome)welcome.remove();
+    const row=document.createElement('div');
+    row.className='sh-message '+(role==='user'?'sh-user':'sh-assistant');
+    const bubble=document.createElement('div');
+    bubble.className='sh-bubble';
+    bubble.textContent=String(text||'');
+    row.appendChild(bubble);
+    if(meta) {
+      const small=document.createElement('small');
+      small.className='sh-meta';
+      small.textContent=meta;
+      row.appendChild(small);
+    }
+    chatHistory.appendChild(row);
+    chatHistory.scrollTop=chatHistory.scrollHeight;
+    return row;
+  }
+  function isShModelRequest(message) {
+    const normalized=message.toLocaleLowerCase('it-IT').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'').replace(/[.!?]+$/,'').trim().replace(/\s+/g,' ');
+    return /^(?:(?:visualizza(?:mi)?|mostra(?:mi)?|apri)(?: il| lo| la)? (?:modello(?: 3d)?|edificio|3d)(?: della farmacia)?|fammi vedere (?:il )?modello(?: 3d)?(?: della farmacia)?)$/.test(normalized);
+  }
+  async function sendShMessage(message, confirmation=null) {
+    if(!shChatMode||!shChatToken||shBusy||!shChatController||
+       shChatController.signal.aborted)return;
+    const content=message.trim();
+    if(!content || content.length>500)return;
+    shBusy=true;setShActive(true,'Elaborazione…');
+    if(!confirmation)addShBubble('user',content);
+    const pending=addShBubble('assistant','Sto elaborando la richiesta…');
+    try {
+      let result;
+      if(!confirmation && isShModelRequest(content)) {
+        const res=await viewerRequest('/browser/viewer/show-model/'+encodeURIComponent(requestedSession),
+          shChatToken,{method:'POST',signal:shChatController.signal});
+        const answer=await res.json();
+        result={esito:answer.renderingConfirmed?'SUCCESS':'FAULT',
+          answer:answer.renderingConfirmed?
+          'Modello 3D Termodel Service visualizzato nel pannello a sinistra.':
+          'Non ho ricevuto la conferma del rendering: '+(answer.detail||'verifica il visualizzatore.'),
+          source:'Gateway MCP · showModel'};
+      } else {
+        const payload=confirmation?
+          {action:'confirm',message:content,candidateId:confirmation.candidateId,
+            failureId:confirmation.failureId||null}:
+          {action:'ask',message:content};
+        const res=await viewerRequest('/browser/viewer/chat/'+encodeURIComponent(requestedSession),
+          shChatToken,{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(payload),signal:shChatController.signal});
+        result=await res.json();
+      }
+      pending.remove();
+      addShBubble('assistant',result?.answer||
+        (result?.esito==='FAULT'?'Richiesta non riconosciuta.':'Nessuna risposta disponibile.'),
+        result?.source||result?.queryId||'SOS');
+      if(result?.esito==='FAULT' && !confirmation && Array.isArray(result.candidates)) {
+        const candidates=result.candidates.slice(0,3);
+        if(candidates.length){
+          const list=document.createElement('div');list.className='sh-candidates';
+          const title=document.createElement('small');title.textContent='Forse intendevi:';
+          list.appendChild(title);
+          for(const item of candidates) {
+            if(typeof item?.id!=='string'||typeof item?.text!=='string')continue;
+            const button=document.createElement('button');
+            button.type='button';button.textContent=item.text;
+            button.addEventListener('click',()=>{
+              if(shBusy)return;
+              list.remove();
+              addShBubble('user','Confermo: '+item.text);
+              void sendShMessage(content,{candidateId:item.id,failureId:result.failureId});
+            });
+            list.appendChild(button);
+          }
+          chatHistory.appendChild(list);
+          chatHistory.scrollTop=chatHistory.scrollHeight;
+        }
+      }
+    } catch(error) {
+      pending.remove();
+      addShBubble('assistant','Richiesta non completata: '+
+        (shChatController?.signal.aborted?'sessione chiusa':
+          String(error?.message||error)),'Nessuna operazione confermata');
+    } finally {
+      shBusy=false;setShActive(Boolean(shChatToken&&!shChatController?.signal.aborted));
+    }
+  }
+  chatSend.addEventListener('click',()=>{
+    if(!shChatMode||chatInput.disabled)return;
+    const message=chatInput.value.trim();if(!message)return;
+    chatInput.value='';void sendShMessage(message);
+  });
+  chatInput.addEventListener('keydown',event=>{
+    if(!shChatMode||event.key!=='Enter'||event.shiftKey||event.isComposing)return;
+    event.preventDefault();chatSend.click();
+  });
   let viewerClaimed = false;
   let viewerActive = null;
   function shellMessage(status, detail) {
@@ -251,6 +390,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
     const response=await viewerRequest('/browser/viewer/events/'+encodeURIComponent(requestedSession),token,{signal:controller.signal});
     if(!response.body) throw Error('SSE senza stream');
     shellMessage('connected');
+    if(shChatMode){shChatToken=token;shChatController=controller;setShActive(true);}
     document.getElementById('launch-state').textContent='Viewer SOS · collegato, in attesa comandi';
     setStatus('Viewer SOS collegato: attesa showModel.');
     const reader=response.body.getReader(),decoder=new TextDecoder();
@@ -269,6 +409,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
         await viewerCommand(message,token,controller);
       }
     }
+    if(shChatMode) {shChatToken=null;setShActive(false);}
     if(!controller.signal.aborted)throw Error('Connessione viewer terminata');
   }
   if(handoffRequested) {
@@ -292,6 +433,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
         const detail=String(error?.message||error);
         shellMessage('failed',detail);
         document.getElementById('launch-state').textContent='Viewer SOS · connessione fallita';
+        if(shChatMode){shChatToken=null;setShActive(false,'Connessione SOS fallita');}
         setStatus('Viewer SOS: '+detail);
       }
     });
