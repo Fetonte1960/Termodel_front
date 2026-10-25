@@ -51,7 +51,7 @@ jobs:
           const current=()=>box.children.at(-1).children;
           const labels=()=>current().map(x=>x.textContent);
           await chat.start();
-          assert.deepEqual(labels(),['Nella rete idrica']);
+          assert.deepEqual(labels(),['Nella rete idrica','Esaminare richieste di assistenza in corso']);
           current()[0].listeners.click();
           await new Promise(r=>setTimeout(r,10));
           assert(labels().includes('Attiva una richiesta di assistenza con i dati raccolti'));
@@ -126,6 +126,29 @@ jobs:
           const tamper=await fetch(base+'/execute/disservizi.idrico',{
             method:'POST',headers,body:JSON.stringify({action:'delete'})});
           assert.equal(tamper.status,400);
+          const review=await fetch(root+'/browser/lab/sos/requests/'+cred.id,{headers});
+          assert.equal(review.status,200,'Active SOS worklist from Neon');
+          const reviewBody=await review.json();
+          assert.equal(reviewBody.status,'available');
+          assert(Array.isArray(reviewBody.data?.richieste));
+          const reviewDenied=await fetch(root+'/browser/lab/sos/requests/'+cred.id,{
+            headers:{Origin:origin,Authorization:'Bearer invalid'}});
+          assert.equal(reviewDenied.status,401);
+          const noConsent=await fetch(root+'/browser/lab/sos/guided-assistance/'+cred.id,{
+            method:'POST',headers:{...headers,'Content-Type':'application/json'},
+            body:JSON.stringify({
+              categoryNodeId:'disservizi.idrico',
+              steps:[{id:'disservizi.idrico',answer:'Nella rete idrica'}],
+              rischioPersone:false,urgenza:'ordinaria',confermaEsplicita:false
+            })
+          });
+          assert.equal(noConsent.status,400,'No registration without explicit consent');
+          const intakeDenied=await fetch(root+'/browser/lab/sos/guided-assistance/'+cred.id,{
+            method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},
+            body:'{}'
+          });
+          assert.equal(intakeDenied.status,401);
+
           const unauthorizedIntake=await fetch(root+
             '/browser/sos/guided-assistance/'+'0'.repeat(40),{
               method:'POST',
