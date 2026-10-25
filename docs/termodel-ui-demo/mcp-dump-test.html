@@ -954,7 +954,6 @@ function redrawService(model){
   count++;triangles+=indices.length/3;
  }
  if(!count||!triangles)throw Error('Nessuna mesh triangolata del Service');
- labFixtureLoaded=true;
  const bounds=new THREE.Box3().setFromObject(root);
  if(bounds.isEmpty())throw Error('Dimensioni del modello Service non valide');
  const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
@@ -977,6 +976,7 @@ function redrawService(model){
  resize();controls.update();renderer.render(scene,camera);
  const calls=renderer.info.render.calls;
  if(calls<1)throw Error('Renderer Service non ha disegnato triangoli');
+ labFixtureLoaded=true;
  return {frameRendered:true,drawCalls:calls,primitiveCount:count,triangles};
 }
 // Standalone viewer lab. Only enumerated local actions are accepted;
