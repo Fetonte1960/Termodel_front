@@ -112,6 +112,7 @@
           }
         }
         let displayChoices=data.choices;
+        let allowIntake=data.node.canRequestAssistance!==false;
         if(data.node.openingSelection && typeof onOpeningSelected==='function'){
           try{const result=await onOpeningSelected(data.node);
             if(result?.message)addMessage('assistant',result.message,'Infisso evidenziato');}
@@ -119,6 +120,7 @@
             addMessage('assistant','Evidenziazione non verificata: '+String(error?.message||error),
               'Verifica grafica');
             displayChoices=data.choices.filter(x=>!x.id.startsWith('sos.fin.yes.'));
+            allowIntake=false;
           }
         }
         if(data.node.canExecute){
@@ -142,7 +144,7 @@
             actionExecuted:false
           });
         }
-        showOptions(displayChoices,data.node.id,data.node.canRequestAssistance!==false);
+        showOptions(displayChoices,data.node.id,allowIntake);
       }catch(error){
         pending.remove();
         addMessage('assistant','Il percorso guidato non è disponibile: '+
