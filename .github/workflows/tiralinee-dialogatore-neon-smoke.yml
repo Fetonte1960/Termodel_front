@@ -62,7 +62,7 @@ jobs:
           assert.equal(request.steps[0].answer,'Nella rete idrica');
           current().find(x=>x.textContent==='Torna al menu iniziale').listeners.click();
           await new Promise(r=>setTimeout(r,10));
-          assert.deepEqual(labels(),['Nella rete idrica']);
+          assert.deepEqual(labels(),['Nella rete idrica','Esaminare richieste di assistenza in corso']);
           assert.equal(reads,3);
           console.log('GUIDED_ROOT_AND_REQUEST_UI_OK');
           NODE
@@ -100,7 +100,8 @@ jobs:
             'disservizi.idrico',
             'disservizi.elettrico',
             'disservizi.climatizzazione',
-            'disservizi.intrusione_vetri_infissi'
+            'disservizi.intrusione_vetri_infissi',
+            'tecnico'
           ];
           assert.deepEqual(first.data.choices.map(c=>c.id),expected);
           // The return-to-root button MUST fetch a new Neon response without
@@ -112,6 +113,39 @@ jobs:
           const freshRoot=await reread.json();
           assert.equal(freshRoot.node.id,'inizio');
           assert.deepEqual(freshRoot.choices.map(c=>c.id),expected);
+          const technician=await get('tecnico');
+          assert.equal(technician.status,200);
+          assert.equal(technician.data.node.canRequestAssistance,false);
+          assert.equal(technician.data.choices.length,8);
+          const demoAssets=await get('tecnico.apparati');
+          assert.equal(demoAssets.status,200);
+          assert.equal(demoAssets.data.choices.length,7);
+          assert(demoAssets.data.choices.some(x=>x.id==='tec.asset.QG-01'));
+          const electric=await get('tecnico.elettrico');
+          assert.equal(electric.data.choices.length,4);
+          const plumbing=await get('tecnico.idrico');
+          assert.deepEqual(plumbing.data.choices.map(x=>x.id),['tec.asset.VAL-GEN-01']);
+          const qg=await get('tec.asset.QG-01');
+          assert.equal(qg.status,200);
+          assert.equal(qg.data.node.roomId,'locale_6');
+          assert.equal(qg.data.node.roomSelection,true);
+          assert.equal(qg.data.node.canRequestAssistance,false);
+          assert.match(qg.data.node.message,/P3D-D0012/);
+          assert.match(qg.data.node.message,/destra/);
+          assert.equal(qg.data.choices.length,5);
+          const location=await get('tec.pos.QG-01.destra');
+          assert.equal(location.status,200);
+          assert.match(location.data.node.message,/Conforme al posizionamento/);
+          const fridge=await get('tec.asset.FR-01');
+          assert.equal(fridge.status,200);
+          assert.equal(fridge.data.node.roomId,'locale_6');
+          const climate=await get('tec.asset.CLIMA-01');
+          assert.equal(climate.status,200);
+          assert.equal(climate.data.node.roomId,'locale_3');
+          assert.equal((await get('tec.asset.UNKNOWN-01')).status,404);
+          const room3d=await get('tec.room.loc.locale_6');
+          assert.equal(room3d.status,200);
+          assert(room3d.data.node.wallSourceIds.length>=4);
           const hydraulic=await get('disservizi.idrico');
           assert.equal(hydraulic.status,200);
           assert.equal(hydraulic.data.node.canExecute,false);
