@@ -132,6 +132,26 @@ jobs:
           assert.equal(selected.data.node.roomSelection,true);
           assert.equal(selected.data.node.roomId,'locale_1');
           assert.deepEqual(selected.data.choices,[]);
+          assert.equal(selected.data.node.wallSourceIds.length,5,
+            'Ufficio has five topology wall identities');
+          assert.equal(new Set(selected.data.node.wallSourceIds).size,5);
+          const service=await fetch(root+'/browser/lab/model/'+cred.id,{headers});
+          assert.equal(service.status,200);
+          const model=await service.json();
+          assert.equal(model.format,'TermodelWebModel');
+          assert.equal(model.version,3);
+          assert.equal(model.primitives.length,386);
+          const rev=decodeURIComponent(service.headers.get('X-SOS-Project-Revision')||'');
+          assert.equal(selected.data.node.topologyRevision,rev);
+          for(const choice of leak.data.choices){
+            const result=await get(choice.id);
+            assert.equal(result.status,200,'Room selection available: '+choice.id);
+            const ids=result.data.node.wallSourceIds;
+            assert(ids.length>0 && ids.length<=80);
+            for(const id of ids)
+              assert.equal(model.primitives.filter(p=>p.id===id&&p.tipo==='Parete').length,2,
+                'Each selected topological wall has exactly two 3D meshes: '+id);
+          }
           const breakInMenu=await get('disservizi.intrusione_vetri_infissi');
           assert.deepEqual(breakInMenu.data.choices.map(x=>x.label),['Effrazione']);
           const burglary=await get('disservizi.intrusione_vetri_infissi.effrazione');
