@@ -40,7 +40,7 @@ const tooLong=expert.buildPrompt({paired:true,shellBootstrap:'x'.repeat(8000),
  lastRequest:'prova'});
 assert.ok(!tooLong.includes('x'.repeat(8000)));
 const html=fs.readFileSync(path.join(root,'mcp-dump-test.html'),'utf8');
-assert.ok(html.includes("HARNESS_VERSION = '1.15.2'"));
+assert.ok(html.includes("HARNESS_VERSION = '1.16.0'"));
 assert.ok(html.includes('offerExpertChat(input)'));
 assert.ok(html.includes("expertChatLaunched=true"));
 assert.ok(html.includes("chatPane.hidden=true"));
