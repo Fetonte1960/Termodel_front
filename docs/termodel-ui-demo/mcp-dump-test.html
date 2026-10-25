@@ -79,7 +79,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.9.2';
+  const HARNESS_VERSION = '1.10.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -123,24 +123,27 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
       if(message.action!=='showModel') {status='unsupported';detail='Comando visuale non supportato';}
       else {
         if(message.modelEndpoint !== '/browser/viewer/model/'+requestedSession) throw Error('Percorso modello inatteso');
-        const model=await viewerRequest(message.modelEndpoint,token,{signal:controller.signal});
-        const content=await model.text();
-        const outcome=await validateIncoming('ReadProject\n'+content);
-        if(!outcome.handled || !previewPlan || typeof setPreview !== 'function')
-          throw Error('Renderer Three.js non pronto o modello non renderizzabile');
-        const walls=Array.isArray(previewPlan.linee)?previewPlan.linee.length:0;
-        const shell=Array.isArray(previewPlan.edificio?.outerShell)?
-          previewPlan.edificio.outerShell.length:0;
-        if(walls===0 && shell<3) throw Error('Il modello non contiene geometria 3D da mostrare');
-        // Chrome throttles requestAnimationFrame in non-focused windows.
-        // Require synchronous confirmation from the real Three.js WebGL renderer.
-        const drawResult=setPreview(previewPlan);
-        const canvas=document.querySelector('#view3d canvas');
-        const summary=document.getElementById('preview-info')?.textContent||'';
-        if(!canvas || !summary.includes('Anteprima 3D sperimentale') ||
-           drawResult?.frameRendered!==true || !(drawResult.drawCalls>0))
-          throw Error('Rendering WebGL non confermato');
-        status='rendered';detail='Progetto caricato in 3D';
+        if (message.modelFormat !== 'TermodelWebModel' || message.modelVersion !== 3)
+          throw Error('Il Gateway non ha selezionato il modello consolidato Termodel Service V3');
+        const response=await viewerRequest(message.modelEndpoint,token,{signal:controller.signal});
+        const importId=response.headers.get('X-SOS-Import-Id')||'';
+        const source=response.headers.get('X-SOS-Model-Source');
+        if(source!=='TermodelService' || !/^[0-9a-f-]{36}$/i.test(importId))
+          throw Error('Identità revisione consolidata non confermata dal Gateway');
+        const serviceModel=await response.json();
+        if(serviceModel?.format!=='TermodelWebModel' || serviceModel.version!==3 ||
+           serviceModel.coordinateSystem!=='Z-up' || !Array.isArray(serviceModel.primitives) ||
+           serviceModel.primitives.length===0)
+          throw Error('Artefatto TermodelWebModel V3 non valido o vuoto');
+        if(typeof setServiceModel!=='function')
+          throw Error('Renderer definitivo Termodel Service non inizializzato');
+        const drawn=setServiceModel(serviceModel);
+        if(drawn?.frameRendered!==true || !(drawn.drawCalls>0))
+          throw Error('Disegno definitivo WebGL non confermato');
+        document.getElementById('preview-info').textContent=
+          'Modello 3D consolidato dal Termodel Service · '+drawn.primitiveCount+
+          ' primitive · revisione SOS '+importId.slice(0,8);
+        status='rendered';detail='Modello consolidato Service 3D visualizzato';
         document.getElementById('launch-state').textContent='Viewer SOS · modello visualizzato';
       }
     }catch(error){detail=String(error?.message||error).slice(0,300);setStatus('Viewer SOS: '+detail);}
@@ -213,7 +216,9 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
   let abort = null, sessionId = '', browserToken = '';
   let validatedProjectText = '';
   let previewPlan = null;
-  let setPreview = null; // Set only when the Three.js module registers the renderer.
+  let setPreview = null; // Editing/input preview (WebCAD)
+  let setServiceModel = null; // Consolidated Termodel Service geometry (SOS only)
+  window.__termodelServicePreview = callback => {setServiceModel=callback;};
   const setStatus = message => { el('status').textContent = message; };
   const ui = active => {
     el('connect').disabled = active;
@@ -612,6 +617,78 @@ function filters(){
   object.visible=passes(object.userData.filter||{});
  document.getElementById('filter-note').textContent='Filtri Web applicati localmente alle primitive già caricate. I filtri senza metadati specifici non modificano questa anteprima.';
 }
+
+// SOS: deterministic 3D primitive renderer, distinct from editable input preview.
+// TermodelWebModel V3 is Z-up; Three.js is Y-up. Rotation X=+90 deg,
+// (x,y,z) -> (x,z,-y) preserves handedness and triangle winding.
+function redrawService(model){
+ if(!model||model.format!=='TermodelWebModel'||model.version!==3||
+    model.coordinateSystem!=='Z-up')throw Error('Formato 3D Service non supportato');
+ if(!Array.isArray(model.primitives)||model.primitives.length>150000)
+   throw Error('Conteggio primitive 3D non valido');
+ clear();
+ document.getElementById('view2d').replaceChildren();
+ let count=0,triangles=0;
+ for(const primitive of model.primitives){
+  if(!primitive||typeof primitive!=='object')continue;
+  const vertices=primitive.vertices,indices=primitive.indices;
+  if(!Array.isArray(vertices)||!Array.isArray(indices)||vertices.length>900000||
+     indices.length>2700000)throw Error('Primitive 3D fuori limite');
+  if(primitive.kind!=='mesh'||vertices.length<3||indices.length<3)continue;
+  const coords=new Float32Array(vertices.length*3);
+  for(let i=0;i<vertices.length;i++){
+   const v=vertices[i];
+   if(!Array.isArray(v)||v.length<3||!v.slice(0,3).every(Number.isFinite))
+    throw Error('Vertici Service 3D non validi');
+   coords[i*3]=v[0];coords[i*3+1]=v[2];coords[i*3+2]=-v[1];
+  }
+  if(indices.length%3!==0||!indices.every(k=>Number.isSafeInteger(k)&&k>=0&&k<vertices.length))
+   throw Error('Indici triangoli Service non validi');
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.BufferAttribute(coords,3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  const opacity=Number.isFinite(primitive.opacity)?
+    Math.min(1,Math.max(0,primitive.opacity)):1;
+  const color=(typeof primitive.color==='string'&&/^#[0-9a-f]{6}$/i.test(primitive.color))?
+    primitive.color:'#b8b3af';
+  const material=new THREE.MeshStandardMaterial({
+    color,opacity,transparent:opacity<1,side:THREE.DoubleSide,roughness:.85
+  });
+  const mesh=new THREE.Mesh(geometry,material);
+  mesh.userData.filter={
+    tipo:primitive.tipo||'Parete',piano:primitive.piano||'',
+    confine:primitive.confine||'',separatore:Boolean(primitive.separatore),
+    stessaZona:Boolean(primitive.stessaZona),fittizia:Boolean(primitive.fittizia),
+    falda:Boolean(primitive.falda),filterMetadata:Boolean(primitive.filterMetadata)
+  };
+  mesh.userData.serviceId=primitive.id||'';
+  mesh.userData.serviceSource=primitive.source||'';
+  root.add(mesh);objects.walls.push(mesh);
+  count++;triangles+=indices.length/3;
+ }
+ if(!count||!triangles)throw Error('Nessuna mesh triangolata del Service');
+ const bounds=new THREE.Box3().setFromObject(root);
+ if(bounds.isEmpty())throw Error('Dimensioni del modello Service non valide');
+ const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
+ controls.target.copy(center);
+ camera.position.copy(center).add(new THREE.Vector3(
+   size.x*.9+90,size.y*1.5+150,size.z*1.7+200));
+ camera.lookAt(center);camera.near=1;camera.far=Math.max(10000,size.length()*10);
+ camera.updateProjectionMatrix();
+ document.getElementById('preview-info').textContent=
+   'Modello Termodel Service V3 · '+count+' mesh · '+triangles+' triangoli';
+ filters();
+ if(!renderer.domElement.isConnected||renderer.getContext().isContextLost()||
+    Math.min(host.clientWidth,host.clientHeight)<2)
+   throw Error('Canvas WebGL non disponibile');
+ resize();controls.update();renderer.render(scene,camera);
+ const calls=renderer.info.render.calls;
+ if(calls<1)throw Error('Renderer Service non ha disegnato triangoli');
+ return {frameRendered:true,drawCalls:calls,primitiveCount:count,triangles};
+}
+window.__termodelServicePreview?.(redrawService);
+
 window.__termodelHarnessPreview?.(redraw);
 function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(host);resize();
