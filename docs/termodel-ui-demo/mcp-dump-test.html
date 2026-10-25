@@ -380,9 +380,20 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       throw Error('Il modello non proviene dal Termodel Service');
     const model=await response.json();
     const result=await labGraphics.loadSosModel(model);
+    loaded3DImportId=response.headers.get('X-SOS-Import-Id');
     const revisionHeader=response.headers.get('X-SOS-Project-Revision')||'';
     loaded3DRevision=revisionHeader?decodeURIComponent(revisionHeader):null;
     const revision=loaded3DRevision?.slice(0,8)||'n/d';
+    try {
+      const floor=await gatewayRequest('/browser/lab/clean-floor/'+
+        encodeURIComponent(credentials.id)+'/'+encodeURIComponent(cleanFloorName),{
+        method:'GET',cache:'no-store',
+        headers:{Authorization:'Bearer '+credentials.token}
+      },'Caricamento Pianta pulita');
+      await renderCleanFloor(floor);
+    }catch(error){
+      showCleanFloorMessage('Pianta pulita non caricata: '+String(error?.message||error));
+    }
     return {...result,revision};
   }
   // All'avvio standalone: connessione al Gateway MCP, lettura 3D Termodel
