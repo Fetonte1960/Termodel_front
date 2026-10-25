@@ -165,7 +165,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.16.8';
+  const HARNESS_VERSION = '1.16.9';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -615,14 +615,21 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       intakePending?.remove();intakePending=null;
       if(response.status==='received'&&typeof response.id==='string'){
         const card=response.scheda||{};
-        const receipt='Richiesta di assistenza acquisita dal servizio SOS. '+
-          'ID: '+response.id+'; stato: '+(response.state||'registrata')+'.\n'+
-          'Oggetto: '+String(card.oggetto||'Da precisare')+'\n'+
-          'Problema: '+String(card.descrizione||'Da precisare')+'\n'+
-          'Locale: '+String(card.locale||'Da accertare')+'\n'+
-          'Priorità dichiarata: '+String(card.urgenza||'Da valutare')+'\n'+
-          'Rischio persone dichiarato: '+(card.rischioPersone?'Sì':'No')+'\n'+
-          'Dettagli tecnici ancora da verificare. Nessun tecnico è stato automaticamente contattato.';
+        const statusText=response.state==='registered_in_sos'
+          ?'registrata in SOS (in attesa di esame)'
+          :String(response.state||'registrata');
+        const receipt=[
+          'Richiesta di assistenza acquisita dal servizio SOS.',
+          'Numero richiesta: '+response.id,
+          'Stato: '+statusText,
+          'Oggetto: '+String(card.oggetto||'Da precisare'),
+          'Descrizione: '+String(card.descrizione||'Da precisare'),
+          'Locale: '+String(card.locale||'Da accertare'),
+          'Priorità dichiarata: '+String(card.urgenza||'Da valutare'),
+          'Rischio per le persone dichiarato: '+(card.rischioPersone?'Sì':'No'),
+          ...(card.noteTecniche?['Note per il tecnico: '+String(card.noteTecniche)]:[]),
+          'Nessun tecnico è stato automaticamente contattato.'
+        ].join('\n');
         addShBubble('assistant',receipt,'Ricevuta persistita SOS');
       }else{
         addShBubble('assistant','Richiesta NON registrata: '+
