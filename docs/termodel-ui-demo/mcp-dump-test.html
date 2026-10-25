@@ -151,7 +151,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.13.0';
+  const HARNESS_VERSION = '1.14.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -233,9 +233,9 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   if(labChatMode) {
     chatTitle.textContent='Tiralinee · Laboratorio SH';
     chatState.textContent='Caricamento modello demo…';
-    chatDescription.textContent='Collaudo autonomo delle funzioni grafiche: zoom e filtri sul modello demo. Per interrogare il motore SH esistente, scrivi SH: seguito dalla domanda.';
-    chatPlaceholder.textContent='Esempi: «zoom avanti», «mostra solo pareti», «nascondi piano Primo», «ripristina filtri», «SH: quante commesse sono aperte?»';
-    chatFooter.textContent='Comandi grafici locali · SH Engine v0.4.0 solo su richiesta esplicita SH: · nessun ticket SOS';
+    chatDescription.textContent='Scrivi normalmente: SH interpreta la richiesta e Tiralinee esegue sul modello oppure consulta SOS.';
+    chatPlaceholder.textContent='Esempi: «zoom avanti», «mostra solo pareti», «nascondi piano Primo», «ripristina filtri». I dati farmacia richiedono una sessione SOS.';
+    chatFooter.textContent='SH Engine v0.4.0 · programmazione Tiralinee · routing locale o SOS';
     chatInput.setAttribute('aria-label','Comando laboratorio Tiralinee');
     chatInput.placeholder='Caricamento geometria di prova…';
     chatSend.title='Esegui comando di prova';
@@ -256,103 +256,79 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
     chatInput.disabled=!ready||labBusy;
     chatSend.disabled=!ready||labBusy;
     chatState.textContent=detail||(ready?'Laboratorio pronto':'Laboratorio non disponibile');
-    if(ready)chatInput.placeholder='Prova zoom, filtri oppure SH: domanda…';
+    if(ready)chatInput.placeholder='Scrivi una richiesta (es. zoom avanti)…';
   }
   // The Three.js module registers only declarative, local viewer actions.
   // This path must never invent an SOS ticket/session or claim a viewer token.
   window.__termodelLabReady=async graphics=>{
-    if(!labChatMode)return;
     labGraphics=graphics;
+    if(!labChatMode)return;
     try {
       const info=await graphics.execute({action:'loadDemo'});
       setLabReady(true,'Demo caricata · '+info.primitiveCount+' primitive');
-      document.getElementById('launch-state').textContent='Tiralinee autonomo · SH su richiesta';
+      document.getElementById('launch-state').textContent='Tiralinee autonomo · SH integrato';
     }catch(error){
       setLabReady(false,'Modello demo non disponibile');
       addShBubble('assistant','Caricamento del modello demo non riuscito: '+String(error?.message||error));
     }
   };
-  async function askLabEngine(message,confirmation=null){
-    const gateway='https://termodel-mcp-gateway.onrender.com';
+
+  async function askLabEngine(message){
+    const host='https://termodel-mcp-gateway.onrender.com';
     if(!labAccess){
-      const res=await fetch(gateway+'/browser/lab/register',{method:'POST',cache:'no-store'});
-      if(!res.ok)throw Error('SH Gateway laboratorio HTTP '+res.status);
-      labAccess=await res.json();
+      const r=await fetch(host+'/browser/lab/register',{method:'POST',cache:'no-store'});
+      if(!r.ok)throw Error('Gateway non disponibile, HTTP '+r.status);
+      labAccess=await r.json();
       if(!/^[a-f0-9]{32}$/.test(labAccess.id||'')||
-         !/^[a-f0-9]{64}$/.test(labAccess.token||''))throw Error('Credenziale laboratorio non valida');
+         !/^[a-f0-9]{64}$/.test(labAccess.token||''))
+        throw Error('Credenziale laboratorio non valida');
     }
-    const controller=new AbortController();
-    const limit=setTimeout(()=>controller.abort(),135000);
-    try {
-      const payload=confirmation?
-        {action:'confirm',message,candidateId:confirmation.candidateId,
-          failureId:confirmation.failureId||null}:
-        {action:'ask',message};
-      const response=await fetch(gateway+'/browser/lab/engine/'+labAccess.id,{
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),110000);
+    try{
+      const r=await fetch(host+'/browser/lab/interpret/'+labAccess.id,{
         method:'POST',cache:'no-store',signal:controller.signal,
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+labAccess.token},
-        body:JSON.stringify(payload)
-      });
-      if(response.status===401||response.status===410)labAccess=null;
-      if(!response.ok)throw Error('SH Engine non disponibile: HTTP '+response.status);
-      return response.json();
-    }finally{clearTimeout(limit);}
+        body:JSON.stringify({message})});
+      if(r.status===401||r.status===410)labAccess=null;
+      const result=await r.json();
+      if(!r.ok&&result.esito!=='FAULT')throw Error('SH non disponibile HTTP '+r.status);
+      return result;
+    }finally{clearTimeout(timeout);}
   }
-  async function sendLabMessage(text,confirmation=null){
-    if(!labChatMode||labBusy||!labGraphics)return;
-    const original=String(text||'').trim();
-    if(!original||original.length>500)return;
-    const remote=confirmation||/^sh\s*:/i.test(original);
-    const message=remote?original.replace(/^sh\s*:\s*/i,'').trim():original;
-    if(remote&&!message)return;
-    labBusy=true;setLabReady(true,'Esecuzione…');
-    if(!confirmation)addShBubble('user',original);
-    const pending=addShBubble('assistant',remote?'Interrogo SH…':'Eseguo sul viewer…');
-    try {
-      if(remote){
-        const data=await askLabEngine(message,confirmation);
-        pending.remove();
-        addShBubble('assistant',data.answer||
-          (data.esito==='FAULT'?'Richiesta non riconosciuta.':'Risposta non disponibile.'),
-          'SH-IntelligenceEngine v0.4.0 · programmazione FastPharmaSOS');
-        if(data.esito==='FAULT'&&!confirmation&&Array.isArray(data.candidates)&&data.candidates.length){
-          const list=document.createElement('div');list.className='sh-candidates';
-          const title=document.createElement('small');title.textContent='Proposte SH:';
-          list.appendChild(title);
-          for(const item of data.candidates.slice(0,3)){
-            if(typeof item?.id!=='string'||typeof item?.text!=='string')continue;
-            const button=document.createElement('button');button.type='button';button.textContent=item.text;
-            button.addEventListener('click',()=>{
-              if(labBusy)return;
-              list.remove();addShBubble('user','Confermo: '+item.text);
-              void sendLabMessage('SH: '+message,{candidateId:item.id,failureId:data.failureId});
-            });
-            list.appendChild(button);
-          }
-          chatHistory.appendChild(list);
-        }
-      }else{
-        const command=window.TiralineeLab?.parse(original);
-        if(!command){
-          pending.remove();
-          addShBubble('assistant','Comando grafico non riconosciuto. Digita «aiuto» per i comandi locali; usa «SH: domanda» soltanto per interrogare la programmazione SH FastPharmaSOS.', 'LAB · nessuna azione eseguita');
-        }else if(command.action==='help'){
-          pending.remove();
-          addShBubble('assistant','Comandi: zoom avanti, zoom indietro, zoom tutto; mostra/nascondi pareti, finestre, tetto, pavimenti, solai; mostra solo pareti; mostra/nascondi piano Primo; mostra tutto; stato filtri; carica demo. Per interrogazioni esistenti: SH: quante commesse sono aperte?', 'LAB · frasario locale');
-        }else{
-          const answer=await labGraphics.execute(command);
-          pending.remove();
-          addShBubble('assistant',answer.message||'Operazione completata.',
-            'LAB · '+(answer.visibleCount??0)+' elementi visibili / '+(answer.primitiveCount??0)+' totali');
-        }
-      }
-    }catch(error){
-      pending.remove();
-      addShBubble('assistant','Non completato: '+String(error?.message||error),remote?'SH · nessuna operazione grafica':'LAB · nessuna conferma');
-    }finally{
-      labBusy=false;setLabReady(Boolean(labGraphics),'Laboratorio pronto');
-      chatHistory.scrollTop=chatHistory.scrollHeight;
+  async function executeShIntent(data,paired=false){
+    if(data?.esito!=='SUCCESS')
+      return {message:data?.answer||'Richiesta non riconosciuta, puoi riformularla?',
+        source:data?.source||'SH:Tiralinee'};
+    if(data.destination==='REMOTE_SOS')
+      return {message:data.answer||'Operazione SOS conclusa.',source:'SOS · dati autorizzati'};
+    if(data.destination==='REMOTE_VIEWER'){
+      if(!paired||!requestedSession||!shChatToken)throw Error('Sessione SOS necessaria per il modello.');
+      const r=await viewerRequest('/browser/viewer/show-model/'+encodeURIComponent(requestedSession),
+        shChatToken,{method:'POST',signal:shChatController?.signal});
+      if(!(await r.json()).renderingConfirmed)throw Error('Rendering WebGL non confermato');
+      return {message:'Modello Termodel Service visualizzato.',source:'Gateway · ACK WebGL'};
     }
+    if(data.destination!=='LOCAL_VIEWER'||!labGraphics)throw Error('Azione grafica non autorizzata');
+    const command={...data.command};
+    if(typeof command.checkedState==='boolean')command.checked=command.checkedState;
+    delete command.checkedState;
+    if(typeof command.action!=='string')throw Error('Comando grafico non valido');
+    const r=await labGraphics.execute(command);
+    return {message:r.message||'Comando completato.',
+      source:'Tiralinee · '+r.visibleCount+'/'+r.primitiveCount+' elementi visibili'};
+  }
+  async function sendLabMessage(message){
+    if(!labChatMode||labBusy||!labGraphics)return;
+    const input=String(message||'').trim();if(!input||input.length>500)return;
+    labBusy=true;setLabReady(true,'Interpretazione SH…');
+    addShBubble('user',input);const pending=addShBubble('assistant','Interpreto la richiesta…');
+    try{
+      const result=await executeShIntent(await askLabEngine(input));
+      pending.remove();addShBubble('assistant',result.message,result.source);
+    }catch(error){
+      pending.remove();addShBubble('assistant','Non eseguito: '+String(error?.message||error),
+        'SH / Gateway non disponibile');
+    }finally{labBusy=false;setLabReady(Boolean(labGraphics),'Laboratorio pronto');}
   }
   function setShActive(on, message) {
     if(!shChatMode)return;
@@ -381,74 +357,23 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
     chatHistory.scrollTop=chatHistory.scrollHeight;
     return row;
   }
-  function isShModelRequest(message) {
-    const normalized=message.toLocaleLowerCase('it-IT').normalize('NFD')
-      .replace(/[\u0300-\u036f]/g,'').replace(/[.!?]+$/,'').trim().replace(/\s+/g,' ');
-    return /^(?:(?:visualizza(?:mi)?|mostra(?:mi)?|apri)(?: il| lo| la)? (?:modello(?: 3d)?|edificio|3d)(?: della farmacia)?|fammi vedere (?:il )?modello(?: 3d)?(?: della farmacia)?)$/.test(normalized);
-  }
-  async function sendShMessage(message, confirmation=null) {
+
+  async function sendShMessage(message){
     if(!shChatMode||!shChatToken||shBusy||!shChatController||
        shChatController.signal.aborted)return;
-    const content=message.trim();
-    if(!content || content.length>500)return;
-    shBusy=true;setShActive(true,'Elaborazione…');
-    if(!confirmation)addShBubble('user',content);
-    const pending=addShBubble('assistant','Sto elaborando la richiesta…');
-    try {
-      let result;
-      if(!confirmation && isShModelRequest(content)) {
-        const res=await viewerRequest('/browser/viewer/show-model/'+encodeURIComponent(requestedSession),
-          shChatToken,{method:'POST',signal:shChatController.signal});
-        const answer=await res.json();
-        result={esito:answer.renderingConfirmed?'SUCCESS':'FAULT',
-          answer:answer.renderingConfirmed?
-          'Modello 3D Termodel Service visualizzato nel pannello a sinistra.':
-          'Non ho ricevuto la conferma del rendering: '+(answer.detail||'verifica il visualizzatore.'),
-          source:'Gateway MCP · showModel'};
-      } else {
-        const payload=confirmation?
-          {action:'confirm',message:content,candidateId:confirmation.candidateId,
-            failureId:confirmation.failureId||null}:
-          {action:'ask',message:content};
-        const res=await viewerRequest('/browser/viewer/chat/'+encodeURIComponent(requestedSession),
-          shChatToken,{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify(payload),signal:shChatController.signal});
-        result=await res.json();
-      }
-      pending.remove();
-      addShBubble('assistant',result?.answer||
-        (result?.esito==='FAULT'?'Richiesta non riconosciuta.':'Nessuna risposta disponibile.'),
-        result?.source||result?.queryId||'SOS');
-      if(result?.esito==='FAULT' && !confirmation && Array.isArray(result.candidates)) {
-        const candidates=result.candidates.slice(0,3);
-        if(candidates.length){
-          const list=document.createElement('div');list.className='sh-candidates';
-          const title=document.createElement('small');title.textContent='Forse intendevi:';
-          list.appendChild(title);
-          for(const item of candidates) {
-            if(typeof item?.id!=='string'||typeof item?.text!=='string')continue;
-            const button=document.createElement('button');
-            button.type='button';button.textContent=item.text;
-            button.addEventListener('click',()=>{
-              if(shBusy)return;
-              list.remove();
-              addShBubble('user','Confermo: '+item.text);
-              void sendShMessage(content,{candidateId:item.id,failureId:result.failureId});
-            });
-            list.appendChild(button);
-          }
-          chatHistory.appendChild(list);
-          chatHistory.scrollTop=chatHistory.scrollHeight;
-        }
-      }
-    } catch(error) {
-      pending.remove();
-      addShBubble('assistant','Richiesta non completata: '+
-        (shChatController?.signal.aborted?'sessione chiusa':
-          String(error?.message||error)),'Nessuna operazione confermata');
-    } finally {
-      shBusy=false;setShActive(Boolean(shChatToken&&!shChatController?.signal.aborted));
-    }
+    const input=String(message||'').trim();if(!input||input.length>500)return;
+    shBusy=true;setShActive(true,'Interpretazione SH…');
+    addShBubble('user',input);const pending=addShBubble('assistant','Interpreto la richiesta…');
+    try{
+      const r=await viewerRequest('/browser/viewer/interpret/'+encodeURIComponent(requestedSession),
+        shChatToken,{method:'POST',signal:shChatController.signal,
+          headers:{'Content-Type':'application/json'},body:JSON.stringify({message:input})});
+      const result=await executeShIntent(await r.json(),true);
+      pending.remove();addShBubble('assistant',result.message,result.source);
+    }catch(error){
+      pending.remove();addShBubble('assistant','Non eseguito: '+String(error?.message||error),
+        'SH / SOS · nessuna conferma');
+    }finally{shBusy=false;setShActive(Boolean(shChatToken&&!shChatController.signal.aborted));}
   }
   chatSend.addEventListener('click',()=>{
     if((!shChatMode&&!labChatMode)||chatInput.disabled)return;
@@ -1029,6 +954,7 @@ function redrawService(model){
   count++;triangles+=indices.length/3;
  }
  if(!count||!triangles)throw Error('Nessuna mesh triangolata del Service');
+ labFixtureLoaded=true;
  const bounds=new THREE.Box3().setFromObject(root);
  if(bounds.isEmpty())throw Error('Dimensioni del modello Service non valide');
  const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
