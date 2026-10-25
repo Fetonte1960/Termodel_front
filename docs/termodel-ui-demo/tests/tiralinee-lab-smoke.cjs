@@ -42,12 +42,17 @@ assert.equal(demo.primitives.length,546);
 assert.equal(new Set(demo.primitives.map(p=>p.piano)).size,4);
 assert.ok(demo.primitives.every(p=>p.filterMetadata===true));
 const html=fs.readFileSync(path.join(root,'mcp-dump-test.html'),'utf8');
-for(const part of ["HARNESS_VERSION = '1.15.0'","chatMode==='sh'&&!handoffRequested","chatMode==='lab'",
+for(const part of ["HARNESS_VERSION = '1.15.1'","chatMode==='sh'&&!handoffRequested","chatMode==='lab'",
  "window.__termodelLabReady?.({execute:executeLab,loadSosModel,","fetch('./TermodelWebModel.json'",
- "fetch(labGatewayHost+'/browser/lab/register'","/browser/lab/model/","/browser/lab/interpret/","/browser/viewer/interpret/"]){
+ "gatewayRequest('/browser/lab/register'","/browser/lab/model/","/browser/lab/interpret/","/browser/viewer/interpret/",
+ "tiralinee-gateway-retry.js?v=1.0.0","TiralineeGatewayRetry.request","/health"]){
  assert.ok(html.includes(part),'missing integration '+part);
 }
 assert.ok(!html.includes("SH: domanda"),'UI must not require prefixes');
+assert.ok(!html.includes("const info=await graphics.execute({action:'loadDemo'})"),
+  'startup must not load the public fixture');
+assert.ok(html.includes("const result=await loadPharmacyTestModel();"),
+  'startup must load actual SOS demo model');
 console.log('TIRALINEE_LAB_SMOKE_OK commands='+cases.length+
  ' primitives='+demo.primitives.length+
  ' piani='+new Set(demo.primitives.map(p=>p.piano)).size);
