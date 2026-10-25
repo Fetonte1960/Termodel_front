@@ -40,9 +40,44 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 .filter-items label{display:flex;align-items:center;gap:4px;white-space:nowrap}
 .filter-items input{margin:0}
 #filter-note{border-top:1px solid #ddd;margin-top:12px;padding-top:9px;color:#777;font-size:10px;line-height:1.3}
+
+/* GPT API: sola struttura visiva; la chat non invia richieste né conserva credenziali. */
+#viewer-shell{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden}
+#api-chat-pane,#api-chat-divider{display:none}
+body.api-chat-mode{display:grid;grid-template-columns:minmax(360px,var(--viewer-pane-width,52%)) 8px minmax(320px,1fr);gap:0;padding:0;background:#171717}
+body.api-chat-mode #viewer-shell{padding:6px 8px;box-sizing:border-box;background:#f6f8fa}
+body.api-chat-mode .tabs [data-tab="comunicazione"]{display:none!important}
+body.api-chat-mode #api-chat-divider{display:block;position:relative;background:#3a4045;cursor:col-resize;touch-action:none}
+body.api-chat-mode #api-chat-divider:hover,body.api-chat-mode #api-chat-divider:focus-visible{background:#16a6b4;outline:none}
+body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:#212121;color:#f5f5f5;font:15px/1.55 system-ui,"Segoe UI",Arial,sans-serif}
+.api-chat-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;box-sizing:border-box;padding:18px 22px;margin:0;border-bottom:1px solid #323232}
+.api-chat-brand{font-size:17px;font-weight:650;letter-spacing:-.3px}
+.api-chat-brand small{font-size:12px;font-weight:400;color:#b4b4b4}
+.api-chat-state{border:1px solid #555;border-radius:999px;color:#d3d3d3;padding:4px 10px;font-size:12px;white-space:nowrap}
+.api-chat-conversation{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:0;overflow-y:auto;padding:24px;box-sizing:border-box}
+.api-chat-logo{width:48px;height:48px;display:grid;place-items:center;border:1px solid #575757;border-radius:50%;font-size:21px;font-weight:600;margin-bottom:14px;color:#eee}
+.api-chat-welcome{max-width:460px;text-align:center}
+.api-chat-welcome h2{font-size:24px;letter-spacing:-.5px;font-weight:600;margin:6px 0 14px}
+.api-chat-welcome p{font-size:14px;color:#b7b7b7;margin:8px 0}
+.api-chat-placeholder{margin-top:18px;background:#2b2b2b;border:1px solid #464646;border-radius:14px;padding:13px 16px;text-align:left;font-size:13px;color:#e0e0e0}
+.api-chat-footer{flex:none;width:100%;box-sizing:border-box;padding:10px 24px 19px}
+.api-chat-composer{display:flex;align-items:flex-end;gap:9px;box-sizing:border-box;width:100%;border:1px solid #454545;background:#303030;border-radius:24px;padding:11px 12px 11px 18px}
+#api-chat-compose{width:100%;height:43px;min-height:43px;max-height:135px;padding:7px 0;border:0;outline:0;resize:none;background:transparent;color:#f5f5f5;font:14px/1.4 inherit}
+#api-chat-compose::placeholder{color:#9ca3af;opacity:1}
+#api-chat-compose:disabled{opacity:1;cursor:not-allowed}
+#api-chat-send{flex:none;width:35px;height:35px;padding:0;margin:0;border:0;border-radius:50%;background:#ededed;color:#292929;font-size:22px;line-height:1;cursor:not-allowed}
+#api-chat-send:disabled{opacity:.42}
+.api-chat-disclaimer{margin:10px 2px 0;text-align:center;color:#aaa;font-size:11px}
+@media(max-width:850px){
+ body.api-chat-mode{grid-template-columns:minmax(270px,var(--viewer-pane-width,53%)) 7px minmax(270px,1fr)}
+ body.api-chat-mode #harness-filter-panel{width:145px;flex-basis:145px}
+ .api-chat-header{padding:11px 12px}.api-chat-footer{padding:8px 10px 13px}
+ .api-chat-welcome h2{font-size:19px}.api-chat-conversation{padding:12px}
+}
 </style>
 </head>
 <body>
+<div id="viewer-shell">
 <header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small><small id="launch-state" role="status"></small></header>
 <nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
 <div id="tab-3d" class="tab-panel active" role="tabpanel">
@@ -75,15 +110,72 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 </section>
 </div>
 <dialog id="failure-modal" aria-labelledby="failure-title"><h2 id="failure-title">Progetto non valido</h2><p id="failure-message" style="white-space:pre-wrap"></p><button id="failure-close">Chiudi</button></dialog>
+</div>
+<div id="api-chat-divider" role="separator" aria-label="Ridimensiona viewer e chat" aria-orientation="vertical" tabindex="0" title="Trascina per ridimensionare. Doppio clic per ripristinare."></div>
+<aside id="api-chat-pane" aria-label="Chat GPT API, anteprima non collegata">
+  <header class="api-chat-header">
+    <div class="api-chat-brand">Chat GPT <small>· API / prototipo</small></div>
+    <span class="api-chat-state" role="status">Non connessa</span>
+  </header>
+  <div class="api-chat-conversation" id="api-chat-history" aria-live="polite">
+    <div class="api-chat-welcome">
+      <div class="api-chat-logo" aria-hidden="true">✦</div>
+      <h2>Come posso aiutarti?</h2>
+      <p>Qui comparirà la conversazione con GPT tramite API, affiancata al modello Termodel.</p>
+      <div class="api-chat-placeholder">Interfaccia di prova. Nessun messaggio viene inviato e nessuna API GPT è collegata.</div>
+    </div>
+  </div>
+  <div class="api-chat-footer">
+    <div class="api-chat-composer">
+      <textarea id="api-chat-compose" rows="2" aria-label="Messaggio GPT API non disponibile" placeholder="La chat sarà disponibile dopo il collegamento API…" disabled></textarea>
+      <button id="api-chat-send" type="button" title="Invio non disponibile" aria-label="Invia messaggio (non disponibile)" disabled>↑</button>
+    </div>
+    <div class="api-chat-disclaimer">GPT API · modalità grafica dimostrativa, non connessa</div>
+  </div>
+</aside>
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.10.0';
+  const HARNESS_VERSION = '1.11.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
   const handoffRequested = Boolean(requestedSession);
+  // Modalita' ottica API: puo' coesistere con il pairing SOS, ma NON apre
+  // alcun client GPT/API. Il parametro resta nell'URL; sessionId viene rimosso.
+  const apiChatMode = ['api','apis'].includes(
+    (launchParams.get('chat') || '').trim().toLowerCase());
+  document.body.classList.toggle('api-chat-mode', apiChatMode);
+  if (apiChatMode) {
+    const splitter=document.getElementById('api-chat-divider');
+    let dragging=false;
+    function setViewerWidth(clientX) {
+      const min=window.innerWidth<850?270:360;
+      const rest=window.innerWidth<850?270:320;
+      const width=Math.max(min,Math.min(window.innerWidth-rest-8,clientX));
+      if(Number.isFinite(width))document.body.style.setProperty('--viewer-pane-width',width+'px');
+    }
+    splitter.addEventListener('pointerdown',event=>{
+      if(event.button!==0)return;
+      dragging=true;splitter.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    splitter.addEventListener('pointermove',event=>{if(dragging)setViewerWidth(event.clientX);});
+    function stopDrag(){dragging=false;}
+    splitter.addEventListener('pointerup',stopDrag);
+    splitter.addEventListener('pointercancel',stopDrag);
+    splitter.addEventListener('dblclick',()=>{
+      document.body.style.removeProperty('--viewer-pane-width');
+    });
+    splitter.addEventListener('keydown',event=>{
+      if(event.key!=='ArrowLeft' && event.key!=='ArrowRight')return;
+      event.preventDefault();
+      const step=event.shiftKey?60:20;
+      setViewerWidth(document.getElementById('viewer-shell').getBoundingClientRect().width+
+        (event.key==='ArrowLeft'?-step:step));
+    });
+  }
   if (handoffRequested) {
     launchParams.delete('sessionId');
     const remaining = launchParams.toString();
@@ -477,6 +569,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
   });
 
   document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{
+    if(apiChatMode && button.dataset.tab==='comunicazione')return;
     for(const tab of document.querySelectorAll('[data-tab]'))tab.setAttribute('aria-selected',String(tab===button));
     for(const panel of document.querySelectorAll('.tab-panel'))panel.classList.toggle('active',panel.id==='tab-'+button.dataset.tab);
     window.dispatchEvent(new Event('resize'));
