@@ -28,11 +28,15 @@
         const choice=button(child.label,()=>{void open(child.id,child.label);});
         choicesRow.appendChild(choice);
       }
-      if(nodeId!=='inizio'){
-        choicesRow.appendChild(button('Torna alle domande iniziali',()=>{
-          void open('inizio','Torna alle domande iniziali');
-        },'sos-guided-back'));
-      }
+      // Always show a root control, including at the root itself. It calls
+      // read('inizio') again, so debugging/editing Neon needs no page reload.
+      const atRoot=nodeId==='inizio';
+      const back=button('Torna al menu iniziale',()=>{
+        void open('inizio',atRoot?'Aggiorna il menu iniziale':'Torna al menu iniziale');
+      },'sos-guided-back');
+      back.title=atRoot?'Rileggi il menu iniziale aggiornato da Neon':
+        'Torna al menu iniziale, aggiornandolo da Neon';
+      choicesRow.appendChild(back);
       container.appendChild(choicesRow);
       currentButtons=choicesRow;
       container.scrollTop=container.scrollHeight;
