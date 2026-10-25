@@ -1421,6 +1421,13 @@ function highlightRoom({roomId,wallSourceIds}={}){
  return {wallCount:actual.size,primitiveCount:selected.length};
 }
 window.__termodelHighlightRoom=highlightRoom;
+function matchesOpening(m,x,y,z,w,h){
+ if(m.userData.filter?.tipo!=='Finestra')return false;
+ const b=new THREE.Box3().setFromObject(m);
+ const p=b.getCenter(new THREE.Vector3()),d=b.getSize(new THREE.Vector3());
+ return Math.hypot(p.x-x,-p.z-y)<.16&&Math.abs(p.y-z)<.07&&
+ Math.abs(d.y-h)<.05&&Math.abs(Math.max(d.x,d.z)-w)<.06;
+}
 function rememberOpeningMaterial(mesh){
  const m=mesh.material;
  highlightedRoomStyles.push({mesh,color:m.color.clone(),
