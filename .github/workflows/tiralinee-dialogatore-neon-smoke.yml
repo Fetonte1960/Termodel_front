@@ -160,7 +160,8 @@ jobs:
           assert(burglary.data.choices.every(x=>x.id.startsWith('sos.room.effrazione.')));
           const winList=await get('sos.room.effrazione.locale_3');
           assert.equal(winList.status,200);
-          assert.equal(winList.data.choices.length,8);
+          assert.equal(winList.data.choices.length,9);
+          assert.equal(winList.data.choices.at(-1).label,'Scegli un altro locale');
           const finChoice=await get(winList.data.choices[0].id);
           assert.equal(finChoice.status,200);
           assert.equal(finChoice.data.node.openingSelection,true);
