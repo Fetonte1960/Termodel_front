@@ -5621,6 +5621,25 @@ async function prepareTermodelSosBundle() {
     if (file.stale) throw new Error('Il Service ha invalidato ' + relativePath);
     return file.text;
   }
+  // This is the SAME Termodel.WebService clean-floor SVG used under the
+  // radiant-panel spirals; never derive it from preview walls or 3D meshes.
+  const cleanFloorNames=(manifest.floors||[])
+    .filter(f=>String(f.type||'').toLowerCase()==='calpestabile')
+    .map(f=>String(f.name||''));
+  if(cleanFloorNames.length<1 || cleanFloorNames.length>20 ||
+     new Set(cleanFloorNames).size!==cleanFloorNames.length)
+    throw new Error('Il progetto non contiene un elenco valido dei piani calpestabili.');
+  const cleanFloors=await Promise.all(cleanFloorNames.map(async name=>{
+    if(!/^[a-z0-9 _.-]{1,80}$/i.test(name))
+      throw new Error('Nome piano Pianta pulita non valido.');
+    const svg=await serviceArtifact('artifacts/pianta-pulita/'+name+'.svg');
+    const doc=new DOMParser().parseFromString(svg,'image/svg+xml');
+    if(doc.querySelector('parsererror')||doc.documentElement.localName!=='svg'||
+       doc.documentElement.getAttribute('data-termodel-format')!=='TERMODEL-CLEAN-FLOOR-SVG-V1')
+      throw new Error('Pianta pulita SVG del piano '+name+' non conforme al formato canonico.');
+    return {floorName:name,content:svg,mimeType:'image/svg+xml',
+      sha256:await termodelSha256(svg),byteLength:new TextEncoder().encode(svg).length};
+  }));
   const topologyText = await serviceArtifact('artifacts/topologia-ai.json');
   const modelText = await serviceArtifact('artifacts/model3d.json');
   let topology, model;
@@ -5656,7 +5675,8 @@ async function prepareTermodelSosBundle() {
     projectId, projectName:String(manifest.projectName || 'Progetto Termodel'),
     projectRevision, calculationId, calculatedAt,
     calculationCurrent:true, topologySchemaVersion:3,
-    artifacts:artifacts.map(a=>({...a,calculationId}))
+    artifacts:artifacts.map(a=>({...a,calculationId})),
+    cleanFloors
   };
 }
 
@@ -5668,7 +5688,7 @@ async function saveCurrentTermodelModelToSos() {
     'popup=yes,width=650,height=690,resizable=yes,scrollbars=yes');
   if (!popup) throw new Error('Il browser ha bloccato la finestra SOS. Abilita i popup di Termodel.');
   popup.focus();
-  setMainAiStatus('Preparazione dei tre artefatti del Service Termodel…');
+  setMainAiStatus('Preparazione progetto, topologia, 3D e Pianta pulita del Service Termodel…');
   const bundle = await prepareTermodelSosBundle();
   const requestId = crypto.randomUUID();
   const outcome = await new Promise((resolve,reject) => {
@@ -5699,7 +5719,7 @@ async function saveCurrentTermodelModelToSos() {
       'La finestra SOS non ha terminato il salvataggio. Verifica il suo stato.')),180000);
     popup.postMessage({type:'sos-import-hello'},SOS_IMPORT_ORIGIN);
   });
-  setMainAiStatus('✓ SOS: progetto, topologia e 3D salvati e riletti correttamente.');
+  setMainAiStatus('✓ SOS: progetto, topologia, 3D e Pianta pulita salvati e verificati.');
   return outcome;
 }
 
