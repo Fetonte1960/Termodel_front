@@ -1,4 +1,4 @@
-name: Tiralinee SH endpoint integration smoke
+name: Tiralinee SH no-prefix E2E smoke
 on:
   push:
     branches: [main]
@@ -15,48 +15,51 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Gateway live + SH synthetic read-only query
+      - name: Validate SH local intents and deny remote without session
         shell: bash
         run: |
           node <<'NODE'
           const assert=(await import('node:assert/strict')).default;
-          const base='https://termodel-mcp-gateway.onrender.com';
+          const root='https://termodel-mcp-gateway.onrender.com';
           const origin='https://www.termodel.it';
           const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
-          let ready=false;
-          for(let n=0;n<12;n++){
-            try{
-              const res=await fetch(base+'/health',{signal:AbortSignal.timeout(18000)});
-              if(res.ok){ready=true;break;}
-            }catch(e){}
-            await sleep(12000);
+          for(let i=0;i<14;i++){
+            try{const r=await fetch(root+'/health',{signal:AbortSignal.timeout(18000)});
+                if(r.ok)break;}catch{}
+            if(i===13)throw Error('Gateway health non disponibile');
+            await sleep(9000);
           }
-          assert.equal(ready,true,'Gateway Render did not become healthy');
-          const noOrigin=await fetch(base+'/browser/lab/register',{method:'POST'});
-          assert.equal(noOrigin.status,401,'Origin policy was bypassed');
-          const registered=await fetch(base+'/browser/lab/register',{
+          const unauthorized=await fetch(root+'/browser/lab/register',{method:'POST'});
+          assert.equal(unauthorized.status,401);
+          const registered=await fetch(root+'/browser/lab/register',{
             method:'POST',headers:{Origin:origin}});
-          assert.equal(registered.status,200,'Lab register failed');
+          assert.equal(registered.status,200);
           const cred=await registered.json();
           assert.match(cred.id,/^[a-f0-9]{32}$/);
           assert.match(cred.token,/^[a-f0-9]{64}$/);
-          assert.equal(cred.purpose,'tiralinee.lab.sh.synthetic-read');
-          const url=base+'/browser/lab/engine/'+cred.id;
-          const body=JSON.stringify({action:'ask',message:'Quali commesse sono disponibili?'});
-          const invalid=await fetch(url,{method:'POST',headers:{
-            Origin:origin,'Content-Type':'application/json',Authorization:'Bearer invalid'},
-            body});
-          assert.equal(invalid.status,401,'Lab token policy was bypassed');
-          const response=await fetch(url,{method:'POST',signal:AbortSignal.timeout(175000),headers:{
-            Origin:origin,'Content-Type':'application/json',
-            Authorization:'Bearer '+cred.token},body});
-          if(!response.ok){
-            const error=await response.text();
-            throw Error('SH end-to-end HTTP '+response.status+': '+error.slice(0,250));
-          }
-          const data=await response.json();
-          assert.equal(data.esito,'SUCCESS','SH recognized query did not succeed');
-          assert.equal(typeof data.answer,'string');
-          assert.ok(data.answer.length>0);
-          console.log('TIRALINEE_LAB_GATEWAY_SMOKE_OK register=200 invalid=401 query=SUCCESS');
+          const url=root+'/browser/lab/interpret/'+cred.id;
+          const headers={Origin:origin,'Content-Type':'application/json',
+            Authorization:'Bearer '+cred.token};
+          const bad=await fetch(url,{method:'POST',headers:{...headers,Authorization:'Bearer bad'},
+            body:JSON.stringify({message:'zoom avanti'})});
+          assert.equal(bad.status,401);
+          const call=async message=>{
+            const response=await fetch(url,{method:'POST',headers,signal:AbortSignal.timeout(120000),
+              body:JSON.stringify({message})});
+            const answer=await response.json();return{status:response.status,answer};
+          };
+          const zoom=await call('zoom avanti');
+          assert.equal(zoom.status,200,JSON.stringify(zoom));
+          assert.equal(zoom.answer.esito,'SUCCESS');
+          assert.equal(zoom.answer.destination,'LOCAL_VIEWER');
+          assert.equal(zoom.answer.command.action,'zoom');
+          assert.ok(zoom.answer.command.factor<1);
+          const hide=await call('nascondi pareti');
+          assert.equal(hide.status,200,JSON.stringify(hide));
+          assert.equal(hide.answer.command.action,'filter');
+          assert.equal(hide.answer.command.checkedState,false);
+          const restricted=await call('quante pratiche aperte ci sono');
+          assert.equal(restricted.status,403,JSON.stringify(restricted));
+          assert.equal(restricted.answer.reason,'sos_session_required');
+          console.log('SH_TIRALINEE_NO_PREFIX_OK zoom/local=200 pareti/local=200 farmacia/no-session=403');
           NODE
