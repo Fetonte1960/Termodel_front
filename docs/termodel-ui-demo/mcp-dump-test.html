@@ -283,6 +283,35 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     const note=document.createElement('p');note.textContent=message;
     host.appendChild(note);
   }
+  let cleanFloorUrl=null;
+  async function renderCleanFloor(response){
+    if(response.status===404){
+      showCleanFloorMessage('Pianta pulita non ancora archiviata per questa revisione. Il modello 3D rimane disponibile.');
+      return false;
+    }
+    if(!response.ok)throw Error('Pianta pulita HTTP '+response.status);
+    const rev=decodeURIComponent(response.headers.get('X-SOS-Project-Revision')||'');
+    const imported=response.headers.get('X-SOS-Import-Id')||'';
+    if(rev!==loaded3DRevision || imported!==loaded3DImportId || !imported)
+      throw Error('Revisione e importazione 2D/3D non coincidenti');
+    if(!(response.headers.get('Content-Type')||'').includes('image/svg+xml'))
+      throw Error('Documento 2D non SVG');
+    const source=await response.text();
+    const xml=new DOMParser().parseFromString(source,'image/svg+xml');
+    if(xml.querySelector('parsererror') || xml.documentElement.localName!=='svg' ||
+       xml.documentElement.getAttribute('data-termodel-format')!=='TERMODEL-CLEAN-FLOOR-SVG-V1')
+      throw Error('Formato Pianta pulita non riconosciuto');
+    const host=document.getElementById('view2d');
+    const blob=new Blob([source],{type:'image/svg+xml'});
+    if(cleanFloorUrl)URL.revokeObjectURL(cleanFloorUrl);
+    cleanFloorUrl=URL.createObjectURL(blob);
+    const img=document.createElement('img');
+    img.alt='Pianta pulita Termodel · piano '+cleanFloorName;
+    img.src=cleanFloorUrl;
+    img.style.cssText='width:100%;height:100%;object-fit:contain';
+    host.replaceChildren(img);
+    return true;
+  }
   const labGatewayHost='https://termodel-mcp-gateway.onrender.com';
   let labWakePromise=null;
   async function gatewayRequest(path,init,stage){
