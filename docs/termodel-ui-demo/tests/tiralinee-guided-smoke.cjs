@@ -35,7 +35,7 @@ const config={
  execute:async id=>{executed.push(id);return{esito:'SUCCESS',destination:'LOCAL_VIEWER',
   command:{action:'filter',checkedState:false}};},
  act:async action=>{rendered.push(action);return{message:'Pareti nascoste',source:'Viewer'};},
- addMessage:(role,text)=>{const row=new Element('p');row.textContent=role+':'+text;history.appendChild(row);return row;}
+ addMessage:(role,text)=>{const row=new Element('p');row.textContent=role+': '+text;history.appendChild(row);return row;}
 };
 const dialogue=window.SosGuidedChat.create(config);
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
