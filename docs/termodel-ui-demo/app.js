@@ -5612,8 +5612,29 @@ async function prepareTermodelSosBundle() {
   async function serviceArtifact(relativePath) {
     const matches = catalog.files.filter(file =>
       String(file?.path || '').toLowerCase() === relativePath.toLowerCase());
-    if (matches.length !== 1 || matches[0].stale !== false)
+    if (matches.length !== 1 || matches[0].stale !== false) {
+      if (relativePath.startsWith('artifacts/pianta-pulita/')) {
+        const floorName = relativePath.slice('artifacts/pianta-pulita/'.length).replace(/\\.svg$/i, '');
+        const declared = Array.isArray(currentServiceManifest?.artifacts) &&
+          currentServiceManifest.artifacts.some(item =>
+            item?.name === 'pianta-pulita' &&
+            String(item?.floorName || '').toLowerCase() === floorName.toLowerCase());
+        const hasModel = catalog.files.some(file =>
+          String(file?.path || '').toLowerCase() === 'artifacts/model3d.json');
+        if (!declared)
+          throw new Error('Aggiorna Modello ha restituito il 3D, ma NON ha generato ' +
+            'la Pianta pulita del piano ' + floorName +
+            '. Verificare il log del calcolo (cleanFloorPlanCount): la geometria 2D non è stata prodotta.');
+        if (!hasModel)
+          throw new Error('Il calcolo aveva dichiarato la Pianta pulita del piano ' + floorName +
+            ', ma nel Service non sono più presenti neppure i file del modello 3D. ' +
+            'Il workspace potrebbe essere stato ricreato dopo un riavvio/deploy.');
+        throw new Error('La Pianta pulita del piano ' + floorName +
+          ' risultava nel calcolo, ma manca nel catalogo del Service. ' +
+          'Verificare persistenza/riavvio del workspace e consultare il log.');
+      }
       throw new Error('Artefatto Service non disponibile o obsoleto: ' + relativePath);
+    }
     const expectedPrefix = '/api/projects/' + encodeURIComponent(projectId) + '/generated-files/';
     if (!String(matches[0].href || '').toLowerCase().startsWith(expectedPrefix.toLowerCase()))
       throw new Error('Percorso artefatto non coerente con il progetto.');
@@ -5959,6 +5980,16 @@ async function loadCalculatedModelFromService() {
       ? calculation.diagnostics.filter(Boolean)
       : [];
     const copied = await copyTermodelServerExchange(exchange);
+    const expectedCleanFloorNames = (readProjectManifest(completeProjectText).floors || [])
+      .filter(floor => String(floor.type || '').toLowerCase() === 'calpestabile')
+      .map(floor => String(floor.name || ''));
+    const missingCleanFloorNames = expectedCleanFloorNames.filter(floorName =>
+      !artifacts.some(item => item?.name === 'pianta-pulita' &&
+        String(item.floorName || '').toLowerCase() === floorName.toLowerCase()));
+    const cleanFloorWarning = missingCleanFloorNames.length
+      ? ' · ⚠ Pianta pulita non generata: ' + missingCleanFloorNames.join(', ') +
+        ' (Salva in SOS non disponibile; controllare il log)'
+      : '';
 
     status.textContent =
       'PROGETTO CORRENTE · SERVER · ' +
@@ -5966,6 +5997,7 @@ async function loadCalculatedModelFromService() {
       ' primitive · motore ' +
       (currentCalculationSpiralEngine || termodelServiceRuntimeEngine || 'n/d') +
       ' · ' + diagnostics.length + ' diagnostica/e' +
+      cleanFloorWarning +
       (copied ? ' · risposta copiata negli appunti' : ' · copia appunti non riuscita');
   } catch (error) {
     console.error(error);
