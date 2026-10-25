@@ -6,7 +6,7 @@
 (function(root){
   'use strict';
   function create(config){
-    const {container,read,execute,act,addMessage,available,onNoAction}=config;
+    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate}=config;
     const route=[];
     let busy=false,currentButtons=null,active=true;
     function button(label,click,cls){
@@ -43,7 +43,10 @@
       if(currentButtons){
         for(const el of currentButtons.querySelectorAll('button'))el.disabled=true;
       }
-      if(!first)addMessage('user',label,'Percorso guidato SOS');
+      if(!first){
+        if(typeof onNavigate==='function')onNavigate();
+        addMessage('user',label,'Percorso guidato SOS');
+      }
       const pending=addMessage('assistant','Consulto il percorso guidato…');
       try{
         const data=await read(id);
