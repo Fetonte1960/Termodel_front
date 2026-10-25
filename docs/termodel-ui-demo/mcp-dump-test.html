@@ -43,7 +43,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 </style>
 </head>
 <body>
-<header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small></header>
+<header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small><small id="launch-state" role="status"></small></header>
 <nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
 <div id="tab-3d" class="tab-panel active" role="tabpanel">
   <div class="workspace3d"><div id="view3d" class="view"></div><aside id="harness-filter-panel" aria-label="Filtri grafici">
@@ -85,11 +85,14 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
   const handoffRequested = Boolean(requestedSession);
   if (handoffRequested) {
-    history.replaceState(null, '', window.location.pathname);
+    launchParams.delete('sessionId');
+    const remaining = launchParams.toString();
+    history.replaceState(null, '', window.location.pathname + (remaining ? '?' + remaining : '') + window.location.hash);
     for (const tab of document.querySelectorAll('[data-tab]'))
       tab.setAttribute('aria-selected', String(tab.dataset.tab === '3d'));
     for (const panel of document.querySelectorAll('.tab-panel'))
       panel.classList.toggle('active', panel.id === 'tab-3d');
+    document.getElementById('launch-state').textContent = 'Sessione esterna · autorizzazione Gateway in attesa';
     const status = document.getElementById('status');
     status.textContent = 'Sessione esterna richiesta: ' + requestedSession +
       '. In attesa di collegamento autorizzato dal Gateway FastPharmaSOS. Nessuna nuova sessione creata.';
