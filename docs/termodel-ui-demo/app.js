@@ -5683,41 +5683,79 @@ async function prepareTermodelSosBundle() {
 async function saveCurrentTermodelModelToSos() {
   if (TERMODEL_USER_LOGIN !== 'admin')
     throw new Error('Comando riservato ad Admin.');
-  // Aprire con il click dell'utente, prima dei fetch: evita il blocco popup.
+  // Open synchronously on user click, then pair before asynchronous preparation.
   const popup = window.open(SOS_IMPORT_WINDOW_URL,'TermodelSosImport',
     'popup=yes,width=650,height=690,resizable=yes,scrollbars=yes');
   if (!popup) throw new Error('Il browser ha bloccato la finestra SOS. Abilita i popup di Termodel.');
   popup.focus();
   setMainAiStatus('Preparazione progetto, topologia, 3D e Pianta pulita del Service Termodel…');
-  const bundle = await prepareTermodelSosBundle();
   const requestId = crypto.randomUUID();
   const outcome = await new Promise((resolve,reject) => {
-    let paired = false;
-    const finish = (error, result) => {
+    let paired=false, pushed=false, finished=false;
+    let prepared=false, bundle=null, preparationError=null;
+    let heartbeat=0, deadline=0, handshakeDeadline=0;
+    const send = data => {
+      if (!popup.closed) popup.postMessage(data,SOS_IMPORT_ORIGIN);
+    };
+    const finish = (error,result) => {
+      if (finished) return;
+      finished=true;
       window.clearInterval(heartbeat);
       window.clearTimeout(deadline);
-      window.removeEventListener('message', onMessage);
+      window.clearTimeout(handshakeDeadline);
+      window.removeEventListener('message',onMessage);
       if (error) reject(error); else resolve(result);
+    };
+    const dispatch = () => {
+      if (!paired || finished) return;
+      if (preparationError) {
+        send({type:'sos-import-preparation-error',requestId,
+          detail:preparationError.message || String(preparationError)});
+        finish(preparationError);
+      } else if (!prepared) {
+        send({type:'sos-import-progress',requestId,
+          detail:'Collegamento WebCAD attivo. Preparazione degli artefatti Termodel in corso…'});
+      } else if (!pushed) {
+        pushed=true;
+        send({type:'sos-import-bundle',requestId,bundle});
+      }
     };
     const onMessage = event => {
       if (event.origin !== SOS_IMPORT_ORIGIN || event.source !== popup ||
           !event.data || typeof event.data !== 'object') return;
-      if (event.data.type === 'sos-import-ready' && !paired) {
-        paired = true;
-        popup.postMessage({type:'sos-import-bundle',requestId,bundle},SOS_IMPORT_ORIGIN);
-      }
-      if (event.data.type === 'sos-import-result' && event.data.requestId === requestId)
+      if (event.data.type === 'sos-import-ready') {
+        paired=true;
+        dispatch();
+      } else if (event.data.type === 'sos-import-result' &&
+                 event.data.requestId === requestId) {
         finish(event.data.ok ? null : new Error(event.data.detail || 'Importazione SOS fallita'),
           event.data);
+      }
     };
     window.addEventListener('message',onMessage);
-    const heartbeat = window.setInterval(() => {
+    heartbeat=window.setInterval(() => {
       if (popup.closed) finish(new Error('La finestra SOS è stata chiusa.'));
-      else if (!paired) popup.postMessage({type:'sos-import-hello'},SOS_IMPORT_ORIGIN);
-    }, 450);
-    const deadline = window.setTimeout(() => finish(new Error(
-      'La finestra SOS non ha terminato il salvataggio. Verifica il suo stato.')),180000);
-    popup.postMessage({type:'sos-import-hello'},SOS_IMPORT_ORIGIN);
+      else if (!paired) send({type:'sos-import-hello'});
+    },450);
+    handshakeDeadline=window.setTimeout(() => {
+      if (!paired) finish(preparationError || new Error(
+        'La finestra SOS non risponde a WebCAD. Chiudila, verifica i popup e riprova.'));
+    },15000);
+    deadline=window.setTimeout(() => {
+      if (paired) send({type:'sos-import-preparation-error',requestId,
+        detail:'Tempo scaduto nella preparazione o nel salvataggio. Riprovare da WebCAD.'});
+      finish(new Error('Tempo scaduto nella preparazione o nel salvataggio SOS.'));
+    },180000);
+    send({type:'sos-import-hello'});
+    // Catch every preparation failure and show its exact reason in the popup.
+    prepareTermodelSosBundle().then(value => {
+      prepared=true;
+      bundle=value;
+      dispatch();
+    },error => {
+      preparationError=error instanceof Error ? error : new Error(String(error));
+      dispatch();
+    });
   });
   setMainAiStatus('✓ SOS: progetto, topologia, 3D e Pianta pulita salvati e verificati.');
   return outcome;
