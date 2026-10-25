@@ -58,6 +58,7 @@ const openProjectFileInput = document.getElementById('openProjectFileInput');
 const saveProjectButton = document.getElementById('saveProjectButton');
 const saveLocalProjectButton = document.getElementById('saveLocalProjectButton');
 const saveCloudProjectAsButton = document.getElementById('saveCloudProjectAsButton');
+const saveToSosButton = document.getElementById('saveToSosButton');
 const cadSaveProject = document.getElementById('cadSaveProject');
 const cadAdminProjects = document.getElementById('cadAdminProjects');
 const saveProjectAsButton = document.getElementById('saveProjectAsButton');
@@ -3608,6 +3609,7 @@ function setStructuredProjectState(enabled) {
   if (openCloudProjectButton) openCloudProjectButton.disabled = TERMODEL_USER_LOGIN !== 'admin';
   if (saveProjectButton) saveProjectButton.disabled = needsProject || TERMODEL_USER_LOGIN !== 'admin';
   if (saveCloudProjectAsButton) saveCloudProjectAsButton.disabled = needsProject || TERMODEL_USER_LOGIN !== 'admin';
+  if (saveToSosButton) { saveToSosButton.hidden = TERMODEL_USER_LOGIN !== 'admin'; saveToSosButton.disabled = needsProject || TERMODEL_USER_LOGIN !== 'admin'; }
   if (saveLocalProjectButton) saveLocalProjectButton.disabled = needsProject;
   if (cadSaveProject) cadSaveProject.disabled = needsProject;
   if (saveProjectAsButton) saveProjectAsButton.disabled = needsProject;
@@ -5573,6 +5575,132 @@ async function copyCurrentTopologyToClipboard() {
     topology.links.length + ' collegamenti (inclusi eventuali candidati).'
   );
   return fetched.text;
+}
+
+
+const SOS_IMPORT_WINDOW_URL =
+  'https://fetonte1960.github.io/sviluppo-pubblico/commesse/FastPharmaSOS/termodel-import.html';
+const SOS_IMPORT_ORIGIN = 'https://fetonte1960.github.io';
+
+async function termodelSha256(text) {
+  if (!globalThis.crypto?.subtle)
+    throw new Error('SHA-256 del browser non disponibile. Usare HTTPS.');
+  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buffer),
+    byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function prepareTermodelSosBundle() {
+  if (TERMODEL_USER_LOGIN !== 'admin' || !structuredProjectActive)
+    throw new Error('Salva in SOS è riservato alla modalità Admin con progetto aperto.');
+  if (loading || cadIsDirty() || !lastCalculatedTopologyProjectText || !currentServiceManifest)
+    throw new Error('Prima conferma il CAD ed esegui Aggiorna Modello.');
+  const text = await buildCurrentProjectText();
+  const calculatedSource = termodelTopologyComparableProjectText(lastCalculatedTopologyProjectText);
+  if (termodelTopologyComparableProjectText(text) !== calculatedSource)
+    throw new Error('Il progetto è cambiato dopo il calcolo: esegui Aggiorna Modello.');
+  const calculatedProject = lastCalculatedTopologyProjectText;
+  const manifest = readProjectManifest(calculatedProject);
+  const projectId = String(manifest.projectId || '');
+  if (!projectId || projectId.toLowerCase() !== String(currentProjectId || '').toLowerCase() ||
+      projectId.toLowerCase() !== String(currentServiceManifest.projectId || '').toLowerCase())
+    throw new Error('L’ultimo calcolo non appartiene al progetto corrente.');
+  const catalog = await termodelGeneratedFilesCatalog(projectId);
+  if (String(catalog.projectId || '').toLowerCase() !== projectId.toLowerCase() ||
+      catalog.artifactsStale !== false)
+    throw new Error('Artefatti Service obsoleti o non verificati: esegui Aggiorna Modello.');
+  async function serviceArtifact(relativePath) {
+    const matches = catalog.files.filter(file =>
+      String(file?.path || '').toLowerCase() === relativePath.toLowerCase());
+    if (matches.length !== 1 || matches[0].stale !== false)
+      throw new Error('Artefatto Service non disponibile o obsoleto: ' + relativePath);
+    const expectedPrefix = '/api/projects/' + encodeURIComponent(projectId) + '/generated-files/';
+    if (!String(matches[0].href || '').toLowerCase().startsWith(expectedPrefix.toLowerCase()))
+      throw new Error('Percorso artefatto non coerente con il progetto.');
+    const file = await termodelGeneratedFileText(matches[0]);
+    if (file.stale) throw new Error('Il Service ha invalidato ' + relativePath);
+    return file.text;
+  }
+  const topologyText = await serviceArtifact('artifacts/topologia-ai.json');
+  const modelText = await serviceArtifact('artifacts/model3d.json');
+  let topology, model;
+  try { topology = JSON.parse(topologyText); model = JSON.parse(modelText); }
+  catch { throw new Error('Il Service non ha restituito JSON valido.'); }
+  if (topology?.format !== 'TermodelTopologyAI' || topology?.version !== 3 ||
+      topology?.source !== 'Polig3D' || !Array.isArray(topology.walls))
+    throw new Error('Topologia Polig3D V3 non valida.');
+  if (model?.format !== 'TermodelWebModel' || model?.version !== 3 ||
+      model?.coordinateSystem !== 'Z-up' || !Array.isArray(model.primitives) ||
+      !model.primitives.length)
+    throw new Error('Redraw 3D definitivo TermodelWebModel V3 non valido.');
+  if (loading || String(currentProjectId).toLowerCase() !== projectId.toLowerCase() ||
+      termodelTopologyComparableProjectText(await buildCurrentProjectText()) !== calculatedSource)
+    throw new Error('Il progetto è cambiato durante la preparazione.');
+  const projectSha = await termodelSha256(calculatedProject);
+  const projectRevision = projectSha;
+  const content = [
+    ['project', 'text/plain', calculatedProject],
+    ['topology', 'application/json', topologyText],
+    ['model3d', 'application/vnd.termodel.web-model+json', modelText]
+  ];
+  const artifacts = await Promise.all(content.map(async ([kind, mimeType, text]) => ({
+    kind, mimeType, content:text,
+    sha256:await termodelSha256(text), byteLength:new TextEncoder().encode(text).length,
+    projectId, projectRevision, sourceProjectSha256:projectSha
+  })));
+  // L'ID dipende dai tre originali Service: un secondo click identico e' idempotente.
+  const calculationId = await termodelSha256(artifacts.map(a=>a.sha256).join(':'));
+  const calculatedAt = String(currentServiceManifest.calculatedAtUtc ||
+    currentServiceManifest.calculatedAt || new Date().toISOString());
+  return {
+    projectId, projectName:String(manifest.projectName || 'Progetto Termodel'),
+    projectRevision, calculationId, calculatedAt,
+    calculationCurrent:true, topologySchemaVersion:3,
+    artifacts:artifacts.map(a=>({...a,calculationId}))
+  };
+}
+
+async function saveCurrentTermodelModelToSos() {
+  if (TERMODEL_USER_LOGIN !== 'admin')
+    throw new Error('Comando riservato ad Admin.');
+  // Aprire con il click dell'utente, prima dei fetch: evita il blocco popup.
+  const popup = window.open(SOS_IMPORT_WINDOW_URL,'TermodelSosImport',
+    'popup=yes,width=650,height=690,resizable=yes,scrollbars=yes');
+  if (!popup) throw new Error('Il browser ha bloccato la finestra SOS. Abilita i popup di Termodel.');
+  popup.focus();
+  setMainAiStatus('Preparazione dei tre artefatti del Service Termodel…');
+  const bundle = await prepareTermodelSosBundle();
+  const requestId = crypto.randomUUID();
+  const outcome = await new Promise((resolve,reject) => {
+    let paired = false;
+    const finish = (error, result) => {
+      window.clearInterval(heartbeat);
+      window.clearTimeout(deadline);
+      window.removeEventListener('message', onMessage);
+      if (error) reject(error); else resolve(result);
+    };
+    const onMessage = event => {
+      if (event.origin !== SOS_IMPORT_ORIGIN || event.source !== popup ||
+          !event.data || typeof event.data !== 'object') return;
+      if (event.data.type === 'sos-import-ready' && !paired) {
+        paired = true;
+        popup.postMessage({type:'sos-import-bundle',requestId,bundle},SOS_IMPORT_ORIGIN);
+      }
+      if (event.data.type === 'sos-import-result' && event.data.requestId === requestId)
+        finish(event.data.ok ? null : new Error(event.data.detail || 'Importazione SOS fallita'),
+          event.data);
+    };
+    window.addEventListener('message',onMessage);
+    const heartbeat = window.setInterval(() => {
+      if (popup.closed) finish(new Error('La finestra SOS è stata chiusa.'));
+      else if (!paired) popup.postMessage({type:'sos-import-hello'},SOS_IMPORT_ORIGIN);
+    }, 450);
+    const deadline = window.setTimeout(() => finish(new Error(
+      'La finestra SOS non ha terminato il salvataggio. Verifica il suo stato.')),180000);
+    popup.postMessage({type:'sos-import-hello'},SOS_IMPORT_ORIGIN);
+  });
+  setMainAiStatus('✓ SOS: progetto, topologia e 3D salvati e riletti correttamente.');
+  return outcome;
 }
 
 async function readTermodelServiceError(response) {
@@ -13470,6 +13598,16 @@ saveLocalProjectButton?.addEventListener('click', async event => {
     console.error('Salvataggio locale non riuscito:', error);
     window.alert('Impossibile salvare il progetto locale.\\n\\n' + error.message);
   }
+});
+saveToSosButton?.addEventListener('click', async event => {
+  event.preventDefault(); event.stopPropagation();
+  saveToSosButton.closest('.menu')?.classList.remove('open');
+  saveToSosButton.disabled = true;
+  try { await saveCurrentTermodelModelToSos(); }
+  catch (error) {
+    setMainAiStatus('⚠ Salva in SOS: ' + error.message);
+    window.alert('Salva in SOS non completato.\\n\\n' + error.message);
+  } finally { saveToSosButton.disabled = !structuredProjectActive || TERMODEL_USER_LOGIN !== 'admin'; }
 });
 saveCloudProjectAsButton?.addEventListener('click', async event => {
   event.preventDefault();
