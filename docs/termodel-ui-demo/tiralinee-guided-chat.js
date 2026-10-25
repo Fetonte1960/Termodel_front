@@ -6,7 +6,7 @@
 (function(root){
   'use strict';
   function create(config){
-    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance}=config;
+    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance,onReviewRequests}=config;
     const route=[];
     let busy=false,currentButtons=null,active=true;
     function button(label,click,cls){
@@ -27,6 +27,17 @@
         if(typeof child?.id!=='string'||typeof child?.label!=='string')continue;
         const choice=button(child.label,()=>{void open(child.id,child.label);});
         choicesRow.appendChild(choice);
+      }
+      // Permanent navigation action, available from the initial menu and
+      // EVERY descendant. Do not replace the tree: the user can keep answering.
+      if(typeof onReviewRequests==='function'){
+        const review=button('Esaminare richieste di assistenza in corso',async()=>{
+          if(busy||!active||review.disabled)return;
+          review.disabled=true;
+          try{await onReviewRequests();}
+          finally{if(active)review.disabled=false;}
+        },'sos-guided-review');
+        choicesRow.appendChild(review);
       }
       // The root is already the initial menu: no nonsensical "back" button.
       // After at least one CONFIRMED response, always offer intake, including
