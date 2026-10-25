@@ -6,7 +6,7 @@
 (function(root){
   'use strict';
   function create(config){
-    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance,onReviewRequests}=config;
+    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance,onReviewRequests,onRoomSelected}=config;
     const route=[];
     let busy=false,currentButtons=null,active=true;
     function button(label,click,cls){
@@ -101,6 +101,16 @@
           route[route.length-1].nextQuestion=body;
         }
         if(body)addMessage('assistant',body,'Percorso guidato · Neon');
+        if(data.node.roomSelection===true && typeof onRoomSelected==='function'){
+          try{
+            const result=await onRoomSelected(data.node);
+            if(result?.message)addMessage('assistant',result.message,
+              'Localizzazione nel modello 3D');
+          }catch(error){
+            addMessage('assistant','Locale registrato nel percorso guidato, ma non evidenziato nel 3D: '+
+              String(error?.message||error),'Visualizzazione 3D');
+          }
+        }
         if(data.node.canExecute){
           const response=await execute(data.node.id);
           const result=await act(response);
