@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           node <<'NODE'
-          const assert=require('node:assert/strict');
+          const assert=(await import('node:assert/strict')).default;
           const base='https://termodel-mcp-gateway.onrender.com';
           const origin='https://www.termodel.it';
           const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
