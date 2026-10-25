@@ -6,7 +6,8 @@
 (function(root){
   'use strict';
   function create(config){
-    const {container,read,execute,act,addMessage,available}=config;
+    const {container,read,execute,act,addMessage,available,onNoAction}=config;
+    const route=[];
     let busy=false,currentButtons=null,active=true;
     function button(label,click,cls){
       const el=document.createElement('button');
@@ -50,12 +51,41 @@
            !Array.isArray(data.choices))throw Error('Risposta del dialogatore non valida');
         pending.remove();
         const body=String(data.node.message||'').trim();
+        // The route contains only replies explicitly selected by the user.
+        // Reset the old branch when returning to the root; never fabricate data.
+        if(data.node.id==='inizio'){
+          route.length=0;
+          route.push({id:'inizio',question:body||data.node.label||'',answer:null});
+        }else{
+          const question=route[route.length-1]?.question||'Quale problema hai?';
+          const previousIndex=route.findIndex(x=>x.id===data.node.id);
+          if(previousIndex>=0)route.splice(previousIndex);
+          route.push({id:data.node.id,question,answer:label||data.node.label});
+          // The message displayed at this branch can become the next question.
+          // It is NOT a confirmed user answer.
+          route[route.length-1].nextQuestion=body;
+        }
         if(body)addMessage('assistant',body,'Percorso guidato · Neon');
         if(data.node.canExecute){
           const response=await execute(data.node.id);
           const result=await act(response);
           addMessage('assistant',result.message||'Operazione completata.',
             result.source||'Tiralinee / SOS');
+        }
+        const terminal=!data.node.canExecute&&data.choices.length===0&&data.node.id!=='inizio';
+        if(terminal&&typeof onNoAction==='function'){
+          // Offer an expert, but do not open an external chat or issue a ticket.
+          // Only confirmed path choices are forwarded, not provisional notes.
+          onNoAction({
+            treeId:String(data.treeId||'').slice(0,60),
+            currentNodeId:data.node.id,
+            steps:route.filter(x=>x.answer).map(x=>({
+              question:String(x.question||'').slice(0,250),
+              answer:String(x.answer||'').slice(0,250)
+            })),
+            unresolved:true,
+            actionExecuted:false
+          });
         }
         showOptions(data.choices,data.node.id);
       }catch(error){
