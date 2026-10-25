@@ -55,7 +55,7 @@ const unknown=expert.buildPrompt({paired:false,guided:{
 assert.ok(unknown.includes('Rete elettrica'));
 assert.ok(unknown.includes('Non è stata aperta una sessione assistenza SOS'));
 const html=fs.readFileSync(path.join(root,'mcp-dump-test.html'),'utf8');
-assert.ok(html.includes("HARNESS_VERSION = '1.16.1'"));
+assert.ok(html.includes("HARNESS_VERSION = '1.16.2'"));
 assert.ok(html.includes('offerExpertChat(input)'));
 assert.ok(html.includes("expertChatLaunched=true"));
 assert.ok(html.includes("chatPane.hidden=true"));
