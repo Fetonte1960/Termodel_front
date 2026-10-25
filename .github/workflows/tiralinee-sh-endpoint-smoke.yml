@@ -1,0 +1,62 @@
+name: Tiralinee SH endpoint integration smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tiralinee-sh-endpoint-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Gateway live + SH synthetic read-only query
+        shell: bash
+        run: |
+          node <<'NODE'
+          const assert=require('node:assert/strict');
+          const base='https://termodel-mcp-gateway.onrender.com';
+          const origin='https://www.termodel.it';
+          const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
+          let ready=false;
+          for(let n=0;n<12;n++){
+            try{
+              const res=await fetch(base+'/health',{signal:AbortSignal.timeout(18000)});
+              if(res.ok){ready=true;break;}
+            }catch(e){}
+            await sleep(12000);
+          }
+          assert.equal(ready,true,'Gateway Render did not become healthy');
+          const noOrigin=await fetch(base+'/browser/lab/register',{method:'POST'});
+          assert.equal(noOrigin.status,401,'Origin policy was bypassed');
+          const registered=await fetch(base+'/browser/lab/register',{
+            method:'POST',headers:{Origin:origin}});
+          assert.equal(registered.status,200,'Lab register failed');
+          const cred=await registered.json();
+          assert.match(cred.id,/^[a-f0-9]{32}$/);
+          assert.match(cred.token,/^[a-f0-9]{64}$/);
+          assert.equal(cred.purpose,'tiralinee.lab.sh.synthetic-read');
+          const url=base+'/browser/lab/engine/'+cred.id;
+          const body=JSON.stringify({action:'ask',message:'Quali commesse sono disponibili?'});
+          const invalid=await fetch(url,{method:'POST',headers:{
+            Origin:origin,'Content-Type':'application/json',Authorization:'Bearer invalid'},
+            body});
+          assert.equal(invalid.status,401,'Lab token policy was bypassed');
+          const response=await fetch(url,{method:'POST',signal:AbortSignal.timeout(175000),headers:{
+            Origin:origin,'Content-Type':'application/json',
+            Authorization:'Bearer '+cred.token},body});
+          if(!response.ok){
+            const error=await response.text();
+            throw Error('SH end-to-end HTTP '+response.status+': '+error.slice(0,250));
+          }
+          const data=await response.json();
+          assert.equal(data.esito,'SUCCESS','SH recognized query did not succeed');
+          assert.equal(typeof data.answer,'string');
+          assert.ok(data.answer.length>0);
+          console.log('TIRALINEE_LAB_GATEWAY_SMOKE_OK register=200 invalid=401 query=SUCCESS');
+          NODE
