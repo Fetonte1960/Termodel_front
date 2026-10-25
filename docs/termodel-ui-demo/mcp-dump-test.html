@@ -1434,6 +1434,23 @@ function rememberOpeningMaterial(mesh){
   emissive:m.emissive.clone(),emissiveIntensity:m.emissiveIntensity,
   opacity:m.opacity,transparent:m.transparent,depthWrite:m.depthWrite});
 }
+function highlightOpening(g,id){
+ if(!labFixtureLoaded||!g||!/^P3D-O[0-9]{4,6}$/.test(id))throw Error('FIN assente');
+ const nums=[g.xCm,g.yCm,g.widthCm,g.heightCm,g.sottofinestraCm];
+ if(!nums.every(Number.isFinite)||g.widthCm<=0||g.heightCm<=0)throw Error('FIN non valido');
+ const x=g.xCm/100,y=g.yCm/100,w=g.widthCm/100,h=g.heightCm/100;
+ const z=(g.sottofinestraCm+g.heightCm/2)/100;
+ const meshes=objects.walls.filter(m=>matchesOpening(m,x,y,z,w,h));
+ if(meshes.length<2||meshes.length>8)throw Error('FIN non associabile univocamente al modello');
+ clearRoomHighlight();
+ for(const mesh of meshes){
+  rememberOpeningMaterial(mesh);
+  mesh.material.color.setHex(0xffaa15);
+  mesh.material.emissive.setHex(0x8a4500);
+  mesh.material.emissiveIntensity=.8;
+ }
+ return {meshCount:meshes.length};
+}
 window.__termodelHighlightOpening=(data,id)=>{if(!data||!id)throw Error('FIN assente');return highlightOpening(data,id);};
 window.__termodelClearRoomHighlight=clearRoomHighlight;
 
