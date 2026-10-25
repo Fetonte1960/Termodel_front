@@ -79,7 +79,21 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.8';
+  const HARNESS_VERSION = '1.9';
+  // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
+  const launchParams = new URLSearchParams(window.location.search);
+  const requestedSession = launchParams.get('sessionId')?.trim() || '';
+  const handoffRequested = Boolean(requestedSession);
+  if (handoffRequested) {
+    history.replaceState(null, '', window.location.pathname);
+    document.querySelector('[data-tab="3d"]')?.click();
+    const status = document.getElementById('status');
+    status.textContent = 'Sessione esterna richiesta: ' + requestedSession +
+      '. In attesa di collegamento autorizzato dal Gateway FastPharmaSOS. Nessuna nuova sessione creata.';
+    document.getElementById('session').textContent = 'Sessione richiesta: ' + requestedSession + ' (non collegata)';
+    document.getElementById('connect').disabled = true;
+  }
+
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
@@ -350,7 +364,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
     window.dispatchEvent(new Event('resize'));
   }));
   window.__termodelHarnessPreview = callback=>{setPreview=callback;};
-  el('connect').addEventListener('click',()=>{void connect()});
+  el('connect').addEventListener('click',()=>{if (!handoffRequested) void connect()});
   el('disconnect').addEventListener('click',()=>{
     abort?.abort(); setStatus('Disconnesso.');
   });
