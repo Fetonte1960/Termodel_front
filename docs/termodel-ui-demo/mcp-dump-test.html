@@ -86,7 +86,10 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
   const handoffRequested = Boolean(requestedSession);
   if (handoffRequested) {
     history.replaceState(null, '', window.location.pathname);
-    document.querySelector('[data-tab="3d"]')?.click();
+    for (const tab of document.querySelectorAll('[data-tab]'))
+      tab.setAttribute('aria-selected', String(tab.dataset.tab === '3d'));
+    for (const panel of document.querySelectorAll('.tab-panel'))
+      panel.classList.toggle('active', panel.id === 'tab-3d');
     const status = document.getElementById('status');
     status.textContent = 'Sessione esterna richiesta: ' + requestedSession +
       '. In attesa di collegamento autorizzato dal Gateway FastPharmaSOS. Nessuna nuova sessione creata.';
