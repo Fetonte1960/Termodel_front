@@ -87,6 +87,10 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 .sh-candidates button:hover{background:#474747}
 #api-chat-compose:not(:disabled){cursor:text}
 #api-chat-send:not(:disabled){cursor:pointer;opacity:1}
+.sh-expert-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
+.sh-expert-actions button{background:#eee;color:#252525;border:1px solid #aaa;border-radius:14px;margin:0;padding:8px 16px;font:600 13px system-ui,sans-serif}
+.sh-expert-actions button.sh-decline{background:#373737;color:#eee;border-color:#555}
+body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!important}
 </style>
 </head>
 <body>
@@ -149,10 +153,11 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"></script>
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
+<script src="./tiralinee-expert-handoff.js?v=1.0.0"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.15.1';
+  const HARNESS_VERSION = '1.15.2';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -222,6 +227,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   // SOS DEMO: session handoff from the exact originating Service Shell window.
   const SOS_ORIGIN = 'https://fetonte1960.github.io';
   let shChatToken=null, shChatController=null, shBusy=false;
+  let trustedSosExpertBootstrap='',expertOffer=null,expertChatLaunched=false;
   const chatPane=document.getElementById('api-chat-pane');
   const chatHistory=document.getElementById('api-chat-history');
   const chatInput=document.getElementById('api-chat-compose');
@@ -407,13 +413,87 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
     return {message:r.message||'Comando completato.',
       source:'Tiralinee · '+r.visibleCount+'/'+r.primitiveCount+' elementi visibili'};
   }
+  function clearExpertOffer(){
+    if(expertOffer){expertOffer.remove();expertOffer=null;}
+  }
+  function expertHistory(){
+    return [...chatHistory.querySelectorAll('.sh-message')].slice(-10)
+      .map(row=>({role:row.classList.contains('sh-user')?'user':'assistant',
+        text:row.querySelector('.sh-bubble')?.textContent||''}))
+      .filter(item=>item.text&&item.text!==
+        window.TiralineeExpertHandoff?.QUESTION);
+  }
+  function closeEngineChat(){
+    // Close only the SH dialogue; keep the existing 3D canvas and SOS viewer
+    // pairing alive so the expert can use the same Gateway/Service resources.
+    expertChatLaunched=true;
+    clearExpertOffer();
+    document.body.classList.remove('api-chat-mode');
+    document.body.classList.add('expert-chat-launched');
+    chatInput.disabled=true;chatSend.disabled=true;
+    chatPane.hidden=true;
+    document.getElementById('launch-state').textContent=
+      'Chat SH chiusa · ChatGPT esperto aperto · viewer 3D attivo';
+    window.dispatchEvent(new Event('resize'));
+  }
+  function offerExpertChat(lastRequest){
+    if(expertChatLaunched||!window.TiralineeExpertHandoff)return;
+    clearExpertOffer();
+    addShBubble('assistant',window.TiralineeExpertHandoff.QUESTION,
+      'SH-IntelligenceEngine · richiesta non riconosciuta');
+    const actionRow=document.createElement('div');
+    actionRow.className='sh-expert-actions';
+    const yes=document.createElement('button');
+    yes.type='button';yes.textContent='Sì, passa a ChatGPT esperto';
+    const no=document.createElement('button');
+    no.type='button';no.textContent='No, resto con SH';
+    no.className='sh-decline';
+    yes.addEventListener('click',()=>{
+      if(expertOffer!==actionRow||expertChatLaunched)return;
+      const prompt=window.TiralineeExpertHandoff.buildPrompt({
+        paired:shChatMode&&Boolean(shChatToken),
+        shellBootstrap:trustedSosExpertBootstrap,
+        history:expertHistory(),
+        lastRequest
+      });
+      const tab=window.open('https://chatgpt.com/?q='+
+        encodeURIComponent(prompt),'_blank');
+      if(!tab){
+        addShBubble('assistant',
+          'Il browser ha bloccato la nuova chat. Consenti i popup e premi di nuovo Sì.',
+          'ChatGPT non aperto');
+        return;
+      }
+      // Do not allow the external AI tab to address the viewer through opener.
+      try{tab.opener=null;}catch(_){}
+      closeEngineChat();
+    });
+    no.addEventListener('click',()=>{
+      if(expertOffer!==actionRow)return;
+      clearExpertOffer();
+      addShBubble('assistant',
+        'Va bene. Puoi riformulare la richiesta e continuare con SH.',
+        'SH-IntelligenceEngine');
+      chatInput.focus();
+    });
+    actionRow.append(yes,no);
+    chatHistory.appendChild(actionRow);
+    expertOffer=actionRow;
+    chatHistory.scrollTop=chatHistory.scrollHeight;
+  }
+
   async function sendLabMessage(message){
-    if(!labChatMode||labBusy||!labGraphics)return;
+    if(!labChatMode||labBusy||!labGraphics||expertChatLaunched)return;
     const input=String(message||'').trim();if(!input||input.length>500)return;
+    clearExpertOffer();
     labBusy=true;setLabReady(true,'Interpretazione SH…');
     addShBubble('user',input);const pending=addShBubble('assistant','Interpreto la richiesta…');
     try{
-      const result=await executeShIntent(await askLabEngine(input));
+      const interpreted=await askLabEngine(input);
+      if(window.TiralineeExpertHandoff?.isUnrecognized(interpreted)){
+        pending.remove();offerExpertChat(input);return;
+      }
+      const result=await executeShIntent(interpreted);
       pending.remove();addShBubble('assistant',result.message,result.source);
     }catch(error){
       pending.remove();addShBubble('assistant','Non eseguito: '+String(error?.message||error),
@@ -449,16 +529,21 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   }
 
   async function sendShMessage(message){
-    if(!shChatMode||!shChatToken||shBusy||!shChatController||
+    if(!shChatMode||expertChatLaunched||!shChatToken||shBusy||!shChatController||
        shChatController.signal.aborted)return;
     const input=String(message||'').trim();if(!input||input.length>500)return;
+    clearExpertOffer();
     shBusy=true;setShActive(true,'Interpretazione SH…');
     addShBubble('user',input);const pending=addShBubble('assistant','Interpreto la richiesta…');
     try{
       const r=await viewerRequest('/browser/viewer/interpret/'+encodeURIComponent(requestedSession),
         shChatToken,{method:'POST',signal:shChatController.signal,
           headers:{'Content-Type':'application/json'},body:JSON.stringify({message:input})});
-      const result=await executeShIntent(await r.json(),true);
+      const interpreted=await r.json();
+      if(window.TiralineeExpertHandoff?.isUnrecognized(interpreted)){
+        pending.remove();offerExpertChat(input);return;
+      }
+      const result=await executeShIntent(interpreted,true);
       pending.remove();addShBubble('assistant',result.message,result.source);
     }catch(error){
       pending.remove();addShBubble('assistant','Non eseguito: '+String(error?.message||error),
@@ -566,6 +651,10 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
           body:JSON.stringify({handoffCode:data.handoffCode}),cache:'no-store'
         });
         if(!result.ok)throw Error('Claim HTTP '+result.status);
+        // Bootstrapped SOS guidance is accepted only from the exact, previously
+        // verified Shell message and after the one-time Gateway claim succeeds.
+        if(typeof data.expertBootstrap==='string'&&data.expertBootstrap.length<=7000)
+          trustedSosExpertBootstrap=data.expertBootstrap;
         const claimed=await result.json();
         if(claimed.sessionId!==requestedSession || claimed.capability!=='sos.viewer.read-only' ||
           typeof claimed.viewerToken!=='string')throw Error('Risposta autorizzazione non valida');
