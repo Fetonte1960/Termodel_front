@@ -155,12 +155,13 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
-  const handoffRequested = Boolean(requestedSession);
-  // chat=api: preview non collegata. chat=sh: interrogazioni SOS con viewer
-  // token monouso; SH-IntelligenceEngine resta invariato e separato.
   const chatMode=(launchParams.get('chat') || '').trim().toLowerCase();
-  const shChatMode=chatMode==='sh';
-  const labChatMode=chatMode==='lab';
+  // chat=sh without SOS session => autonomous Tiralinee lab.
+  // chat=sh with sessionId => authenticated SOS viewer as before.
+  // chat=lab always runs locally, even when an incidental sessionId exists.
+  const handoffRequested=Boolean(requestedSession) && chatMode!=='lab';
+  const shChatMode=chatMode==='sh'&&handoffRequested;
+  const labChatMode=chatMode==='lab'||(chatMode==='sh'&&!handoffRequested);
   const apiChatMode=['api','apis','sh','lab'].includes(chatMode);
   document.body.classList.toggle('api-chat-mode', apiChatMode);
   if (apiChatMode) {
