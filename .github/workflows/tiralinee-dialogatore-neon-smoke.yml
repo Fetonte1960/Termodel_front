@@ -132,13 +132,17 @@ jobs:
           assert.equal(qg.data.node.canRequestAssistance,false);
           assert.match(qg.data.node.message,/P3D-D0012/);
           assert.match(qg.data.node.message,/destra/);
-          assert.equal(qg.data.choices.length,5);
-          const location=await get('tec.pos.QG-01.destra');
-          assert.equal(location.status,200);
-          assert.match(location.data.node.message,/Conforme al posizionamento/);
+          assert.equal(qg.data.choices.length,1,
+            'The technician should not be asked to choose a stored position');
+          assert.equal(qg.data.choices[0].id,'tecnico.apparati');
+          assert(!qg.data.node.message.includes('Per completare la localizzazione'));
+          assert.equal((await get('tec.pos.QG-01.destra')).status,404,
+            'Old position-choice endpoint must no longer be available');
           const fridge=await get('tec.asset.FR-01');
           assert.equal(fridge.status,200);
           assert.equal(fridge.data.node.roomId,'locale_6');
+          assert.match(fridge.data.node.message,/di fronte alla porta/);
+          assert.deepEqual(fridge.data.choices.map(x=>x.id),['tecnico.apparati']);
           const climate=await get('tec.asset.CLIMA-01');
           assert.equal(climate.status,200);
           assert.equal(climate.data.node.roomId,'locale_3');
