@@ -161,11 +161,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.0"></script>
-<script src="./tiralinee-guided-chat.js?v=1.0.3"></script>
+<script src="./tiralinee-guided-chat.js?v=1.0.4"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.16.5';
+  const HARNESS_VERSION = '1.16.6';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -266,6 +266,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     chatSend.title='Invia richiesta a SOS';
   }
   let labGraphics=null, labBusy=false, labAccess=null;
+  let loaded3DRevision=null;
   function setLabReady(ready,detail) {
     if(!labChatMode)return;
     chatInput.disabled=!ready||labBusy;
@@ -343,7 +344,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     const model=await response.json();
     const result=await labGraphics.loadSosModel(model);
     const revisionHeader=response.headers.get('X-SOS-Project-Revision')||'';
-    const revision=revisionHeader?decodeURIComponent(revisionHeader).slice(0,8):'n/d';
+    loaded3DRevision=revisionHeader?decodeURIComponent(revisionHeader):null;
+    const revision=loaded3DRevision?.slice(0,8)||'n/d';
     return {...result,revision};
   }
   // All'avvio standalone: connessione al Gateway MCP, lettura 3D Termodel
@@ -764,9 +766,24 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       execute:id=>guidedTransport(id,true),
       act:data=>executeShIntent(data,shChatMode),
       addMessage:addShBubble,
-      onNavigate:clearExpertOffer,
+      onNavigate:()=>{
+        clearExpertOffer();
+        window.__termodelClearRoomHighlight?.();
+      },
       onRequestAssistance:requestGuidedAssistance,
       onReviewRequests:reviewGuidedRequests,
+      onRoomSelected:async node=>{
+        if(!loaded3DRevision || node.topologyRevision!==loaded3DRevision)
+          throw Error('La revisione del modello 3D non coincide con il topologico; ricarica il modello.');
+        if(typeof window.__termodelHighlightRoom!=='function')
+          throw Error('Visualizzatore 3D non pronto');
+        const result=window.__termodelHighlightRoom({
+          roomId:node.roomId,wallSourceIds:node.wallSourceIds,
+          topologyRevision:node.topologyRevision
+        });
+        return {message:'Locale '+node.label+' evidenziato nel 3D: '+
+          result.primitiveCount+' superfici di '+result.wallCount+' pareti.'};
+      },
       onNoAction:summary=>{
         // The database supplied no next question and no executable action.
         // An expert handoff is offered but NEVER launched automatically.
@@ -889,6 +906,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         if(typeof setServiceModel!=='function')
           throw Error('Renderer definitivo Termodel Service non inizializzato');
         const drawn=setServiceModel(serviceModel);
+        const loadedHeader=response.headers.get('X-SOS-Project-Revision')||'';
+        loaded3DRevision=loadedHeader?decodeURIComponent(loadedHeader):null;
         if(drawn?.frameRendered!==true || !(drawn.drawCalls>0))
           throw Error('Disegno definitivo WebGL non confermato');
         document.getElementById('preview-info').textContent=
