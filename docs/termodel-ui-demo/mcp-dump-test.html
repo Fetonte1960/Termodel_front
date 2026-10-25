@@ -160,7 +160,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.0"></script>
-<script src="./tiralinee-guided-chat.js?v=1.0.0"></script>
+<script src="./tiralinee-guided-chat.js?v=1.0.1"></script>
 <script>
 (() => {
   'use strict';
@@ -495,6 +495,122 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     chatHistory.scrollTop=chatHistory.scrollHeight;
   }
 
+  // The guided tree offers a request only AFTER a confirmed first answer.
+  // The read-only viewer never receives the Shell owner token: creation is
+  // delegated to that exact paired Shell after explicit additional inputs.
+  let guidedAssistanceBusy=false;
+  function guidedAssistanceQuestion(text,options){
+    return new Promise(resolve=>{
+      addShBubble('assistant',text,'Richiesta assistenza SOS');
+      const row=document.createElement('div');
+      row.className='sos-guided-options';
+      for(const [label,value] of options){
+        const b=document.createElement('button');
+        b.type='button';b.className='sos-guided-choice';b.textContent=label;
+        b.addEventListener('click',()=>{
+          row.remove();
+          addShBubble('user',label,'Richiesta assistenza SOS');
+          resolve(value);
+        },{once:true});
+        row.appendChild(b);
+      }
+      chatHistory.appendChild(row);
+      chatHistory.scrollTop=chatHistory.scrollHeight;
+    });
+  }
+  async function requestGuidedAssistance(summary){
+    if(guidedAssistanceBusy)return;
+    if(!shChatMode||!shChatToken||!window.opener||window.opener.closed){
+      addShBubble('assistant',
+        'Per registrare una richiesta devi aprire il visualizzatore dalla Service Shell SOS '+
+        'con ticket attivo e sessione autorizzata. In questa demo non è stata registrata alcuna richiesta.',
+        'Assistenza non avviata');
+      return;
+    }
+    guidedAssistanceBusy=true;
+    try{
+      const risk=await guidedAssistanceQuestion(
+        'Prima di inoltrare la richiesta: ci sono pericoli attuali per le persone?',
+        [['Sì',true],['No',false],['Non so',null]]);
+      if(risk===null){
+        addShBubble('assistant',
+          'Il rischio per le persone non è ancora accertato. Nessuna richiesta registrata; '+
+          'puoi chiedere aiuto all’assistente per chiarire la situazione. In caso di pericolo immediato chiama il 112.',
+          'Dati da verificare');
+        return;
+      }
+      if(risk) addShBubble('assistant',
+        'Se c’è un pericolo immediato, allontanati dalla zona a rischio e chiama il 112. '+
+        'La richiesta SOS non sostituisce i soccorsi.','Avvertenza sicurezza');
+      const urgencyOptions=risk
+        ?[['Intervento urgente','urgente'],['Messa in sicurezza immediata','messa_in_sicurezza'],['Non so',null]]
+        :[['Ordinaria','ordinaria'],['Urgente','urgente'],['Messa in sicurezza','messa_in_sicurezza'],['Non so',null]];
+      const urgency=await guidedAssistanceQuestion(
+        'Qual è la priorità richiesta?',urgencyOptions);
+      if(!urgency){
+        addShBubble('assistant',
+          'La priorità non è ancora stata indicata. La richiesta non è stata inviata.',
+          'Dati da completare');
+        return;
+      }
+      if(!shChatToken||!window.opener||window.opener.closed){
+        addShBubble('assistant','Sessione SOS scollegata: nessuna richiesta inviata.','SOS');
+        return;
+      }
+      const requestId=crypto.randomUUID();
+      const pending=addShBubble('assistant','Registro la richiesta nel servizio SOS…',
+        'Attendo ricevuta');
+      const response=await new Promise((resolve,reject)=>{
+        let timer;
+        const handler=event=>{
+          if(event.origin!==SOS_ORIGIN||event.source!==window.opener ||
+             event.data?.type!=='sos-viewer-assistance-result' ||
+             event.data.sessionId!==requestedSession ||
+             event.data.requestId!==requestId)return;
+          cleanup();resolve(event.data);
+        };
+        function cleanup(){
+          clearTimeout(timer);window.removeEventListener('message',handler);
+        }
+        window.addEventListener('message',handler);
+        timer=setTimeout(()=>{
+          cleanup();reject(Error('Conferma SOS scaduta: verifica lo stato prima di riprovare.'));
+        },45000);
+        window.opener.postMessage({
+          type:'sos-viewer-assistance-request',
+          sessionId:requestedSession,
+          requestId,
+          categoryNodeId:summary.categoryNodeId,
+          steps:summary.steps.map(x=>({id:x.id,answer:x.answer})),
+          rischioPersone:risk,
+          urgenza:urgency,
+          confermaEsplicita:true
+        },SOS_ORIGIN);
+      });
+      pending.remove();
+      if(response.status==='received'&&typeof response.id==='string'){
+        const card=response.scheda||{};
+        const receipt='Richiesta di assistenza acquisita dal servizio SOS. '+
+          'ID: '+response.id+'; stato: '+(response.state||'registrata')+'.\n'+
+          'Oggetto: '+String(card.oggetto||'Da precisare')+'\n'+
+          'Problema: '+String(card.descrizione||'Da precisare')+'\n'+
+          'Locale: '+String(card.locale||'Da accertare')+'\n'+
+          'Priorità dichiarata: '+String(card.urgenza||'Da valutare')+'\n'+
+          'Rischio persone dichiarato: '+(card.rischioPersone?'Sì':'No')+'\n'+
+          'Dettagli tecnici ancora da verificare. Nessun tecnico è stato automaticamente contattato.';
+        addShBubble('assistant',receipt,'Ricevuta persistita SOS');
+      }else{
+        addShBubble('assistant','Richiesta NON registrata: '+
+          String(response.reason||response.error||'risposta non confermata'),
+          'SOS · mancata acquisizione');
+      }
+    }catch(error){
+      addShBubble('assistant','Non posso confermare la registrazione: '+
+        String(error?.message||error)+
+        '. Verifica la lista delle tue richieste prima di riprovare.',
+        'SOS · esito non confermato');
+    }finally{guidedAssistanceBusy=false;}
+  }
   // One transcript: the guided Neon tree and free-form SH interpretation.
   let sosGuidedController=null;
   async function guidedTransport(nodeId,execute=false){
@@ -534,6 +650,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       act:data=>executeShIntent(data,shChatMode),
       addMessage:addShBubble,
       onNavigate:clearExpertOffer,
+      onRequestAssistance:requestGuidedAssistance,
       onNoAction:summary=>{
         // The database supplied no next question and no executable action.
         // An expert handoff is offered but NEVER launched automatically.
