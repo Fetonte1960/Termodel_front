@@ -79,7 +79,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.9.1';
+  const HARNESS_VERSION = '1.9.2';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -132,16 +132,14 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
         const shell=Array.isArray(previewPlan.edificio?.outerShell)?
           previewPlan.edificio.outerShell.length:0;
         if(walls===0 && shell<3) throw Error('Il modello non contiene geometria 3D da mostrare');
-        setPreview(previewPlan);
+        // Chrome throttles requestAnimationFrame in non-focused windows.
+        // Require synchronous confirmation from the real Three.js WebGL renderer.
+        const drawResult=setPreview(previewPlan);
         const canvas=document.querySelector('#view3d canvas');
         const summary=document.getElementById('preview-info')?.textContent||'';
-        if(!canvas || !summary.includes('Anteprima 3D sperimentale'))
-          throw Error('Anteprima Three.js non disponibile');
-        // Wait for an animation frame so the Three.js renderer can present the scene.
-        await new Promise((resolve,reject)=>{
-          const timeout=setTimeout(()=>reject(Error('Timeout rendering')),7000);
-          requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(timeout);resolve();}));
-        });
+        if(!canvas || !summary.includes('Anteprima 3D sperimentale') ||
+           drawResult?.frameRendered!==true || !(drawResult.drawCalls>0))
+          throw Error('Rendering WebGL non confermato');
         status='rendered';detail='Progetto caricato in 3D';
         document.getElementById('launch-state').textContent='Viewer SOS · modello visualizzato';
       }
@@ -563,7 +561,7 @@ function clear(){
 function redraw(plan){
  clear();
  const view2d=document.getElementById('view2d');view2d.replaceChildren();
- if(!plan){document.getElementById('preview-info').textContent='In attesa di un progetto valido.';return;}
+ if(!plan){document.getElementById('preview-info').textContent='In attesa di un progetto valido.';return {frameRendered:false,drawCalls:0};}
  const doc=new DOMParser().parseFromString(plan.svgPulito,'image/svg+xml');
  const svg=doc.documentElement;
  if(svg.localName==='svg'){
@@ -596,6 +594,18 @@ function redraw(plan){
  }
  document.getElementById('preview-info').textContent='Anteprima 3D sperimentale · '+(plan.stats?.linee||0)+' pareti · geometria validata da GeneraPianta.';
  filters();
+ const primitives=objects.walls.length+objects.floor.length;
+ if(!primitives || !renderer.domElement.isConnected ||
+    renderer.getContext().isContextLost() ||
+    Math.min(host.clientWidth,host.clientHeight)<2)
+   throw Error('Canvas WebGL o geometria non disponibili');
+ // Submit a frame even when Chrome is throttling rAF in a separate window.
+ resize();
+ controls.update();
+ renderer.render(scene,camera);
+ const drawCalls=renderer.info.render.calls;
+ if(drawCalls<1) throw Error('WebGL non ha disegnato primitive');
+ return {frameRendered:true,drawCalls};
 }
 function filters(){
  for(const group of Object.values(objects))for(const object of group)
