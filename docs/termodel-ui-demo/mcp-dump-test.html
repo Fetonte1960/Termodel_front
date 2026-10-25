@@ -147,10 +147,11 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   </div>
 </aside>
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"></script>
+<script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.12.0';
+  const HARNESS_VERSION = '1.13.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -159,7 +160,8 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   // token monouso; SH-IntelligenceEngine resta invariato e separato.
   const chatMode=(launchParams.get('chat') || '').trim().toLowerCase();
   const shChatMode=chatMode==='sh';
-  const apiChatMode=['api','apis','sh'].includes(chatMode);
+  const labChatMode=chatMode==='lab';
+  const apiChatMode=['api','apis','sh','lab'].includes(chatMode);
   document.body.classList.toggle('api-chat-mode', apiChatMode);
   if (apiChatMode) {
     const splitter=document.getElementById('api-chat-divider');
@@ -220,6 +222,16 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   const chatDescription=document.querySelector('.api-chat-welcome p');
   const chatPlaceholder=document.querySelector('.api-chat-placeholder');
   const chatFooter=document.querySelector('.api-chat-disclaimer');
+  if(labChatMode) {
+    chatTitle.textContent='Tiralinee · Laboratorio SH';
+    chatState.textContent='Caricamento modello demo…';
+    chatDescription.textContent='Collaudo autonomo delle funzioni grafiche: zoom e filtri sul modello demo. Per interrogare il motore SH esistente, scrivi SH: seguito dalla domanda.';
+    chatPlaceholder.textContent='Esempi: «zoom avanti», «mostra solo pareti», «nascondi piano Primo», «ripristina filtri», «SH: quante commesse sono aperte?»';
+    chatFooter.textContent='Comandi grafici locali · SH Engine v0.4.0 solo su richiesta esplicita SH: · nessun ticket SOS';
+    chatInput.setAttribute('aria-label','Comando laboratorio Tiralinee');
+    chatInput.placeholder='Caricamento geometria di prova…';
+    chatSend.title='Esegui comando di prova';
+  }
   if(shChatMode) {
     chatTitle.textContent='Chat SOS · SH Engine';
     chatState.textContent='In attesa della sessione';
@@ -229,6 +241,110 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
     chatInput.placeholder='In attesa del collegamento alla farmacia…';
     chatInput.setAttribute('aria-label','Messaggio SOS');
     chatSend.title='Invia a SOS';
+  }
+  let labGraphics=null, labBusy=false, labAccess=null;
+  function setLabReady(ready,detail) {
+    if(!labChatMode)return;
+    chatInput.disabled=!ready||labBusy;
+    chatSend.disabled=!ready||labBusy;
+    chatState.textContent=detail||(ready?'Laboratorio pronto':'Laboratorio non disponibile');
+    if(ready)chatInput.placeholder='Prova zoom, filtri oppure SH: domanda…';
+  }
+  // The Three.js module registers only declarative, local viewer actions.
+  // This path must never invent an SOS ticket/session or claim a viewer token.
+  window.__termodelLabReady=async graphics=>{
+    if(!labChatMode)return;
+    labGraphics=graphics;
+    try {
+      const info=await graphics.execute({action:'loadDemo'});
+      setLabReady(true,'Demo caricata · '+info.primitiveCount+' primitive');
+      document.getElementById('launch-state').textContent='Tiralinee autonomo · SH su richiesta';
+    }catch(error){
+      setLabReady(false,'Modello demo non disponibile');
+      addShBubble('assistant','Caricamento del modello demo non riuscito: '+String(error?.message||error));
+    }
+  };
+  async function askLabEngine(message,confirmation=null){
+    const gateway='https://termodel-mcp-gateway.onrender.com';
+    if(!labAccess){
+      const res=await fetch(gateway+'/browser/lab/register',{method:'POST',cache:'no-store'});
+      if(!res.ok)throw Error('SH Gateway laboratorio HTTP '+res.status);
+      labAccess=await res.json();
+      if(!/^[a-f0-9]{32}$/.test(labAccess.id||'')||
+         !/^[a-f0-9]{64}$/.test(labAccess.token||''))throw Error('Credenziale laboratorio non valida');
+    }
+    const controller=new AbortController();
+    const limit=setTimeout(()=>controller.abort(),135000);
+    try {
+      const payload=confirmation?
+        {action:'confirm',message,candidateId:confirmation.candidateId,
+          failureId:confirmation.failureId||null}:
+        {action:'ask',message};
+      const response=await fetch(gateway+'/browser/lab/engine/'+labAccess.id,{
+        method:'POST',cache:'no-store',signal:controller.signal,
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+labAccess.token},
+        body:JSON.stringify(payload)
+      });
+      if(response.status===401||response.status===410)labAccess=null;
+      if(!response.ok)throw Error('SH Engine non disponibile: HTTP '+response.status);
+      return response.json();
+    }finally{clearTimeout(limit);}
+  }
+  async function sendLabMessage(text,confirmation=null){
+    if(!labChatMode||labBusy||!labGraphics)return;
+    const original=String(text||'').trim();
+    if(!original||original.length>500)return;
+    const remote=confirmation||/^sh\s*:/i.test(original);
+    const message=remote?original.replace(/^sh\s*:\s*/i,'').trim():original;
+    if(remote&&!message)return;
+    labBusy=true;setLabReady(true,'Esecuzione…');
+    if(!confirmation)addShBubble('user',original);
+    const pending=addShBubble('assistant',remote?'Interrogo SH…':'Eseguo sul viewer…');
+    try {
+      if(remote){
+        const data=await askLabEngine(message,confirmation);
+        pending.remove();
+        addShBubble('assistant',data.answer||
+          (data.esito==='FAULT'?'Richiesta non riconosciuta.':'Risposta non disponibile.'),
+          'SH-IntelligenceEngine v0.4.0 · programmazione FastPharmaSOS');
+        if(data.esito==='FAULT'&&!confirmation&&Array.isArray(data.candidates)&&data.candidates.length){
+          const list=document.createElement('div');list.className='sh-candidates';
+          const title=document.createElement('small');title.textContent='Proposte SH:';
+          list.appendChild(title);
+          for(const item of data.candidates.slice(0,3)){
+            if(typeof item?.id!=='string'||typeof item?.text!=='string')continue;
+            const button=document.createElement('button');button.type='button';button.textContent=item.text;
+            button.addEventListener('click',()=>{
+              if(labBusy)return;
+              list.remove();addShBubble('user','Confermo: '+item.text);
+              void sendLabMessage('SH: '+message,{candidateId:item.id,failureId:data.failureId});
+            });
+            list.appendChild(button);
+          }
+          chatHistory.appendChild(list);
+        }
+      }else{
+        const command=window.TiralineeLab?.parse(original);
+        if(!command){
+          pending.remove();
+          addShBubble('assistant','Comando grafico non riconosciuto. Digita «aiuto» per i comandi locali; usa «SH: domanda» soltanto per interrogare la programmazione SH FastPharmaSOS.', 'LAB · nessuna azione eseguita');
+        }else if(command.action==='help'){
+          pending.remove();
+          addShBubble('assistant','Comandi: zoom avanti, zoom indietro, zoom tutto; mostra/nascondi pareti, finestre, tetto, pavimenti, solai; mostra solo pareti; mostra/nascondi piano Primo; mostra tutto; stato filtri; carica demo. Per interrogazioni esistenti: SH: quante commesse sono aperte?', 'LAB · frasario locale');
+        }else{
+          const answer=await labGraphics.execute(command);
+          pending.remove();
+          addShBubble('assistant',answer.message||'Operazione completata.',
+            'LAB · '+(answer.visibleCount??0)+' elementi visibili / '+(answer.primitiveCount??0)+' totali');
+        }
+      }
+    }catch(error){
+      pending.remove();
+      addShBubble('assistant','Non completato: '+String(error?.message||error),remote?'SH · nessuna operazione grafica':'LAB · nessuna conferma');
+    }finally{
+      labBusy=false;setLabReady(Boolean(labGraphics),'Laboratorio pronto');
+      chatHistory.scrollTop=chatHistory.scrollHeight;
+    }
   }
   function setShActive(on, message) {
     if(!shChatMode)return;
@@ -327,12 +443,14 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
     }
   }
   chatSend.addEventListener('click',()=>{
-    if(!shChatMode||chatInput.disabled)return;
+    if((!shChatMode&&!labChatMode)||chatInput.disabled)return;
     const message=chatInput.value.trim();if(!message)return;
-    chatInput.value='';void sendShMessage(message);
+    chatInput.value='';
+    if(labChatMode)void sendLabMessage(message);
+    else void sendShMessage(message);
   });
   chatInput.addEventListener('keydown',event=>{
-    if(!shChatMode||event.key!=='Enter'||event.shiftKey||event.isComposing)return;
+    if((!shChatMode&&!labChatMode)||event.key!=='Enter'||event.shiftKey||event.isComposing)return;
     event.preventDefault();chatSend.click();
   });
   let viewerClaimed = false;
