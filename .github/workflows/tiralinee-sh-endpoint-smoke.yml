@@ -37,6 +37,24 @@ jobs:
           const cred=await registered.json();
           assert.match(cred.id,/^[a-f0-9]{32}$/);
           assert.match(cred.token,/^[a-f0-9]{64}$/);
+
+          // The browser's first action must be a Service-native, fixed
+          // SOS-TEST-001 model read through the SAME temporary lab session.
+          const modelUrl=root+'/browser/lab/model/'+cred.id;
+          const deniedModel=await fetch(modelUrl,{
+            headers:{Origin:origin,Authorization:'Bearer invalid'}});
+          assert.equal(deniedModel.status,401,'Invalid model bearer must fail');
+          const modelResponse=await fetch(modelUrl,{
+            headers:{Origin:origin,Authorization:'Bearer '+cred.token},
+            signal:AbortSignal.timeout(65000)});
+          assert.equal(modelResponse.status,200,'Auto-start Service model not available');
+          assert.equal(modelResponse.headers.get('x-sos-model-source'),'TermodelService');
+          const model=await modelResponse.json();
+          assert.equal(model.format,'TermodelWebModel');
+          assert.equal(model.version,3);
+          assert.equal(model.coordinateSystem,'Z-up');
+          assert.ok(model.primitives.length>0,'Missing actual Service meshes');
+          const modelCount=model.primitives.length;
           const url=root+'/browser/lab/interpret/'+cred.id;
           const headers={Origin:origin,'Content-Type':'application/json',
             Authorization:'Bearer '+cred.token};
@@ -61,5 +79,5 @@ jobs:
           const restricted=await call('quante pratiche aperte ci sono');
           assert.equal(restricted.status,403,JSON.stringify(restricted));
           assert.equal(restricted.answer.reason,'sos_session_required');
-          console.log('SH_TIRALINEE_NO_PREFIX_OK zoom/local=200 pareti/local=200 farmacia/no-session=403');
+          console.log('SH_TIRALINEE_STARTUP_OK Service_model='+modelCount+' zoom/local=200 pareti/local=200 farmacia/no-session=403');
           NODE
