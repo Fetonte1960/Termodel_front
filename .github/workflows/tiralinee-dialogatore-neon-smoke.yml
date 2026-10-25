@@ -45,27 +45,27 @@ jobs:
           assert.equal(first.status,200);
           assert.equal(first.data.node.id,'inizio');
           assert.equal(first.data.mode,'demo');
-          assert.ok(first.data.choices.some(c=>c.id==='modello'));
-          assert.ok(first.data.choices.some(c=>c.id==='filtri'));
-          assert.ok(!first.data.choices.some(c=>c.id==='sos'));
-          const group=await get('filtri');
-          assert.equal(group.status,200);
-          assert.ok(group.data.choices.some(c=>c.id==='filtri.nascondi_pareti'));
-          const leaf=await get('filtri.nascondi_pareti');
+          assert.equal(first.data.node.message,'Che tipo di disservizio hai?');
+          const expected=[
+            'disservizi.idrico',
+            'disservizi.elettrico',
+            'disservizi.climatizzazione',
+            'disservizi.intrusione_vetri_infissi'
+          ];
+          assert.deepEqual(first.data.choices.map(c=>c.id),expected);
+          const leaf=await get('disservizi.idrico');
           assert.equal(leaf.status,200);
-          assert.equal(leaf.data.node.canExecute,true);
-          const performed=await fetch(base+'/execute/filtri.nascondi_pareti',{
-            method:'POST',headers});
-          assert.equal(performed.status,200);
-          const action=await performed.json();
-          assert.equal(action.destination,'LOCAL_VIEWER');
-          assert.equal(action.command.action,'filter');
-          assert.equal(action.command.checkedState,false);
+          assert.equal(leaf.data.node.canExecute,false);
+          assert.deepEqual(leaf.data.choices,[]);
           assert.equal((await get('sos')).status,404);
+          assert.equal((await get('filtri')).status,404);
+          const noAction=await fetch(base+'/execute/disservizi.idrico',{
+            method:'POST',headers});
+          assert.equal(noAction.status,404,'Classification must not create an intervention');
           const forbidden=await fetch(base+'/execute/sos.aperti',{method:'POST',headers});
           assert.equal(forbidden.status,404);
-          const tamper=await fetch(base+'/execute/filtri.nascondi_pareti',{
+          const tamper=await fetch(base+'/execute/disservizi.idrico',{
             method:'POST',headers,body:JSON.stringify({action:'delete'})});
           assert.equal(tamper.status,400);
-          console.log('SOS_NEON_DIALOGUE_OK nodes=root/filter/leaf action=LOCAL_VIEWER paired-hidden=404 invalid=401');
+          console.log('SOS_NEON_DIALOGUE_OK nodes=root/four incident types classification=no-action paired-hidden=404 invalid=401');
           NODE
