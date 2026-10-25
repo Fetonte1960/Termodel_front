@@ -1421,6 +1421,7 @@ function highlightRoom({roomId,wallSourceIds}={}){
  return {wallCount:actual.size,primitiveCount:selected.length};
 }
 window.__termodelHighlightRoom=highlightRoom;
+window.__termodelHighlightOpening=(data,id)=>{if(!data||!id)throw Error('FIN assente');return highlightOpening(data,id);};
 window.__termodelClearRoomHighlight=clearRoomHighlight;
 
 function clear(){
