@@ -164,7 +164,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.16.1';
+  const HARNESS_VERSION = '1.16.2';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -503,7 +503,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       await ensureLabAccess();
       const call=token=>{
         const url=labGatewayHost+'/browser/lab/dialog/'+encodeURIComponent(token.id)+
-          (execute?'/execute/'+node:'?node='+node);
+          (execute?'/execute/'+node:'?node='+node+'&_refresh='+Date.now());
         return fetch(url,{method:execute?'POST':'GET',cache:'no-store',
           headers:{Authorization:'Bearer '+token.token}});
       };
@@ -516,7 +516,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     }
     if(shChatMode&&shChatToken){
       const url='/browser/viewer/dialog/'+encodeURIComponent(requestedSession)+
-        (execute?'/execute/'+node:'?node='+node);
+        (execute?'/execute/'+node:'?node='+node+'&_refresh='+Date.now());
       const response=await viewerRequest(url,shChatToken,{
         method:execute?'POST':'GET',signal:shChatController?.signal});
       return response.json();
