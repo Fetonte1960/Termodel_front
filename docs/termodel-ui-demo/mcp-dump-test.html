@@ -974,6 +974,15 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         const drawn=setServiceModel(serviceModel);
         const loadedHeader=response.headers.get('X-SOS-Project-Revision')||'';
         loaded3DRevision=loadedHeader?decodeURIComponent(loadedHeader):null;
+        loaded3DImportId=importId;
+        try{
+          const clean=await viewerRequest('/browser/viewer/clean-floor/'+
+            encodeURIComponent(requestedSession)+'/'+encodeURIComponent(cleanFloorName),
+            token,{signal:controller.signal});
+          await renderCleanFloor(clean);
+        }catch(error){
+          showCleanFloorMessage('Pianta pulita non caricata: '+String(error?.message||error));
+        }
         if(drawn?.frameRendered!==true || !(drawn.drawCalls>0))
           throw Error('Disegno definitivo WebGL non confermato');
         document.getElementById('preview-info').textContent=
