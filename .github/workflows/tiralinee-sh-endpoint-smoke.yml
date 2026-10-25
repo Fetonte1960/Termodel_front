@@ -55,6 +55,37 @@ jobs:
           assert.equal(model.coordinateSystem,'Z-up');
           assert.ok(model.primitives.length>0,'Missing actual Service meshes');
           const modelCount=model.primitives.length;
+          const dialogueRoot=root+'/browser/lab/dialog/'+cred.id;
+          const treeAuth={Origin:origin,Authorization:'Bearer '+cred.token};
+          const deniedTree=await fetch(dialogueRoot,{
+            headers:{Origin:origin,Authorization:'Bearer bad'}});
+          assert.equal(deniedTree.status,401);
+          const first=await fetch(dialogueRoot,{headers:treeAuth});
+          assert.equal(first.status,200,'Neon tree root unavailable');
+          const rootNode=await first.json();
+          assert.equal(rootNode.node.id,'inizio');
+          assert.equal(rootNode.mode,'demo');
+          assert.ok(rootNode.choices.some(x=>x.id==='filtri'));
+          assert.ok(!rootNode.choices.some(x=>x.id==='sos'),'Paired branch leaked in demo');
+          const filtersResponse=await fetch(dialogueRoot+'?node=filtri',{headers:treeAuth});
+          assert.equal(filtersResponse.status,200);
+          const filters=await filtersResponse.json();
+          assert.ok(filters.choices.some(x=>x.id==='filtri.nascondi_pareti'));
+          const leafResponse=await fetch(dialogueRoot+'?node=filtri.nascondi_pareti',{headers:treeAuth});
+          const leaf=await leafResponse.json();
+          assert.equal(leaf.node.canExecute,true);
+          const runAction=await fetch(dialogueRoot+'/execute/filtri.nascondi_pareti',{
+            method:'POST',headers:treeAuth});
+          assert.equal(runAction.status,200);
+          const executed=await runAction.json();
+          assert.equal(executed.destination,'LOCAL_VIEWER');
+          assert.equal(executed.command.action,'filter');
+          assert.equal(executed.command.checkedState,false);
+          const deniedPaired=await fetch(dialogueRoot+'?node=sos',{headers:treeAuth});
+          assert.equal(deniedPaired.status,404);
+          const deniedPairedAction=await fetch(dialogueRoot+'/execute/sos.commesse',{
+            method:'POST',headers:treeAuth});
+          assert.equal(deniedPairedAction.status,404);
           const url=root+'/browser/lab/interpret/'+cred.id;
           const headers={Origin:origin,'Content-Type':'application/json',
             Authorization:'Bearer '+cred.token};
@@ -82,5 +113,5 @@ jobs:
           const unrecognized=await call('aiutami a riparare una navicella spaziale su marte');
           assert.equal(unrecognized.status,200,JSON.stringify(unrecognized));
           assert.equal(unrecognized.answer.esito,'FAULT','Unknown intent must invite expert consent');
-          console.log('SH_TIRALINEE_STARTUP_OK Service_model='+modelCount+' zoom/local=200 pareti/local=200 farmacia/no-session=403 unknown=FAULT');
+          console.log('SH_TIRALINEE_STARTUP_OK Service_model='+modelCount+' zoom/local=200 pareti/local=200 farmacia/no-session=403 unknown=FAULT NeonDialog=PASS');
           NODE
