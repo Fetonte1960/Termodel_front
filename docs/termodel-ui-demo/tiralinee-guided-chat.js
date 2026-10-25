@@ -6,7 +6,7 @@
 (function(root){
   'use strict';
   function create(config){
-    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate}=config;
+    const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance}=config;
     const route=[];
     let busy=false,currentButtons=null,active=true;
     function button(label,click,cls){
@@ -28,15 +28,32 @@
         const choice=button(child.label,()=>{void open(child.id,child.label);});
         choicesRow.appendChild(choice);
       }
-      // Always show a root control, including at the root itself. It calls
-      // read('inizio') again, so debugging/editing Neon needs no page reload.
-      const atRoot=nodeId==='inizio';
-      const back=button('Torna al menu iniziale',()=>{
-        void open('inizio',atRoot?'Aggiorna il menu iniziale':'Torna al menu iniziale');
-      },'sos-guided-back');
-      back.title=atRoot?'Rileggi il menu iniziale aggiornato da Neon':
-        'Torna al menu iniziale, aggiornandolo da Neon';
-      choicesRow.appendChild(back);
+      // The root is already the initial menu: no nonsensical "back" button.
+      // After at least one CONFIRMED response, always offer intake, including
+      // on nonterminal nodes with further choices. Never register on navigation.
+      if(route.some(step=>step.answer) && typeof onRequestAssistance==='function'){
+        const request=button('Attiva una richiesta di assistenza con i dati raccolti',async()=>{
+          if(busy||!active)return;
+          request.disabled=true;
+          try{
+            await onRequestAssistance({
+              treeId:'farmacia_test_v1',
+              categoryNodeId:route.find(step=>step.answer)?.id,
+              steps:route.filter(step=>step.answer).map(step=>({
+                id:step.id,answer:step.answer,question:step.question
+              }))
+            });
+          }finally{if(active)request.disabled=false;}
+        },'sos-guided-request');
+        choicesRow.appendChild(request);
+      }
+      if(nodeId!=='inizio'){
+        const back=button('Torna al menu iniziale',()=>{
+          void open('inizio','Torna al menu iniziale');
+        },'sos-guided-back');
+        back.title='Torna al menu iniziale, aggiornandolo da Neon';
+        choicesRow.appendChild(back);
+      }
       container.appendChild(choicesRow);
       currentButtons=choicesRow;
       container.scrollTop=container.scrollHeight;
