@@ -79,7 +79,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.9';
+  const HARNESS_VERSION = '1.9.1';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -126,8 +126,17 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
         const model=await viewerRequest(message.modelEndpoint,token,{signal:controller.signal});
         const content=await model.text();
         const outcome=await validateIncoming('ReadProject\n'+content);
-        if(!outcome.handled || !previewPlan || typeof setPreview !== 'function') throw Error('Modello non renderizzabile');
+        if(!outcome.handled || !previewPlan || typeof setPreview !== 'function')
+          throw Error('Renderer Three.js non pronto o modello non renderizzabile');
+        const walls=Array.isArray(previewPlan.linee)?previewPlan.linee.length:0;
+        const shell=Array.isArray(previewPlan.edificio?.outerShell)?
+          previewPlan.edificio.outerShell.length:0;
+        if(walls===0 && shell<3) throw Error('Il modello non contiene geometria 3D da mostrare');
         setPreview(previewPlan);
+        const canvas=document.querySelector('#view3d canvas');
+        const summary=document.getElementById('preview-info')?.textContent||'';
+        if(!canvas || !summary.includes('Anteprima 3D sperimentale'))
+          throw Error('Anteprima Three.js non disponibile');
         // Wait for an animation frame so the Three.js renderer can present the scene.
         await new Promise((resolve,reject)=>{
           const timeout=setTimeout(()=>reject(Error('Timeout rendering')),7000);
@@ -206,7 +215,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
   let abort = null, sessionId = '', browserToken = '';
   let validatedProjectText = '';
   let previewPlan = null;
-  let setPreview = () => {};
+  let setPreview = null; // Set only when the Three.js module registers the renderer.
   const setStatus = message => { el('status').textContent = message; };
   const ui = active => {
     el('connect').disabled = active;
@@ -373,7 +382,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
               const report=validation.changes?.length?' CORRETTO: '+validation.changes.join('; ')+'.':'';
               if(validation.changes?.length)el('dump').value='ReadProject\n'+validatedProjectText;
               el('copy-project').disabled=false;
-              if(previewPlan) setPreview(previewPlan);
+              if(previewPlan && setPreview) setPreview(previewPlan);
               let copied=false;
               try {
                 await navigator.clipboard.writeText(validatedProjectText);
@@ -479,7 +488,7 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
     try { await navigator.clipboard.writeText(sessionId); setStatus('Codice sessione copiato.'); }
     catch { window.prompt('Copia il codice sessione:',sessionId); }
   });
-  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';el('copy-project').disabled=true;validatedProjectText='';previewPlan=null;setPreview(null);});
+  el('clear').addEventListener('click',()=>{el('dump').value='';el('size').textContent='';el('copy-project').disabled=true;validatedProjectText='';previewPlan=null;setPreview?.(null);});
   el('failure-close').addEventListener('click',()=>el('failure-modal').close());
   el('copy-project').addEventListener('click',async()=>{
     const project=validatedProjectText;
