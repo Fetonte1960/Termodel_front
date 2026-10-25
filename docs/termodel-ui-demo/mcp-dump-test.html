@@ -151,7 +151,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.14.1';
+  const HARNESS_VERSION = '1.15.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -232,10 +232,10 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
   const chatFooter=document.querySelector('.api-chat-disclaimer');
   if(labChatMode) {
     chatTitle.textContent='Tiralinee · Laboratorio SH';
-    chatState.textContent='Caricamento modello demo…';
-    chatDescription.textContent='Scrivi normalmente: SH interpreta la richiesta e Tiralinee esegue sul modello oppure consulta SOS.';
-    chatPlaceholder.textContent='Esempi: «zoom avanti», «mostra solo pareti», «nascondi piano Primo», «ripristina filtri». I dati farmacia richiedono una sessione SOS.';
-    chatFooter.textContent='SH Engine v0.4.0 · programmazione Tiralinee · routing locale o SOS';
+    chatState.textContent='Collegamento al Gateway MCP…';
+    chatDescription.textContent='All’avvio Tiralinee recupera dal Gateway il modello 3D consolidato della farmacia SOS-TEST-001. Poi puoi impartire richieste in linguaggio naturale.';
+    chatPlaceholder.textContent='Farmacia demo SOS-TEST-001 dal Termodel Service. Prova «zoom avanti», «nascondi pareti» oppure «visualizza modello».';
+    chatFooter.textContent='Gateway MCP · farmacia sintetica SOS-TEST-001 · SH v0.4.0';
     chatInput.setAttribute('aria-label','Comando laboratorio Tiralinee');
     chatInput.placeholder='Caricamento geometria di prova…';
     chatSend.title='Esegui comando di prova';
@@ -258,31 +258,75 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
     chatState.textContent=detail||(ready?'Laboratorio pronto':'Laboratorio non disponibile');
     if(ready)chatInput.placeholder='Scrivi una richiesta (es. zoom avanti)…';
   }
-  // The Three.js module registers only declarative, local viewer actions.
-  // This path must never invent an SOS ticket/session or claim a viewer token.
+
+  const labGatewayHost='https://termodel-mcp-gateway.onrender.com';
+  async function ensureLabAccess(){
+    if(labAccess)return labAccess;
+    const response=await fetch(labGatewayHost+'/browser/lab/register',{
+      method:'POST',cache:'no-store'
+    });
+    if(!response.ok)throw Error('Gateway MCP: registrazione HTTP '+response.status);
+    const credentials=await response.json();
+    if(!/^[a-f0-9]{32}$/.test(credentials.id||'')||
+       !/^[a-f0-9]{64}$/.test(credentials.token||''))
+      throw Error('Credenziale temporanea del Gateway non valida');
+    labAccess=credentials;
+    return labAccess;
+  }
+  async function loadPharmacyTestModel(){
+    if(!labGraphics?.loadSosModel)throw Error('Renderer Termodel Service non pronto');
+    const credentials=await ensureLabAccess();
+    const response=await fetch(labGatewayHost+
+      '/browser/lab/model/'+encodeURIComponent(credentials.id),{
+        method:'GET',cache:'no-store',headers:{
+          'Authorization':'Bearer '+credentials.token
+        }
+      });
+    if(response.status===401||response.status===410)labAccess=null;
+    if(!response.ok){
+      let reason='';
+      try{reason=(await response.json()).error||'';}catch{}
+      throw Error('Lettura modello farmacia: HTTP '+response.status+
+        (reason?' ('+reason+')':''));
+    }
+    if(response.headers.get('X-SOS-Model-Source')!=='TermodelService')
+      throw Error('Il modello non proviene dal Termodel Service');
+    const model=await response.json();
+    const result=await labGraphics.loadSosModel(model);
+    const revisionHeader=response.headers.get('X-SOS-Project-Revision')||'';
+    const revision=revisionHeader?decodeURIComponent(revisionHeader).slice(0,8):'n/d';
+    return {...result,revision};
+  }
+  // All'avvio standalone: connessione al Gateway MCP, lettura 3D Termodel
+  // Service dalla farmacia SOLO sintetica. Nessun fallback silenzioso a fixture.
   window.__termodelLabReady=async graphics=>{
     labGraphics=graphics;
     if(!labChatMode)return;
-    try {
-      const info=await graphics.execute({action:'loadDemo'});
-      setLabReady(true,'Demo caricata · '+info.primitiveCount+' primitive');
-      document.getElementById('launch-state').textContent='Tiralinee autonomo · SH integrato';
+    setLabReady(false,'Connessione Gateway MCP…');
+    document.getElementById('launch-state').textContent=
+      'Farmacia SOS-TEST-001 · recupero modello Service';
+    try{
+      const result=await loadPharmacyTestModel();
+      setLabReady(true,'Farmacia SOS · '+result.primitiveCount+' primitive');
+      document.getElementById('launch-state').textContent=
+        'Farmacia SOS-TEST-001 · Service 3D · revisione '+result.revision;
+      addShBubble('assistant',
+        'Modello 3D consolidato della farmacia demo caricato dal Gateway MCP: '+
+        result.primitiveCount+' primitive. Puoi provare zoom e filtri.',
+        'Termodel Service · revisione '+result.revision);
     }catch(error){
-      setLabReady(false,'Modello demo non disponibile');
-      addShBubble('assistant','Caricamento del modello demo non riuscito: '+String(error?.message||error));
+      setLabReady(false,'Modello SOS non disponibile');
+      document.getElementById('launch-state').textContent=
+        'Errore caricamento modello SOS';
+      addShBubble('assistant',
+        'Non riesco a caricare il modello della farmacia: '+
+        String(error?.message||error)+'. Ricarica la pagina per riprovare.',
+        'Nessun modello sostitutivo caricato');
     }
   };
-
   async function askLabEngine(message){
-    const host='https://termodel-mcp-gateway.onrender.com';
-    if(!labAccess){
-      const r=await fetch(host+'/browser/lab/register',{method:'POST',cache:'no-store'});
-      if(!r.ok)throw Error('Gateway non disponibile, HTTP '+r.status);
-      labAccess=await r.json();
-      if(!/^[a-f0-9]{32}$/.test(labAccess.id||'')||
-         !/^[a-f0-9]{64}$/.test(labAccess.token||''))
-        throw Error('Credenziale laboratorio non valida');
-    }
+    const host=labGatewayHost;
+    await ensureLabAccess();
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),110000);
     try{
       const r=await fetch(host+'/browser/lab/interpret/'+labAccess.id,{
@@ -316,6 +360,11 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
     }
     if(data.destination!=='LOCAL_VIEWER'||!labGraphics)throw Error('Azione grafica non autorizzata');
     const command={...data.command};
+    if(labChatMode&&command.action==='loadDemo'){
+      const info=await loadPharmacyTestModel();
+      return {message:'Modello farmacia SOS-TEST-001 aggiornato dal Gateway: '+
+        info.primitiveCount+' primitive.',source:'Termodel Service · revisione '+info.revision};
+    }
     if(typeof command.checkedState==='boolean')command.checked=command.checkedState;
     delete command.checkedState;
     if(typeof command.action!=='string')throw Error('Comando grafico non valido');
@@ -1104,7 +1153,17 @@ async function executeLab(command){
  }
  throw Error('Comando grafico sconosciuto o non autorizzato');
 }
-window.__termodelLabReady?.({execute:executeLab,isModelLoaded:()=>labFixtureLoaded&&root.children.length>0});
+function loadSosModel(model){
+ labResetFilters();
+ labFixtureLoaded=false;
+ const result=redrawService(model);
+ labFixtureLoaded=Boolean(result.frameRendered);
+ document.getElementById('preview-info').textContent=
+  'SOS-TEST-001 · modello Service consolidato · '+result.primitiveCount+' primitive';
+ return {...labCounts(),drawCalls:result.drawCalls};
+}
+window.__termodelLabReady?.({execute:executeLab,loadSosModel,
+ isModelLoaded:()=>labFixtureLoaded&&root.children.length>0});
 
 window.__termodelServicePreview?.(redrawService);
 
