@@ -1,0 +1,71 @@
+name: SOS Neon guided dialogue smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tiralinee-dialogatore-neon-smoke.yml'
+      - 'docs/termodel-ui-demo/tiralinee-guided-chat.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dialogue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify dynamic Neon tree and protected Gateway actions
+        shell: bash
+        run: |
+          node <<'NODE'
+          const assert=(await import('node:assert/strict')).default;
+          const root='https://termodel-mcp-gateway.onrender.com';
+          const origin='https://www.termodel.it';
+          let health;
+          for(let i=0;i<12;i++){
+            try{health=await fetch(root+'/health',{signal:AbortSignal.timeout(20000)});
+              if(health.ok)break;}catch{}
+            await new Promise(resolve=>setTimeout(resolve,10000));
+          }
+          assert.equal(health?.status,200,'Gateway not ready');
+          const reg=await fetch(root+'/browser/lab/register',{method:'POST',headers:{Origin:origin}});
+          assert.equal(reg.status,200);
+          const cred=await reg.json();
+          const base=root+'/browser/lab/dialog/'+cred.id;
+          const headers={Origin:origin,Authorization:'Bearer '+cred.token};
+          const denied=await fetch(base,{headers:{Origin:origin,Authorization:'Bearer invalid'}});
+          assert.equal(denied.status,401);
+          const get=async id=>{
+            const r=await fetch(base+'?node='+encodeURIComponent(id),{headers});
+            return {status:r.status,data:r.status===200?await r.json():null};
+          };
+          const first=await get('inizio');
+          assert.equal(first.status,200);
+          assert.equal(first.data.node.id,'inizio');
+          assert.equal(first.data.mode,'demo');
+          assert.ok(first.data.choices.some(c=>c.id==='modello'));
+          assert.ok(first.data.choices.some(c=>c.id==='filtri'));
+          assert.ok(!first.data.choices.some(c=>c.id==='sos'));
+          const group=await get('filtri');
+          assert.equal(group.status,200);
+          assert.ok(group.data.choices.some(c=>c.id==='filtri.nascondi_pareti'));
+          const leaf=await get('filtri.nascondi_pareti');
+          assert.equal(leaf.status,200);
+          assert.equal(leaf.data.node.canExecute,true);
+          const performed=await fetch(base+'/execute/filtri.nascondi_pareti',{
+            method:'POST',headers});
+          assert.equal(performed.status,200);
+          const action=await performed.json();
+          assert.equal(action.destination,'LOCAL_VIEWER');
+          assert.equal(action.command.action,'filter');
+          assert.equal(action.command.checkedState,false);
+          assert.equal((await get('sos')).status,404);
+          const forbidden=await fetch(base+'/execute/sos.aperti',{method:'POST',headers});
+          assert.equal(forbidden.status,404);
+          const tamper=await fetch(base+'/execute/filtri.nascondi_pareti',{
+            method:'POST',headers,body:JSON.stringify({action:'delete'})});
+          assert.equal(tamper.status,400);
+          console.log('SOS_NEON_DIALOGUE_OK nodes=root/filter/leaf action=LOCAL_VIEWER paired-hidden=404 invalid=401');
+          NODE
