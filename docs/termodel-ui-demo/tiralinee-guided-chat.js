@@ -107,7 +107,7 @@
           addMessage('assistant',result.message||'Operazione completata.',
             result.source||'Tiralinee / SOS');
         }
-        const terminal=!data.node.canExecute&&data.choices.length===0&&data.node.id!=='inizio';
+        const terminal=!data.node.canExecute&&data.choices.length===0&&data.node.id!=='inizio' && data.node.roomSelection!==true;
         if(terminal&&typeof onNoAction==='function'){
           // Offer an expert, but do not open an external chat or issue a ticket.
           // Only confirmed path choices are forwarded, not provisional notes.
