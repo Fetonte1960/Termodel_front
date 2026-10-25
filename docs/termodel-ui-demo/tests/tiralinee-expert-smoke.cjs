@@ -39,8 +39,23 @@ assert.ok(paired.includes('visualizza interruttore'));
 const tooLong=expert.buildPrompt({paired:true,shellBootstrap:'x'.repeat(8000),
  lastRequest:'prova'});
 assert.ok(!tooLong.includes('x'.repeat(8000)));
+const guided=expert.buildPrompt({paired:true,shellBootstrap:shell,
+ guided:{unresolved:true,actionExecuted:false,steps:[
+  {question:'Che tipo di disservizio hai?',answer:'Nella rete idrica'}
+ ]},lastRequest:'Nella rete idrica'});
+assert.ok(guided.startsWith(shell));
+assert.ok(guided.includes('Che tipo di disservizio hai?'));
+assert.ok(guided.includes('Nella rete idrica'));
+assert.ok(guided.includes('NON ripetere le domande già poste'));
+assert.ok(guided.includes('Non dichiarare una richiesta di intervento aperta'));
+assert.ok(!guided.includes('perché il motore SH non ha interpretato la richiesta'));
+const unknown=expert.buildPrompt({paired:false,guided:{
+ unresolved:true,steps:[{question:'Che tipo di disservizio hai?',answer:'Rete elettrica'}]
+}});
+assert.ok(unknown.includes('Rete elettrica'));
+assert.ok(unknown.includes('Non è stata aperta una sessione assistenza SOS'));
 const html=fs.readFileSync(path.join(root,'mcp-dump-test.html'),'utf8');
-assert.ok(html.includes("HARNESS_VERSION = '1.16.0'"));
+assert.ok(html.includes("HARNESS_VERSION = '1.16.1'"));
 assert.ok(html.includes('offerExpertChat(input)'));
 assert.ok(html.includes("expertChatLaunched=true"));
 assert.ok(html.includes("chatPane.hidden=true"));
