@@ -151,7 +151,7 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.14.0';
+  const HARNESS_VERSION = '1.14.1';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -303,6 +303,12 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
       return {message:data.answer||'Operazione SOS conclusa.',source:'SOS · dati autorizzati'};
     if(data.destination==='REMOTE_VIEWER'){
       if(!paired||!requestedSession||!shChatToken)throw Error('Sessione SOS necessaria per il modello.');
+      // Il Service 3D è già stato caricato e renderizzato: basta re-inquadrare
+      // localmente, senza duplicare il download dal Gateway.
+      if(labGraphics?.isModelLoaded?.()){
+        const r=await labGraphics.execute({action:'zoomFit'});
+        return {message:'Modello già disponibile: '+r.message,source:'Tiralinee · vista locale'};
+      }
       const r=await viewerRequest('/browser/viewer/show-model/'+encodeURIComponent(requestedSession),
         shChatToken,{method:'POST',signal:shChatController?.signal});
       if(!(await r.json()).renderingConfirmed)throw Error('Rendering WebGL non confermato');
@@ -1098,7 +1104,7 @@ async function executeLab(command){
  }
  throw Error('Comando grafico sconosciuto o non autorizzato');
 }
-window.__termodelLabReady?.({execute:executeLab});
+window.__termodelLabReady?.({execute:executeLab,isModelLoaded:()=>labFixtureLoaded&&root.children.length>0});
 
 window.__termodelServicePreview?.(redrawService);
 
