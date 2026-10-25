@@ -1058,7 +1058,7 @@ function labApplyGroup(group,name,visible,only){
   .filter(box=>box.dataset.group===group);
  if(!entries.length)throw Error('Gruppo filtri non disponibile: '+group);
  function norm(s){return s.toLocaleLowerCase('it-IT').normalize('NFD')
-   .replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]/g,'');}
+   .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');}
  const needle=norm(name);
  let target=entries.find(box=>norm(box.dataset.name)===needle);
  if(!target&&group==='piani'){
