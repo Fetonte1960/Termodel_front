@@ -158,6 +158,17 @@ jobs:
           assert.equal(burglary.status,200);
           assert.equal(burglary.data.choices.length,7);
           assert(burglary.data.choices.every(x=>x.id.startsWith('sos.room.effrazione.')));
+          const winList=await get('sos.room.effrazione.locale_3');
+          assert.equal(winList.status,200);
+          assert.equal(winList.data.choices.length,8);
+          const finChoice=await get(winList.data.choices[0].id);
+          assert.equal(finChoice.status,200);
+          assert.equal(finChoice.data.node.openingSelection,true);
+          assert.equal(finChoice.data.node.canRequestAssistance,false);
+          const confirm=finChoice.data.choices.find(x=>x.id.startsWith('sos.fin.yes.'));
+          assert(confirm);
+          const yesResult=await get(confirm.id);
+          assert.equal(yesResult.data.node.openingConfirmed,true);
           assert.equal((await get('sos.room.perdita.locale_999')).status,404);
           assert.equal((await get('sos')).status,404);
           assert.equal((await get('filtri')).status,404);
