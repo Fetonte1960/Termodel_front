@@ -90,6 +90,12 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 .sh-expert-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
 .sh-expert-actions button{background:#eee;color:#252525;border:1px solid #aaa;border-radius:14px;margin:0;padding:8px 16px;font:600 13px system-ui,sans-serif}
 .sh-expert-actions button.sh-decline{background:#373737;color:#eee;border-color:#555}
+.sos-guided-options{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;margin:2px 0 12px;max-width:100%}
+.sos-guided-options button{font:13px/1.35 system-ui,"Segoe UI",Arial,sans-serif;margin:0;padding:9px 12px;border:1px solid #5e778a;border-radius:13px;background:#30485b;color:#f4f8fb;cursor:pointer;text-align:left;overflow-wrap:anywhere}
+.sos-guided-options button:hover:not(:disabled){background:#3b6379;border-color:#8bcadf}
+.sos-guided-options button:focus-visible{outline:2px solid #a3ddf1;outline-offset:2px}
+.sos-guided-options .sos-guided-back{background:#303030;color:#dadde2;border-color:#555}
+.sos-guided-options button:disabled{opacity:.45;cursor:default}
 body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!important}
 </style>
 </head>
@@ -154,10 +160,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.0"></script>
+<script src="./tiralinee-guided-chat.js?v=1.0.0"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.15.2';
+  const HARNESS_VERSION = '1.16.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -238,24 +245,24 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   const chatPlaceholder=document.querySelector('.api-chat-placeholder');
   const chatFooter=document.querySelector('.api-chat-disclaimer');
   if(labChatMode) {
-    chatTitle.textContent='Tiralinee · Laboratorio SH';
+    chatTitle.textContent='FastPharma SOS · Assistente';
     chatState.textContent='Collegamento al Gateway MCP…';
-    chatDescription.textContent='All’avvio Tiralinee recupera dal Gateway il modello 3D consolidato della farmacia SOS-TEST-001. Poi puoi impartire richieste in linguaggio naturale.';
-    chatPlaceholder.textContent='Farmacia demo SOS-TEST-001 dal Termodel Service. Prova «zoom avanti», «nascondi pareti» oppure «visualizza modello».';
-    chatFooter.textContent='Gateway MCP · farmacia sintetica SOS-TEST-001 · SH v0.4.0';
-    chatInput.setAttribute('aria-label','Comando laboratorio Tiralinee');
-    chatInput.placeholder='Caricamento geometria di prova…';
-    chatSend.title='Esegui comando di prova';
+    chatDescription.textContent='Consulta il modello 3D con le risposte guidate, oppure descrivi liberamente ciò che desideri fare.';
+    chatPlaceholder.textContent='Farmacia demo SOS-TEST-001 · percorsi guidati caricati da Neon e interpretazione libera SH. Nessuna richiesta di assistenza viene creata automaticamente.';
+    chatFooter.textContent='FastPharma SOS · demo sintetica · percorsi guidati aggiornabili e SH v0.4.0';
+    chatInput.setAttribute('aria-label','Richiesta all’assistente FastPharma SOS');
+    chatInput.placeholder='Collegamento all’assistenza SOS…';
+    chatSend.title='Invia richiesta';
   }
   if(shChatMode) {
-    chatTitle.textContent='Chat SOS · SH Engine';
+    chatTitle.textContent='FastPharma SOS · Assistente';
     chatState.textContent='In attesa della sessione';
-    chatDescription.textContent='Interrogazioni FastPharmaSOS già disponibili e visualizzazione del modello Termodel Service.';
-    chatPlaceholder.textContent='Apri questa finestra dalla Service Shell SOS dopo aver ottenuto il ticket. La chat si attiverà al collegamento sicuro del viewer.';
-    chatFooter.textContent='SH-IntelligenceEngine v0.4.0 · risposte deterministiche, nessuna GPT API';
+    chatDescription.textContent='Scegli una risposta guidata oppure formula una richiesta. I dati SOS richiedono una sessione autorizzata.';
+    chatPlaceholder.textContent='Connessione SOS protetta in corso. Le domande guidate verranno caricate dal database al collegamento.';
+    chatFooter.textContent='FastPharma SOS · SH v0.4.0 per testo libero · dialoghi guidati da Neon';
     chatInput.placeholder='In attesa del collegamento alla farmacia…';
     chatInput.setAttribute('aria-label','Messaggio SOS');
-    chatSend.title='Invia a SOS';
+    chatSend.title='Invia richiesta a SOS';
   }
   let labGraphics=null, labBusy=false, labAccess=null;
   function setLabReady(ready,detail) {
@@ -263,7 +270,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     chatInput.disabled=!ready||labBusy;
     chatSend.disabled=!ready||labBusy;
     chatState.textContent=detail||(ready?'Laboratorio pronto':'Laboratorio non disponibile');
-    if(ready)chatInput.placeholder='Scrivi una richiesta (es. zoom avanti)…';
+    if(ready)chatInput.placeholder='Scrivi una richiesta oppure scegli una risposta guidata…';
   }
 
   const labGatewayHost='https://termodel-mcp-gateway.onrender.com';
@@ -352,9 +359,10 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       document.getElementById('launch-state').textContent=
         'Farmacia SOS-TEST-001 · Service 3D · revisione '+result.revision;
       addShBubble('assistant',
-        'Modello 3D consolidato della farmacia demo caricato dal Gateway MCP: '+
-        result.primitiveCount+' primitive. Puoi provare zoom e filtri.',
+        'Modello 3D della farmacia SOS-TEST-001 caricato: '+
+        result.primitiveCount+' primitive. Scegli una risposta guidata oppure scrivi liberamente.',
         'Termodel Service · revisione '+result.revision);
+      void startGuidedDialog();
     }catch(error){
       setLabReady(false,'Modello SOS non disponibile');
       document.getElementById('launch-state').textContent=
@@ -427,6 +435,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     // Close only the SH dialogue; keep the existing 3D canvas and SOS viewer
     // pairing alive so the expert can use the same Gateway/Service resources.
     expertChatLaunched=true;
+    sosGuidedController?.stop();
     clearExpertOffer();
     document.body.classList.remove('api-chat-mode');
     document.body.classList.add('expert-chat-launched');
@@ -482,6 +491,47 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     chatHistory.scrollTop=chatHistory.scrollHeight;
   }
 
+  // One transcript: the guided Neon tree and free-form SH interpretation.
+  let sosGuidedController=null;
+  async function guidedTransport(nodeId,execute=false){
+    const node=encodeURIComponent(String(nodeId));
+    if(labChatMode){
+      await ensureLabAccess();
+      const call=token=>{
+        const url=labGatewayHost+'/browser/lab/dialog/'+encodeURIComponent(token.id)+
+          (execute?'/execute/'+node:'?node='+node);
+        return fetch(url,{method:execute?'POST':'GET',cache:'no-store',
+          headers:{Authorization:'Bearer '+token.token}});
+      };
+      let response=await call(labAccess);
+      if(response.status===401||response.status===410){
+        labAccess=null;response=await call(await ensureLabAccess());
+      }
+      if(!response.ok)throw Error('Gateway dialogatore HTTP '+response.status);
+      return response.json();
+    }
+    if(shChatMode&&shChatToken){
+      const url='/browser/viewer/dialog/'+encodeURIComponent(requestedSession)+
+        (execute?'/execute/'+node:'?node='+node);
+      const response=await viewerRequest(url,shChatToken,{
+        method:execute?'POST':'GET',signal:shChatController?.signal});
+      return response.json();
+    }
+    throw Error('Sessione SOS non ancora disponibile');
+  }
+  async function startGuidedDialog(){
+    if(!window.SosGuidedChat||expertChatLaunched||sosGuidedController)return;
+    sosGuidedController=window.SosGuidedChat.create({
+      container:chatHistory,
+      available:()=>!expertChatLaunched &&
+        ((labChatMode&&Boolean(labAccess))||(shChatMode&&Boolean(shChatToken))),
+      read:id=>guidedTransport(id,false),
+      execute:id=>guidedTransport(id,true),
+      act:data=>executeShIntent(data,shChatMode),
+      addMessage:addShBubble
+    });
+    await sosGuidedController.start();
+  }
   async function sendLabMessage(message){
     if(!labChatMode||labBusy||!labGraphics||expertChatLaunched)return;
     const input=String(message||'').trim();if(!input||input.length>500)return;
@@ -616,7 +666,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     const response=await viewerRequest('/browser/viewer/events/'+encodeURIComponent(requestedSession),token,{signal:controller.signal});
     if(!response.body) throw Error('SSE senza stream');
     shellMessage('connected');
-    if(shChatMode){shChatToken=token;shChatController=controller;setShActive(true);}
+    if(shChatMode){shChatToken=token;shChatController=controller;setShActive(true);void startGuidedDialog();}
     document.getElementById('launch-state').textContent='Viewer SOS · collegato, in attesa comandi';
     setStatus('Viewer SOS collegato: attesa showModel.');
     const reader=response.body.getReader(),decoder=new TextDecoder();
