@@ -50,7 +50,7 @@ for(const part of ["HARNESS_VERSION = '1.16.2'","chatMode==='sh'&&!handoffReques
  "offerExpertChat(input)","trustedSosExpertBootstrap=data.expertBootstrap",
  "chatPane.hidden=true","tiralinee-guided-chat.js?v=1.0.0",
  "startGuidedDialog()","/browser/lab/dialog/","/browser/viewer/dialog/",
- "onNoAction:summary","offerExpertChat(answer,summary)","&_refresh="+Date.now()]){
+ "onNoAction:summary","offerExpertChat(answer,summary)","&_refresh="]){
  assert.ok(html.includes(part),'missing integration '+part);
 }
 assert.ok(!html.includes("SH: domanda"),'UI must not require prefixes');
