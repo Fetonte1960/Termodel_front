@@ -165,7 +165,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.16.9';
+  const HARNESS_VERSION = '1.17.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -275,6 +275,14 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     if(ready)chatInput.placeholder='Scrivi una richiesta oppure scegli una risposta guidata…';
   }
 
+  let loaded3DImportId=null;
+  const cleanFloorName='Unico'; // SOS-TEST-001: piano canonico del project manifest
+  function showCleanFloorMessage(message) {
+    const host=document.getElementById('view2d');
+    host.replaceChildren();
+    const note=document.createElement('p');note.textContent=message;
+    host.appendChild(note);
+  }
   const labGatewayHost='https://termodel-mcp-gateway.onrender.com';
   let labWakePromise=null;
   async function gatewayRequest(path,init,stage){
