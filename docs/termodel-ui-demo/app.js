@@ -5612,35 +5612,39 @@ async function prepareTermodelSosBundle() {
   async function serviceArtifact(relativePath) {
     const matches = catalog.files.filter(file =>
       String(file?.path || '').toLowerCase() === relativePath.toLowerCase());
-    if (matches.length !== 1 || matches[0].stale !== false) {
-      if (relativePath.startsWith('artifacts/pianta-pulita/')) {
-        const floorName = relativePath.slice('artifacts/pianta-pulita/'.length).replace(/\\.svg$/i, '');
-        const declared = Array.isArray(currentServiceManifest?.artifacts) &&
-          currentServiceManifest.artifacts.some(item =>
-            item?.name === 'pianta-pulita' &&
-            String(item?.floorName || '').toLowerCase() === floorName.toLowerCase());
-        const hasModel = catalog.files.some(file =>
-          String(file?.path || '').toLowerCase() === 'artifacts/model3d.json');
-        if (!declared)
-          throw new Error('Aggiorna Modello ha restituito il 3D, ma NON ha generato ' +
-            'la Pianta pulita del piano ' + floorName +
-            '. Verificare il log del calcolo (cleanFloorPlanCount): la geometria 2D non è stata prodotta.');
-        if (!hasModel)
-          throw new Error('Il calcolo aveva dichiarato la Pianta pulita del piano ' + floorName +
-            ', ma nel Service non sono più presenti neppure i file del modello 3D. ' +
-            'Il workspace potrebbe essere stato ricreato dopo un riavvio/deploy.');
-        throw new Error('La Pianta pulita del piano ' + floorName +
-          ' risultava nel calcolo, ma manca nel catalogo del Service. ' +
-          'Verificare persistenza/riavvio del workspace e consultare il log.');
-      }
+    if (matches.length !== 1 || matches[0].stale !== false)
       throw new Error('Artefatto Service non disponibile o obsoleto: ' + relativePath);
-    }
     const expectedPrefix = '/api/projects/' + encodeURIComponent(projectId) + '/generated-files/';
     if (!String(matches[0].href || '').toLowerCase().startsWith(expectedPrefix.toLowerCase()))
       throw new Error('Percorso artefatto non coerente con il progetto.');
     const file = await termodelGeneratedFileText(matches[0]);
     if (file.stale) throw new Error('Il Service ha invalidato ' + relativePath);
     return file.text;
+  }
+  async function serviceCleanFloor(floorName) {
+    // The physical generated file is "<slug>--<sha12>.svg", NOT "<floorName>.svg".
+    // Always retrieve the canonical artifact by floor name using the Service contract.
+    const expected = '/api/projects/' + encodeURIComponent(projectId) +
+      '/artifacts/pianta-pulita/' + encodeURIComponent(floorName);
+    const entries = Array.isArray(currentServiceManifest.artifacts)
+      ? currentServiceManifest.artifacts.filter(item =>
+          item?.name === 'pianta-pulita' &&
+          String(item?.floorName || '').toLowerCase() === floorName.toLowerCase())
+      : [];
+    if (entries.length !== 1)
+      throw new Error('Aggiorna Modello ha restituito il 3D ma non ha dichiarato ' +
+        'la Pianta pulita del piano ' + floorName + '. Verificare il log del calcolo.');
+    if (String(entries[0].href || '') !== expected)
+      throw new Error('Il Service ha dichiarato un percorso Pianta pulita non coerente col progetto.');
+    const response = await fetchTermodelService(expected, {cache:'no-store'});
+    if (!response.ok)
+      throw new Error('Lettura Pianta pulita del piano ' + floorName + ': ' +
+        await readTermodelServiceError(response));
+    if (response.headers.get('X-Termodel-Artifact-Stale') !== 'false')
+      throw new Error('Pianta pulita del piano ' + floorName + ' obsoleta o non verificata.');
+    if (!(response.headers.get('content-type') || '').toLowerCase().startsWith('image/svg+xml'))
+      throw new Error('Il Service non ha restituito un SVG per il piano ' + floorName + '.');
+    return await response.text();
   }
   // This is the SAME Termodel.WebService clean-floor SVG used under the
   // radiant-panel spirals; never derive it from preview walls or 3D meshes.
@@ -5653,7 +5657,7 @@ async function prepareTermodelSosBundle() {
   const cleanFloors=await Promise.all(cleanFloorNames.map(async name=>{
     if(!/^[a-z0-9 _.-]{1,80}$/i.test(name))
       throw new Error('Nome piano Pianta pulita non valido.');
-    const svg=await serviceArtifact('artifacts/pianta-pulita/'+name+'.svg');
+    const svg=await serviceCleanFloor(name);
     const doc=new DOMParser().parseFromString(svg,'image/svg+xml');
     if(doc.querySelector('parsererror')||doc.documentElement.localName!=='svg'||
        doc.documentElement.getAttribute('data-termodel-format')!=='TERMODEL-CLEAN-FLOOR-SVG-V1')
