@@ -160,11 +160,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.0"></script>
-<script src="./tiralinee-guided-chat.js?v=1.0.1"></script>
+<script src="./tiralinee-guided-chat.js?v=1.0.2"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.16.3';
+  const HARNESS_VERSION = '1.16.4';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -495,9 +495,9 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     chatHistory.scrollTop=chatHistory.scrollHeight;
   }
 
-  // The guided tree offers a request only AFTER a confirmed first answer.
-  // The read-only viewer never receives the Shell owner token: creation is
-  // delegated to that exact paired Shell after explicit additional inputs.
+  // Guided requests always pass through the existing SOS Gateway:
+  // lab uses a short-lived SYNTHETIC demo capability, paired uses Shell owner
+  // authorization without revealing the owner bearer to the viewer.
   let guidedAssistanceBusy=false;
   function guidedAssistanceQuestion(text,options){
     return new Promise(resolve=>{
@@ -520,10 +520,9 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   }
   async function requestGuidedAssistance(summary){
     if(guidedAssistanceBusy)return;
-    if(!shChatMode||!shChatToken||!window.opener||window.opener.closed){
+    if(!labChatMode && (!shChatMode||!shChatToken||!window.opener||window.opener.closed)){
       addShBubble('assistant',
-        'Per registrare una richiesta devi aprire il visualizzatore dalla Service Shell SOS '+
-        'con ticket attivo e sessione autorizzata. In questa demo non è stata registrata alcuna richiesta.',
+        'Il collegamento SOS non è attivo: non posso inviare la richiesta al Gateway.',
         'Assistenza non avviata');
       return;
     }
@@ -554,14 +553,35 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
           'Dati da completare');
         return;
       }
-      if(!shChatToken||!window.opener||window.opener.closed){
+      if(!labChatMode && (!shChatToken||!window.opener||window.opener.closed)){
         addShBubble('assistant','Sessione SOS scollegata: nessuna richiesta inviata.','SOS');
         return;
       }
-      const requestId=crypto.randomUUID();
       intakePending=addShBubble('assistant','Registro la richiesta nel servizio SOS…',
         'Attendo ricevuta');
-      const response=await new Promise((resolve,reject)=>{
+      let response;
+      if(labChatMode){
+        // Standalone: real persistence in the SYNTHETIC pharmacy only. No
+        // owner credential, no second MCP. Do not silently renew on POST:
+        // a new lab session could create a duplicate after an uncertain reply.
+        await ensureLabAccess();
+        const saved=await fetch(labGatewayHost+'/browser/lab/sos/guided-assistance/'+
+          encodeURIComponent(labAccess.id),{
+          method:'POST',cache:'no-store',
+          headers:{Authorization:'Bearer '+labAccess.token,'Content-Type':'application/json'},
+          body:JSON.stringify({
+            categoryNodeId:summary.categoryNodeId,
+            steps:summary.steps.map(x=>({id:x.id,answer:x.answer})),
+            rischioPersone:risk,urgenza:urgency,confermaEsplicita:true
+          })
+        });
+        response=await saved.json();
+        if(!saved.ok && response.status!=='received')
+          throw Error('Gateway SOS HTTP '+saved.status+' · '+
+            String(response.reason||response.error||'acquisizione non riuscita'));
+      }else{
+        const requestId=crypto.randomUUID();
+        response=await new Promise((resolve,reject)=>{
         let timer;
         const handler=event=>{
           if(event.origin!==SOS_ORIGIN||event.source!==window.opener ||
@@ -587,7 +607,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
           urgenza:urgency,
           confermaEsplicita:true
         },SOS_ORIGIN);
-      });
+        });
+      }
       intakePending?.remove();intakePending=null;
       if(response.status==='received'&&typeof response.id==='string'){
         const card=response.scheda||{};
@@ -614,6 +635,92 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       intakePending?.remove();
       guidedAssistanceBusy=false;
     }
+  }
+  // Read-only review from the authoritative SOS Neon worklist: SAME
+  // shared synthetic user for lab and paired demo; no request is created here.
+  let reviewingRequests=false;
+  async function guidedSosRead(detailId=''){
+    const suffix=detailId?'request':'requests';
+    if(labChatMode){
+      await ensureLabAccess();
+      const call=token=>fetch(labGatewayHost+'/browser/lab/sos/'+suffix+'/'+
+        encodeURIComponent(token.id)+(detailId?'/'+encodeURIComponent(detailId):''),{
+          headers:{Authorization:'Bearer '+token.token},cache:'no-store'});
+      let r=await call(labAccess);
+      if(r.status===401||r.status===410){
+        labAccess=null;r=await call(await ensureLabAccess());
+      }
+      if(!r.ok)throw Error('Gateway SOS HTTP '+r.status);
+      return r.json();
+    }
+    if(shChatMode&&shChatToken){
+      const r=await viewerRequest('/browser/viewer/sos/'+suffix+'/'+
+        encodeURIComponent(requestedSession)+(detailId?'/'+encodeURIComponent(detailId):''),
+        shChatToken,{signal:shChatController?.signal});
+      return r.json();
+    }
+    throw Error('Sessione SOS non autorizzata');
+  }
+  async function reviewGuidedRequests(){
+    if(reviewingRequests)return;
+    reviewingRequests=true;
+    clearExpertOffer();
+    const pending=addShBubble('assistant','Consulto le richieste in corso…','SOS · Neon');
+    try{
+      const reply=await guidedSosRead();
+      pending.remove();
+      if(reply.status!=='available'||!Array.isArray(reply.data?.richieste))
+        throw Error('Elenco richieste non disponibile: '+String(reply.reason||'risposta inattesa'));
+      const requests=reply.data.richieste;
+      addShBubble('assistant',requests.length
+        ?'Richieste in corso: '+requests.length+
+         '. Seleziona una richiesta per esaminarne lo stato e gli eventi.'
+        :'Non risultano richieste di assistenza in corso nella farmacia demo.',
+        'SOS · lettura dal Gateway');
+      if(requests.length){
+        const options=document.createElement('div');
+        options.className='sos-guided-options';
+        for(const item of requests){
+          if(typeof item.id!=='string')continue;
+          const select=document.createElement('button');
+          select.type='button';select.className='sos-guided-choice';
+          select.textContent=String(item.oggetto||'Richiesta SOS')+' · '+
+            String(item.statoOperativo||'stato non disponibile');
+          select.addEventListener('click',async()=>{
+            if(select.disabled)return;
+            select.disabled=true;
+            try{
+              const detail=await guidedSosRead(item.id);
+              if(detail.status!=='available'||!detail.data)
+                throw Error(String(detail.reason||'Dettaglio non disponibile'));
+              const data=detail.data;
+              const events=Array.isArray(data.eventi)?data.eventi.map(e=>e.tipo).join(', '):'';
+              addShBubble('assistant',
+                'Richiesta: '+data.id+'\\n'+
+                'Oggetto: '+String(data.oggetto||'')+'\\n'+
+                'Stato operativo: '+String(data.statoOperativo||'')+'\\n'+
+                'Stato monitoraggio: '+String(data.statoMonitoraggio||'')+'\\n'+
+                'Specializzazione: '+String(data.specializzazione||'')+'\\n'+
+                'Locale: '+String(data.locale||'Da accertare')+'\\n'+
+                'Urgenza: '+String(data.urgenza||'Da accertare')+'\\n'+
+                'Tecnico assegnato: '+(data.tecnicoAssegnato?'Sì':'No')+'\\n'+
+                'Eventi: '+(events||'Nessuno'),
+                'SOS · dettaglio verificato in Neon');
+            }catch(e){
+              addShBubble('assistant','Dettaglio non consultabile: '+
+                String(e?.message||e),'SOS');
+            }finally{select.disabled=false;}
+          });
+          options.appendChild(select);
+        }
+        chatHistory.appendChild(options);
+        chatHistory.scrollTop=chatHistory.scrollHeight;
+      }
+    }catch(error){
+      pending.remove();
+      addShBubble('assistant','Impossibile leggere le richieste in corso: '+
+        String(error?.message||error),'SOS · nessuna modifica');
+    }finally{reviewingRequests=false;}
   }
   // One transcript: the guided Neon tree and free-form SH interpretation.
   let sosGuidedController=null;
@@ -655,6 +762,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       addMessage:addShBubble,
       onNavigate:clearExpertOffer,
       onRequestAssistance:requestGuidedAssistance,
+      onReviewRequests:reviewGuidedRequests,
       onNoAction:summary=>{
         // The database supplied no next question and no executable action.
         // An expert handoff is offered but NEVER launched automatically.
