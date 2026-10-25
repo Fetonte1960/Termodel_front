@@ -57,7 +57,7 @@
           route.length=0;
           route.push({id:'inizio',question:body||data.node.label||'',answer:null});
         }else{
-          const question=route[route.length-1]?.question||'Quale problema hai?';
+          const question=route[route.length-1]?.nextQuestion||route[route.length-1]?.question||'Quale problema hai?';
           const previousIndex=route.findIndex(x=>x.id===data.node.id);
           if(previousIndex>=0)route.splice(previousIndex);
           route.push({id:data.node.id,question,answer:label||data.node.label});
