@@ -101,6 +101,106 @@ header small{font-size:.7rem;color:#64748b;font-weight:400}
   }
 
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
+
+  // SOS DEMO: session handoff from the exact originating Service Shell window.
+  const SOS_ORIGIN = 'https://fetonte1960.github.io';
+  let viewerClaimed = false;
+  let viewerActive = null;
+  function shellMessage(status, detail) {
+    if (window.opener && !window.opener.closed)
+      window.opener.postMessage({type:'sos-viewer-state', sessionId:requestedSession,status,detail:String(detail||'').slice(0,300)}, SOS_ORIGIN);
+  }
+  async function viewerRequest(url, token, options={}) {
+    const result=await fetch(base+url,{...options,headers:{...options.headers,Authorization:'Bearer '+token},cache:'no-store'});
+    if(!result.ok) throw Error('Gateway HTTP '+result.status);
+    return result;
+  }
+  async function viewerCommand(message, token, controller) {
+    const requestId=message.requestId;
+    if(typeof requestId!=='string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(requestId)) return;
+    let status='failed',detail='Elaborazione non completata';
+    try {
+      if(message.action!=='showModel') {status='unsupported';detail='Comando visuale non supportato';}
+      else {
+        if(message.modelEndpoint !== '/browser/viewer/model/'+requestedSession) throw Error('Percorso modello inatteso');
+        const model=await viewerRequest(message.modelEndpoint,token,{signal:controller.signal});
+        const content=await model.text();
+        const outcome=await validateIncoming('ReadProject\n'+content);
+        if(!outcome.handled || !previewPlan || typeof setPreview !== 'function') throw Error('Modello non renderizzabile');
+        setPreview(previewPlan);
+        // Wait for an animation frame so the Three.js renderer can present the scene.
+        await new Promise((resolve,reject)=>{
+          const timeout=setTimeout(()=>reject(Error('Timeout rendering')),7000);
+          requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(timeout);resolve();}));
+        });
+        status='rendered';detail='Progetto caricato in 3D';
+        document.getElementById('launch-state').textContent='Viewer SOS · modello visualizzato';
+      }
+    }catch(error){detail=String(error?.message||error).slice(0,300);setStatus('Viewer SOS: '+detail);}
+    try {
+      await viewerRequest('/browser/viewer/reply/'+encodeURIComponent(requestedSession)+'/'+encodeURIComponent(requestId),token,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,detail}),signal:controller.signal
+      });
+    }catch(error){setStatus('ACK viewer non consegnato: '+String(error?.message||error));}
+  }
+  async function runViewer(token) {
+    const controller=new AbortController();
+    viewerActive=controller;
+    const response=await viewerRequest('/browser/viewer/events/'+encodeURIComponent(requestedSession),token,{signal:controller.signal});
+    if(!response.body) throw Error('SSE senza stream');
+    shellMessage('connected');
+    document.getElementById('launch-state').textContent='Viewer SOS · collegato, in attesa comandi';
+    setStatus('Viewer SOS collegato: attesa showModel.');
+    const reader=response.body.getReader(),decoder=new TextDecoder();
+    let buffer='';
+    while(!controller.signal.aborted) {
+      const {done,value}=await reader.read();
+      if(done)break;
+      buffer+=decoder.decode(value,{stream:true}).replace(/\r\n/g,'\n');
+      if(buffer.length>65536)throw Error('Evento SSE troppo grande');
+      let pos;
+      while((pos=buffer.indexOf('\n\n'))>=0) {
+        const frame=buffer.slice(0,pos);buffer=buffer.slice(pos+2);
+        if(!frame.split('\n').some(line=>line==='event: visual')) continue;
+        const data=frame.split('\n').filter(line=>line.startsWith('data: ')).map(line=>line.slice(6)).join('\n');
+        let message;try{message=JSON.parse(data);}catch{continue;}
+        await viewerCommand(message,token,controller);
+      }
+    }
+    if(!controller.signal.aborted)throw Error('Connessione viewer terminata');
+  }
+  if(handoffRequested) {
+    window.addEventListener('message',async event=>{
+      if(viewerClaimed || event.origin!==SOS_ORIGIN || event.source!==window.opener) return;
+      const data=event.data;
+      if(!data || data.type!=='sos-viewer-handoff' || data.sessionId!==requestedSession) return;
+      if(typeof data.handoffCode!=='string' || !/^[a-fA-F0-9]{64}$/.test(data.handoffCode)) return;
+      viewerClaimed=true;
+      try {
+        const result=await fetch(base+'/browser/viewer/claim/'+encodeURIComponent(requestedSession),{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({handoffCode:data.handoffCode}),cache:'no-store'
+        });
+        if(!result.ok)throw Error('Claim HTTP '+result.status);
+        const claimed=await result.json();
+        if(claimed.sessionId!==requestedSession || claimed.capability!=='sos.viewer.read-only' ||
+          typeof claimed.viewerToken!=='string')throw Error('Risposta autorizzazione non valida');
+        await runViewer(claimed.viewerToken);
+      }catch(error){
+        const detail=String(error?.message||error);
+        shellMessage('failed',detail);
+        document.getElementById('launch-state').textContent='Viewer SOS · connessione fallita';
+        setStatus('Viewer SOS: '+detail);
+      }
+    });
+    if(window.opener && !window.opener.closed) {
+      window.opener.postMessage({type:'sos-viewer-ready',sessionId:requestedSession},SOS_ORIGIN);
+    }else {
+      document.getElementById('launch-state').textContent='Viewer SOS · apertura dalla Shell richiesta';
+      setStatus('Impossibile agganciare la sessione: apri il modello dal pulsante nella Service Shell SOS.');
+    }
+  }
+
   const base = 'https://termodel-mcp-gateway.onrender.com';
   const el = id => document.getElementById(id);
   let abort = null, sessionId = '', browserToken = '';
