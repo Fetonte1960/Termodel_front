@@ -51,9 +51,29 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(executed,['filtri.nascondi']);
  assert.equal(rendered[0].command.action,'filter');
  assert.ok(history.children.some(c=>c.textContent==='assistant: Pareti nascoste'));
- assert.ok(findButton('Torna alle domande iniziali'));
- findButton('Torna alle domande iniziali').click();await flush();
+ // Every node, including a terminal action, has return-to-root.
+ assert.ok(findButton('Torna al menu iniziale'));
+ // Simulate a LIVE Neon edit while the viewer is still open:
+ // no code reload, no new chat session, just fresh GET of 'inizio'.
+ tree.inizio.node.message='Nuova domanda root aggiornata da Neon';
+ tree.inizio.choices=[
+   {id:'modello',label:'Modello 3D'},
+   {id:'filtri',label:'Filtri'},
+   {id:'nuovo',label:'Nuovo percorso da Neon'}
+ ];
+ findButton('Torna al menu iniziale').click();await flush();
  assert.deepEqual(queried,['inizio','filtri','filtri.nascondi','inizio']);
+ assert.ok(findButton('Nuovo percorso da Neon'),
+   'new options published in Neon must appear without reloading Tiralinee');
+ assert.ok(history.children.some(c=>c.textContent===
+   'assistant: Nuova domanda root aggiornata da Neon'));
+ // The return control is available AT THE ROOT too and forces another read.
+ assert.ok(findButton('Torna al menu iniziale'));
+ tree.inizio.choices=[{id:'filtri',label:'Menu nuovamente aggiornato'}];
+ findButton('Torna al menu iniziale').click();await flush();
+ assert.deepEqual(queried,['inizio','filtri','filtri.nascondi','inizio','inizio']);
+ assert.ok(findButton('Menu nuovamente aggiornato'));
+ assert.ok(!findButton('Nuovo percorso da Neon'));
  dialogue.stop();
  assert.equal(history.querySelectorAll('button').length,0);
  // Confirmed question-answer context from a terminal node with NO action.
@@ -89,11 +109,11 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
  assert.equal(offered[0].actionExecuted,false);
  assert.equal(noActionPerformed,0);
  const back=simulated.querySelectorAll('button').find(x=>
-  x.textContent==='Torna alle domande iniziali'&&!x.disabled);
+  x.textContent==='Torna al menu iniziale'&&!x.disabled);
  back.click();await flush();
  assert.equal(navigations,2);
  assert.equal(offered.length,1);
  guided.stop();
  console.log('SOS_GUIDED_HANDOFF_OK root question + confirmed selection + no automatic execution');
- console.log('SOS_NEON_CHAT_UI_SMOKE_OK root -> filter -> action -> back -> stop');
+ console.log('SOS_NEON_CHAT_UI_SMOKE_OK root -> filter -> action -> live Neon root refresh twice -> stop');
 })().catch(error=>{console.error(error);process.exitCode=1;});
