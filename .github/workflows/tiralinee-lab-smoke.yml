@@ -5,6 +5,9 @@ on:
     paths:
       - 'docs/termodel-ui-demo/mcp-dump-test.html'
       - 'docs/termodel-ui-demo/tiralinee-lab.js'
+      - 'docs/termodel-ui-demo/tiralinee-gateway-retry.js'
+      - 'docs/termodel-ui-demo/tiralinee-expert-handoff.js'
+      - 'docs/termodel-ui-demo/tests/tiralinee-expert-smoke.cjs'
       - 'docs/termodel-ui-demo/TermodelWebModel.json'
       - 'docs/termodel-ui-demo/tests/tiralinee-lab-smoke.cjs'
       - '.github/workflows/tiralinee-lab-smoke.yml'
@@ -22,4 +25,6 @@ jobs:
         with:
           node-version: '22'
       - name: Standalone lab contract tests
-        run: node docs/termodel-ui-demo/tests/tiralinee-lab-smoke.cjs
+        run: |
+          node docs/termodel-ui-demo/tests/tiralinee-lab-smoke.cjs
+          node docs/termodel-ui-demo/tests/tiralinee-expert-smoke.cjs
