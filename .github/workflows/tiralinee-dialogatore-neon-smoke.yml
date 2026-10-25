@@ -112,10 +112,33 @@ jobs:
           const freshRoot=await reread.json();
           assert.equal(freshRoot.node.id,'inizio');
           assert.deepEqual(freshRoot.choices.map(c=>c.id),expected);
-          const leaf=await get('disservizi.idrico');
-          assert.equal(leaf.status,200);
-          assert.equal(leaf.data.node.canExecute,false);
-          assert.deepEqual(leaf.data.choices,[]);
+          const hydraulic=await get('disservizi.idrico');
+          assert.equal(hydraulic.status,200);
+          assert.equal(hydraulic.data.node.canExecute,false);
+          assert.deepEqual(hydraulic.data.choices.map(c=>c.label),
+            ['Perdita','Mancanza di servizio']);
+          const leak=await get('disservizi.idrico.perdita');
+          assert.equal(leak.status,200);
+          assert.equal(leak.data.node.canExecute,false,
+            'Room selection is a read action, not an executable SH command');
+          assert.equal(leak.data.node.message,
+            'Questi sono i locali, in quale si è verificato il problema?');
+          assert.equal(leak.data.choices.length,7,'Room count from Termodel V3');
+          assert(leak.data.choices[0].label.startsWith('1. '));
+          assert(leak.data.choices[6].label.startsWith('7. '));
+          assert(leak.data.choices.every(x=>x.id.startsWith('sos.room.perdita.')));
+          const selected=await get(leak.data.choices[0].id);
+          assert.equal(selected.status,200);
+          assert.equal(selected.data.node.roomSelection,true);
+          assert.equal(selected.data.node.roomId,'locale_1');
+          assert.deepEqual(selected.data.choices,[]);
+          const breakInMenu=await get('disservizi.intrusione_vetri_infissi');
+          assert.deepEqual(breakInMenu.data.choices.map(x=>x.label),['Effrazione']);
+          const burglary=await get('disservizi.intrusione_vetri_infissi.effrazione');
+          assert.equal(burglary.status,200);
+          assert.equal(burglary.data.choices.length,7);
+          assert(burglary.data.choices.every(x=>x.id.startsWith('sos.room.effrazione.')));
+          assert.equal((await get('sos.room.perdita.locale_999')).status,404);
           assert.equal((await get('sos')).status,404);
           assert.equal((await get('filtri')).status,404);
           const noAction=await fetch(base+'/execute/disservizi.idrico',{
