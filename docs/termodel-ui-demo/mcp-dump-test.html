@@ -164,7 +164,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.16.0';
+  const HARNESS_VERSION = '1.16.1';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -445,11 +445,13 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       'Chat SH chiusa · ChatGPT esperto aperto · viewer 3D attivo';
     window.dispatchEvent(new Event('resize'));
   }
-  function offerExpertChat(lastRequest){
+  function offerExpertChat(lastRequest,guided=null){
     if(expertChatLaunched||!window.TiralineeExpertHandoff)return;
     clearExpertOffer();
-    addShBubble('assistant',window.TiralineeExpertHandoff.QUESTION,
-      'SH-IntelligenceEngine · richiesta non riconosciuta');
+    addShBubble('assistant',guided?
+      'Ho raccolto le informazioni disponibili, ma non ho ancora un’azione automatica per questo disservizio. Vuoi continuare con un assistente AI esperto senza ripetere le risposte già date?':
+      window.TiralineeExpertHandoff.QUESTION,
+      guided?'SOS · passaggio di consegne pronto':'SH-IntelligenceEngine · richiesta non riconosciuta');
     const actionRow=document.createElement('div');
     actionRow.className='sh-expert-actions';
     const yes=document.createElement('button');
@@ -463,7 +465,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         paired:shChatMode&&Boolean(shChatToken),
         shellBootstrap:trustedSosExpertBootstrap,
         history:expertHistory(),
-        lastRequest
+        lastRequest,
+        guided
       });
       const tab=window.open('https://chatgpt.com/?q='+
         encodeURIComponent(prompt),'_blank');
@@ -481,8 +484,9 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       if(expertOffer!==actionRow)return;
       clearExpertOffer();
       addShBubble('assistant',
-        'Va bene. Puoi riformulare la richiesta e continuare con SH.',
-        'SH-IntelligenceEngine');
+        guided?'Va bene. Puoi tornare alle domande iniziali oppure scrivere liberamente a SOS.':
+          'Va bene. Puoi riformulare la richiesta e continuare con SH.',
+        guided?'Percorso guidato SOS':'SH-IntelligenceEngine');
       chatInput.focus();
     });
     actionRow.append(yes,no);
@@ -528,7 +532,14 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       read:id=>guidedTransport(id,false),
       execute:id=>guidedTransport(id,true),
       act:data=>executeShIntent(data,shChatMode),
-      addMessage:addShBubble
+      addMessage:addShBubble,
+      onNavigate:clearExpertOffer,
+      onNoAction:summary=>{
+        // The database supplied no next question and no executable action.
+        // An expert handoff is offered but NEVER launched automatically.
+        const answer=summary.steps[summary.steps.length-1]?.answer||'';
+        offerExpertChat(answer,summary);
+      }
     });
     await sosGuidedController.start();
   }
