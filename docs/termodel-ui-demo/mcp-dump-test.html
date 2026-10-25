@@ -976,9 +976,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         loaded3DRevision=loadedHeader?decodeURIComponent(loadedHeader):null;
         loaded3DImportId=importId;
         try{
-          const clean=await viewerRequest('/browser/viewer/clean-floor/'+
-            encodeURIComponent(requestedSession)+'/'+encodeURIComponent(cleanFloorName),
-            token,{signal:controller.signal});
+          const clean=await fetch(base+'/browser/viewer/clean-floor/'+
+            encodeURIComponent(requestedSession)+'/'+encodeURIComponent(cleanFloorName),{
+            method:'GET',cache:'no-store',signal:controller.signal,
+            headers:{Authorization:'Bearer '+token}
+          });
           await renderCleanFloor(clean);
         }catch(error){
           showCleanFloorMessage('Pianta pulita non caricata: '+String(error?.message||error));
