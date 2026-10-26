@@ -37,8 +37,10 @@
       return role+': '+content;
     }).filter(v=>v.trim().length>8).join('\n');
     const failed=String(opts.lastRequest||'').slice(0,500);
-    const guided=opts.guided&&opts.guided.unresolved===true&&
+    const guided=opts.guided&&
+      (opts.guided.unresolved===true||opts.guided.userRequested===true)&&
       Array.isArray(opts.guided.steps)?opts.guided:null;
+    const userRequested=guided?.userRequested===true;
     const selections=guided?guided.steps.slice(0,20).map((step,i)=>{
       const question=String(step?.question||'').slice(0,250);
       const answer=String(step?.answer||'').slice(0,250);
@@ -46,7 +48,9 @@
     }).filter(Boolean).join('\n'):'';
     const guidedContext=guided?[
       'CONSEGNA DAL DIALOGATORE GUIDATO SOS — DATI RACCOLTI',
-      'Il percorso a domande e risposte configurato in Neon è terminato SENZA azioni automatiche o ulteriori domande disponibili.',
+      userRequested
+        ? 'L’utente ha scelto di passare a un assistente AI prima dell’invio di una richiesta SOS. Il dialogatore può avere ancora domande e azioni disponibili.'
+        : 'Il percorso a domande e risposte configurato in Neon è terminato SENZA azioni automatiche o ulteriori domande disponibili.',
       selections||'Nessuna risposta è stata raccolta.',
       'Queste sono le sole risposte effettivamente selezionate. Non presumere che siano stati verificati luogo preciso, gravità, sicurezza delle persone o altri dettagli non contenuti sopra.',
       'NON ripetere le domande già poste né richiedere nuovamente le risposte già raccolte. Prosegui chiedendo solo le informazioni ancora necessarie.',
@@ -57,13 +61,15 @@
     return [
       base,
       guided?'PASSAGGIO DAL DIALOGATORE GUIDATO A UN ASSISTENTE AI ESPERTO.':'CONTESTO DEL PASSAGGIO DA SH-INTELLIGENCEENGINE.',
-      guided?'L’utente ha autorizzato il passaggio perché il dialogatore non dispone di un’azione conclusiva per il disservizio selezionato.':
+      guided?(userRequested
+        ? 'L’utente ha scelto esplicitamente un assistente AI avanzato al posto di attivare ora una richiesta SOS.'
+        : 'L’utente ha autorizzato il passaggio perché il dialogatore non dispone di un’azione conclusiva per il disservizio selezionato.'):
         'L’utente ha scelto esplicitamente di proseguire con un modello AI esperto perché il motore SH non ha interpretato la richiesta.',
       'La conversazione precedente era nella chat di Tiralinee. La chat locale viene chiusa; il modello 3D Tiralinee rimane aperto.',
-      'Nessun ticket o intervento viene creato automaticamente da questo passaggio.',
+      'Nessun ticket o intervento è stato creato da questa scelta. Non interpretarla come conferma di invio. Eventuali nuove richieste richiedono una conferma esplicita.',
       guidedContext,
       transcript?'Ultimi messaggi di contesto:\n'+transcript:'',
-      guided?'Prendi in carico il disservizio classificato sopra e continua dalle sole informazioni mancanti.':
+      guided?'Prendi in carico il disservizio classificato sopra e continua dalle sole informazioni mancanti. Puoi consultare gli strumenti SOS autorizzati nella sessione.':
         failed?'Richiesta da affrontare adesso: '+failed:'',
       'Prosegui la conversazione senza inventare dati, comandi eseguiti o collegamenti non verificati.'
     ].filter(Boolean).join('\n\n');
