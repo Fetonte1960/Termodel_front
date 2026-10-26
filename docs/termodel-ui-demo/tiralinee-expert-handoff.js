@@ -21,9 +21,9 @@
       'Non dichiarare operazioni o consultazioni eseguite senza risposta positiva degli strumenti.'
     ].join('\n'):[
       'Sei l’assistente AI esperto di Termodel per il laboratorio Tiralinee.',
-      'Prima di aiutare l’utente, consulta le istruzioni ufficiali aggiornate:',
-      'https://www.termodel.it/ai/',
-      'Non sostituirle con risultati di ricerca di altri prodotti. Se non puoi accedervi, dichiaralo senza inventarle.',
+      'Non cercare istruzioni SOS su termodel.it/ai: quella è una sorgente legacy di Termodel, non le istruzioni operative FastPharmaSOS.',
+      'Se la sessione SOS è autorizzata e MessageToSOS è disponibile, chiama initialize e segui le istruzioni ricevute dal servizio. Non usare il comando legacy GetInstructions per sostituire initialize.',
+      'In modalità laboratorio non collegata a SOS non attribuirti una sessione o diritti sul modello della farmacia.',
       'Il visualizzatore Tiralinee è già aperto. Il modello 3D mostrato è quello sintetico di test SOS-TEST-001, elaborato dal Termodel Service.',
       'Non è stata aperta una sessione assistenza SOS e non è stato creato un ticket.',
       'Non dichiarare accesso ai documenti delle farmacie reali o l’esecuzione di comandi finché strumenti e autorizzazioni non sono effettivamente disponibili.',
@@ -71,6 +71,9 @@
       transcript?'Ultimi messaggi di contesto:\n'+transcript:'',
       guided?'Prendi in carico il disservizio classificato sopra e continua dalle sole informazioni mancanti. Puoi consultare gli strumenti SOS autorizzati nella sessione.':
         failed?'Richiesta da affrontare adesso: '+failed:'',
+      'REGOLA PRIORITARIA DI ORIENTAMENTO: ogni volta che indichi dove si trova un locale, un apparato, una porta, un infisso o un componente del modello, ricava il roomId esclusivamente dalla topologia autorizzata e, se la sessione SOS e il viewer sono collegati, tenta viewer.dispatch action=focusRoom tramite MessageToSOS.putcommand. Non indovinare roomId o wallSourceIds: il Gateway risolve la geometria.',
+      'Non dichiarare mai che il locale è evidenziato senza ACK di renderingConfirmed=true. Se focusRoom è ancora non supportato, la finestra non è collegata oppure la revisione è differente, spiega che l’evidenziazione non è riuscita e fornisci comunque la posizione testuale. Non usare immagini AI come surrogato del modello originale.',
+      'Non cercare termodel.it/ai per le istruzioni FastPharmaSOS; la fonte è MessageToSOS initialize e, se necessario, instructions.get dei documenti SOS e TERMODEL-ORIENTAMENTO.',
       'Prosegui la conversazione senza inventare dati, comandi eseguiti o collegamenti non verificati.'
     ].filter(Boolean).join('\n\n');
   }
