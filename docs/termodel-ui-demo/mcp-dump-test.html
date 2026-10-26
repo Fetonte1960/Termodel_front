@@ -600,7 +600,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       // Provider gets context only after an explicit provider click.
       // Popup is created synchronously in the click handler.
       const base=provider==='Claude'?'https://claude.ai/new?q=':'https://chatgpt.com/?q=';
-      const tab=window.open(base+encodeURIComponent(prompt),'_blank','noopener,noreferrer');
+      const tab=window.open(base+encodeURIComponent(prompt),'_blank');
       if(!tab){
         addShBubble('assistant',
           'Il browser non ha consentito l’apertura della chat '+provider+
@@ -608,6 +608,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
           'Passaggio AI non eseguito');
         return;
       }
+      // Detach the external provider tab from the authorized SOS viewer.
+      try{tab.opener=null;}catch(_){}
       clear();
       closeEngineChat(provider);
     }
