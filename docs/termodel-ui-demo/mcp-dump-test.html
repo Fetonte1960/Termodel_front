@@ -160,12 +160,12 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.12.1/dist/jsts.min.js"></script>
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
-<script src="./tiralinee-expert-handoff.js?v=1.0.0"></script>
+<script src="./tiralinee-expert-handoff.js?v=1.0.1"></script>
 <script src="./tiralinee-guided-chat.js?v=1.0.5"></script>
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.17.0';
+  const HARNESS_VERSION = '1.18.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -482,18 +482,22 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       .filter(item=>item.text&&item.text!==
         window.TiralineeExpertHandoff?.QUESTION);
   }
-  function closeEngineChat(){
-    // Close only the SH dialogue; keep the existing 3D canvas and SOS viewer
-    // pairing alive so the expert can use the same Gateway/Service resources.
+  function closeEngineChat(provider='ChatGPT'){
+    // Close only the dialogue pane; never close/disconnect Tiralinee.
+    // Keep the 2D/3D renderer and authorized Gateway viewer pairing alive.
     expertChatLaunched=true;
     sosGuidedController?.stop();
     clearExpertOffer();
+    assistanceChoice?.remove();
+    assistanceChoice=null;
     document.body.classList.remove('api-chat-mode');
     document.body.classList.add('expert-chat-launched');
     chatInput.disabled=true;chatSend.disabled=true;
     chatPane.hidden=true;
+    const splitter=document.getElementById('api-chat-divider');
+    if(splitter)splitter.hidden=true;
     document.getElementById('launch-state').textContent=
-      'Chat SH chiusa · ChatGPT esperto aperto · viewer 3D attivo';
+      'Dialogo SOS chiuso · '+provider+' aperto · Tiralinee 2D/3D attivo';
     window.dispatchEvent(new Event('resize'));
   }
   function offerExpertChat(lastRequest,guided=null){
@@ -543,6 +547,98 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     actionRow.append(yes,no);
     chatHistory.appendChild(actionRow);
     expertOffer=actionRow;
+    chatHistory.scrollTop=chatHistory.scrollHeight;
+  }
+
+  // An assistance choice is only a UI decision. NEVER POST a ticket unless
+  // the user explicitly chooses the SOS branch and completes its confirmations.
+  let assistanceChoice=null;
+  function chooseAssistanceChannel(summary){
+    if(expertChatLaunched||guidedAssistanceBusy||assistanceChoice)return;
+    clearExpertOffer();
+    addShBubble('assistant',
+      'Come desideri proseguire con i dati raccolti? '+
+      'Puoi attivare una richiesta a FastPharmaSOS oppure parlare con un modello AI avanzato. '+
+      'La scelta AI non invia alcuna richiesta di intervento.',
+      'Scelta modalità di assistenza');
+    const row=document.createElement('div');
+    row.className='sos-guided-options sos-assistance-channel';
+    row.setAttribute('role','group');
+    row.setAttribute('aria-label','Scegli il canale di assistenza');
+    assistanceChoice=row;
+    const option=(label,handler,css='sos-guided-choice')=>{
+      const button=document.createElement('button');
+      button.type='button';button.textContent=label;button.className=css;
+      button.addEventListener('click',()=>{if(assistanceChoice===row&&!expertChatLaunched)handler();});
+      row.appendChild(button);
+      return button;
+    };
+    const clear=()=>{
+      if(assistanceChoice===row)assistanceChoice=null;
+      row.remove();
+    };
+    function pickProvider(provider){
+      if(!window.TiralineeExpertHandoff){
+        addShBubble('assistant','Bootstrap dell’assistente esperto non disponibile: impossibile aprire la chat.','SOS');
+        return;
+      }
+      const guided={
+        ...summary,
+        userRequested:true,
+        unresolved:false,
+        steps:(summary.steps||[]).map(step=>({
+          question:step.question||'',answer:step.answer||''
+        }))
+      };
+      const prompt=window.TiralineeExpertHandoff.buildPrompt({
+        paired:shChatMode&&Boolean(shChatToken),
+        shellBootstrap:trustedSosExpertBootstrap,
+        history:expertHistory(),
+        lastRequest:summary.steps?.at(-1)?.answer||'',
+        guided
+      });
+      // Provider gets context only after an explicit provider click.
+      // Popup is created synchronously in the click handler.
+      const base=provider==='Claude'?'https://claude.ai/new?q=':'https://chatgpt.com/?q=';
+      const tab=window.open(base+encodeURIComponent(prompt),'_blank','noopener,noreferrer');
+      if(!tab){
+        addShBubble('assistant',
+          'Il browser non ha consentito l’apertura della chat '+provider+
+          '. Abilita i popup, poi seleziona nuovamente il modello.',
+          'Passaggio AI non eseguito');
+        return;
+      }
+      clear();
+      closeEngineChat(provider);
+    }
+    function showProviders(){
+      row.replaceChildren();
+      addShBubble('assistant',
+        'Scegli il modello AI avanzato. La conversazione e le risposte già fornite saranno incluse nel bootstrap; '+ 
+        'non viene creato alcun ticket SOS.',
+        'Selezione assistente AI');
+      option('ChatGPT',()=>pickProvider('ChatGPT'));
+      option('Claude',()=>pickProvider('Claude'));
+      option('Indietro',showInitial,'sos-guided-back');
+    }
+    function showInitial(){
+      row.replaceChildren();
+      option('Attiva richiesta di assistenza SOS',()=>{
+        clear();
+        addShBubble('user','Attiva richiesta di assistenza SOS');
+        void requestGuidedAssistance(summary);
+      });
+      option('Apri chat con AI avanzata',()=>{
+        addShBubble('user','Prosegui con un modello AI avanzato');
+        showProviders();
+      });
+      option('Annulla',()=>{
+        clear();
+        addShBubble('assistant','Nessuna richiesta inviata. Puoi continuare il dialogo SOS.','SOS');
+      },'sos-guided-back');
+    }
+    showInitial();
+    chatHistory.appendChild(row);
     chatHistory.scrollTop=chatHistory.scrollHeight;
   }
 
@@ -823,9 +919,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       addMessage:addShBubble,
       onNavigate:()=>{
         clearExpertOffer();
+        assistanceChoice?.remove();
+        assistanceChoice=null;
         window.__termodelClearRoomHighlight?.();
       },
-      onRequestAssistance:requestGuidedAssistance,
+      onRequestAssistance:chooseAssistanceChannel,
       onReviewRequests:reviewGuidedRequests,
       onRoomSelected:async node=>{
         if(!loaded3DRevision || node.topologyRevision!==loaded3DRevision)
