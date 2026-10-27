@@ -8,6 +8,8 @@
   function create(config){
     const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance,onReviewRequests,onRoomSelected,onOpeningSelected}=config;
     const route=[];
+    const mainTree='farmacia_test_v1', infoTree='farmacia_info_v1';
+    let currentTree=mainTree;
     let busy=false,currentButtons=null,active=true;
     function button(label,click,cls){
       const el=document.createElement('button');
@@ -30,7 +32,7 @@
       }
       // Permanent navigation action, available from the initial menu and
       // EVERY descendant. Do not replace the tree: the user can keep answering.
-      if(typeof onReviewRequests==='function'){
+      if(currentTree===mainTree && typeof onReviewRequests==='function'){
         const review=button('Esaminare richieste di assistenza in corso',async()=>{
           if(busy||!active||review.disabled)return;
           review.disabled=true;
@@ -42,7 +44,7 @@
       // The root is already the initial menu: no nonsensical "back" button.
       // After at least one CONFIRMED response, always offer intake, including
       // on nonterminal nodes with further choices. Never register on navigation.
-      if(route.some(step=>step.answer) && nodeAllowsIntake && typeof onRequestAssistance==='function'){
+      if(currentTree===mainTree && route.some(step=>step.answer) && nodeAllowsIntake && typeof onRequestAssistance==='function'){
         const request=button('Attiva una richiesta di assistenza con i dati raccolti',async()=>{
           if(busy||!active)return;
           request.disabled=true;
@@ -58,7 +60,13 @@
         },'sos-guided-request');
         choicesRow.appendChild(request);
       }
-      if(nodeId!=='inizio'){
+      if(currentTree===infoTree){
+        // Always the LAST choice, including at the information root and result pages.
+        choicesRow.appendChild(button('Torna al menu principale',()=>{
+          currentTree=mainTree;
+          void open('inizio','Torna al menu principale');
+        },'sos-guided-back'));
+      }else if(nodeId!=='inizio'){
         const back=button('Torna al menu iniziale',()=>{
           void open('inizio','Torna al menu iniziale');
         },'sos-guided-back');
@@ -81,9 +89,10 @@
       }
       const pending=addMessage('assistant','Consulto il percorso guidato…');
       try{
-        const data=await read(id);
+        const data=await read(id,currentTree);
         if(!data||typeof data.node?.id!=='string'||
-           !Array.isArray(data.choices))throw Error('Risposta del dialogatore non valida');
+           data.treeId!==currentTree || !Array.isArray(data.choices))
+          throw Error('Risposta del dialogatore non valida');
         pending.remove();
         const body=String(data.node.message||'').trim();
         // The route contains only replies explicitly selected by the user.
@@ -124,13 +133,13 @@
           }
         }
         if(data.node.canExecute){
-          const response=await execute(data.node.id);
+          const response=await execute(data.node.id,currentTree);
           const result=await act(response);
           addMessage('assistant',result.message||'Operazione completata.',
             result.source||'Tiralinee / SOS');
         }
         const terminal=!data.node.canExecute&&displayChoices.length===0&&data.node.id!=='inizio' && data.node.roomSelection!==true && data.node.openingSelection!==true;
-        if(terminal&&typeof onNoAction==='function'){
+        if(currentTree===mainTree && terminal&&typeof onNoAction==='function'){
           // Offer an expert, but do not open an external chat or issue a ticket.
           // Only confirmed path choices are forwarded, not provisional notes.
           onNoAction({
@@ -156,7 +165,12 @@
       }finally{busy=false;}
     }
     return Object.freeze({
-      start:()=>open('inizio','',true),
+      start:()=>{currentTree=mainTree;return open('inizio','',true);},
+      startFallback:()=>{
+        if(!active||busy)return Promise.resolve(false);
+        currentTree=infoTree;
+        return open('inizio','',true);
+      },
       stop:()=>{active=false;if(currentButtons)currentButtons.remove();}
     });
   }
