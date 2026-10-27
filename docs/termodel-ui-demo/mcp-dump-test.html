@@ -161,12 +161,12 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.1"></script>
-<script src="./tiralinee-guided-chat.js?v=1.0.5"></script>
+<script src="./tiralinee-guided-chat.js?v=1.0.6"></script>
 <script>
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.20.2';
+  const HARNESS_VERSION = '1.20.3';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -1027,13 +1027,14 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   }
   // One transcript: the guided Neon tree and free-form SH interpretation.
   let sosGuidedController=null;
-  async function guidedTransport(nodeId,execute=false){
+  async function guidedTransport(nodeId,execute=false,treeId='farmacia_test_v1'){
+    const tree=encodeURIComponent(String(treeId));
     const node=encodeURIComponent(String(nodeId));
     if(labChatMode){
       await ensureLabAccess();
       const call=token=>{
         const url=labGatewayHost+'/browser/lab/dialog/'+encodeURIComponent(token.id)+
-          (execute?'/execute/'+node:'?node='+node+'&_refresh='+Date.now());
+          (execute?'/execute/'+node+'?tree='+tree:'?node='+node+'&tree='+tree+'&_refresh='+Date.now());
         return fetch(url,{method:execute?'POST':'GET',cache:'no-store',
           headers:{Authorization:'Bearer '+token.token}});
       };
@@ -1046,7 +1047,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     }
     if((shChatMode||pilotChatMode)&&shChatToken){
       const url='/browser/viewer/dialog/'+encodeURIComponent(requestedSession)+
-        (execute?'/execute/'+node:'?node='+node+'&_refresh='+Date.now());
+        (execute?'/execute/'+node+'?tree='+tree:'?node='+node+'&tree='+tree+'&_refresh='+Date.now());
       const response=await viewerRequest(url,shChatToken,{
         method:execute?'POST':'GET',signal:shChatController?.signal});
       return response.json();
@@ -1059,8 +1060,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       container:chatHistory,
       available:()=>!expertChatLaunched &&
         ((labChatMode&&Boolean(labAccess))||((shChatMode||pilotChatMode)&&Boolean(shChatToken))),
-      read:id=>guidedTransport(id,false),
-      execute:id=>guidedTransport(id,true),
+      read:(id,tree)=>guidedTransport(id,false,tree),
+      execute:(id,tree)=>guidedTransport(id,true,tree),
       act:data=>executeShIntent(data,shChatMode||pilotChatMode),
       addMessage:addShBubble,
       onNavigate:()=>{
@@ -1102,6 +1103,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       }
     });
     await sosGuidedController.start();
+  }
+  async function openInformationMenu(){
+    if(!sosGuidedController)await startGuidedDialog();
+    if(!sosGuidedController)throw Error('Dialogatore Neon non disponibile');
+    await sosGuidedController.startFallback();
   }
   async function sendLabGptMessage(message){
     if(!labChatMode||!standaloneGptActive||!standalonePilotCode||
@@ -1156,7 +1162,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     try{
       const interpreted=await askLabEngine(input);
       if(window.TiralineeExpertHandoff?.isUnrecognized(interpreted)){
-        pending.remove();offerExpertChat(input);return;
+        pending.remove();await openInformationMenu();return;
       }
       const result=await executeShIntent(interpreted);
       pending.remove();addShBubble('assistant',result.message,result.source);
@@ -1253,7 +1259,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
           headers:{'Content-Type':'application/json'},body:JSON.stringify({message:input})});
       const interpreted=await r.json();
       if(window.TiralineeExpertHandoff?.isUnrecognized(interpreted)){
-        pending.remove();offerExpertChat(input);return;
+        pending.remove();await openInformationMenu();return;
       }
       const result=await executeShIntent(interpreted,true);
       pending.remove();addShBubble('assistant',result.message,result.source);
