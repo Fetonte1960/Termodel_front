@@ -10,7 +10,7 @@
     const route=[];
     const mainTree='farmacia_test_v1', infoTree='farmacia_info_v1';
     let currentTree=mainTree;
-    let busy=false,currentButtons=null,active=true;
+    let busy=false,currentButtons=null,active=true,pendingFallback=false;
     function button(label,click,cls){
       const el=document.createElement('button');
       el.type='button';
@@ -162,12 +162,20 @@
         if(currentButtons){
           for(const el of currentButtons.querySelectorAll('button'))el.disabled=false;
         }
-      }finally{busy=false;}
+      }finally{
+        busy=false;
+        if(pendingFallback&&active){
+          pendingFallback=false;
+          currentTree=infoTree;
+          void open('inizio','',true);
+        }
+      }
     }
     return Object.freeze({
       start:()=>{currentTree=mainTree;return open('inizio','',true);},
       startFallback:()=>{
-        if(!active||busy)return Promise.resolve(false);
+        if(!active)return Promise.resolve(false);
+        if(busy){pendingFallback=true;return Promise.resolve(true);}
         currentTree=infoTree;
         return open('inizio','',true);
       },
