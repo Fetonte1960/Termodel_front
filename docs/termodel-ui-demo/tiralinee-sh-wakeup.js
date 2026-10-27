@@ -41,7 +41,14 @@
       if(buttons){buttons.remove();buttons=null;}
       if(prompt){prompt.remove();prompt=null;}
     };
-    const cancel=()=>controller.abort();
+    const cancel=()=>{
+      if(choicePromise&&choose){
+        const resolve=choose;
+        choose=null;
+        resolve('aborted');
+      }
+      controller.abort();
+    };
     if(signal?.aborted)throw aborted();
     signal?.addEventListener('abort',cancel,{once:true});
     function schedulePrompt(){
