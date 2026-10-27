@@ -163,11 +163,12 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-expert-handoff.js?v=1.0.1"></script>
 <script src="./tiralinee-guided-chat.js?v=1.0.7"></script>
 <script src="./tiralinee-sh-wakeup.js?v=1.0.0"></script>
+<script src="./tiralinee-startup-preflight.js?v=1.0.0"></script>
 <script>
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.20.6';
+  const HARNESS_VERSION = '1.20.7';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -319,6 +320,44 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       addShBubble('assistant','GPT API abilitato. Farmacia demo e dialogatore Neon invariati.',
         'Gateway MCP | modalità di collaudo');
     }catch(_){disableStandaloneGpt('GPT non autorizzato: continuo con SH.');}
+  }
+  let startupShDegraded=false;
+  // All probes go through the existing authenticated Gateway, never directly
+  // from the browser to Render backends (no exposed secrets or CORS dependency).
+  async function runStartupReadiness(mode,token,signal){
+    if(!window.TiralineeStartupPreflight)
+      throw Error('Modulo preavvio servizi non caricato');
+    const lab=mode==='lab'?await ensureLabAccess():null;
+    const url=mode==='lab'?
+      labGatewayHost+'/browser/lab/startup/'+encodeURIComponent(lab.id):
+      base+'/browser/viewer/startup/'+encodeURIComponent(requestedSession);
+    const bearer=mode==='lab'?lab.token:token;
+    const outcome=await window.TiralineeStartupPreflight.run({
+      container:chatHistory,signal,
+      onStatus:services=>{
+        const missing=services.filter(s=>s.status!=='ready').map(s=>s.label);
+        if(mode==='lab')setLabReady(false,
+          missing.length?'Avvio servizi: '+missing.join(', '):'Servizi pronti');
+      },
+      probe:async controllerSignal=>{
+        const response=await fetch(url,{
+          method:'GET',cache:'no-store',signal:controllerSignal,
+          headers:{'Authorization':'Bearer '+bearer}
+        });
+        if(!response.ok)throw Error('Gateway avvio HTTP '+response.status);
+        return response.json();
+      }
+    });
+    startupShDegraded=outcome.kind==='degraded' &&
+      !outcome.services.some(s=>s.id==='sh'&&s.status==='ready');
+    if(outcome.kind==='blocked')
+      throw Error('Gateway o archivio Neon non pronto: impossibile avviare il modello autorizzato');
+    if(outcome.kind==='degraded')
+      addShBubble('assistant',
+        'Hai scelto Rinuncia. Avvio in modalità ridotta: le funzioni pronte restano disponibili.'+
+        (startupShDegraded?' SH non risponde; userò il menu Neon senza AI.':''),
+        'Preavvio servizi · scelta utente');
+    return outcome;
   }
   let loaded3DRevision=null;
   function setLabReady(ready,detail) {
@@ -546,6 +585,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     document.getElementById('launch-state').textContent=
       'Farmacia SOS-TEST-001 · recupero modello Service';
     try{
+      await runStartupReadiness('lab');
       const result=await loadPharmacyTestModel();
       setLabReady(true,'Farmacia SOS · '+result.primitiveCount+' primitive');
       document.getElementById('launch-state').textContent=
@@ -554,7 +594,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         'Modello 3D della farmacia SOS-TEST-001 caricato: '+
         result.primitiveCount+' primitive. Scegli una risposta guidata oppure scrivi liberamente.',
         'Termodel Service · revisione '+result.revision);
-      void startGuidedDialog();
+      await startGuidedDialog();
+      if(startupShDegraded)await openInformationMenu();
     }catch(error){
       setLabReady(false,'Modello SOS non disponibile');
       document.getElementById('launch-state').textContent=
@@ -1192,6 +1233,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     labBusy=true;setLabReady(true,'Interpretazione SH…');
     addShBubble('user',input);const pending=addShBubble('assistant','Interpreto la richiesta…');
     try{
+      if(startupShDegraded){
+        pending.remove();
+        await openInformationMenu();
+        return;
+      }
       const outcome=await interpretWithWakeup(signal=>askLabEngine(input,signal));
       if(outcome.kind==='fallback'){
         pending.remove();
@@ -1294,6 +1340,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     shBusy=true;setShActive(true,'Interpretazione SH…');
     addShBubble('user',input);const pending=addShBubble('assistant','Interpreto la richiesta…');
     try{
+      if(startupShDegraded){
+        pending.remove();
+        await openInformationMenu();
+        return;
+      }
       const outcome=await interpretWithWakeup(
         signal=>askPairedEngine(input,signal),shChatController.signal);
       if(outcome.kind==='fallback'){
@@ -1413,7 +1464,22 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         }catch(_){useSh('Verifica GPT non disponibile.');}
       }
     }
-    if(shChatMode||pilotChatMode){shChatToken=token;shChatController=controller;setShActive(true);void startGuidedDialog();}
+    if(shChatMode||pilotChatMode){
+      shChatToken=token;shChatController=controller;
+      setShActive(false,'Verifico i servizi SOS…');
+      // Do not block the SSE visual command stream while Render wakes up.
+      void runStartupReadiness('viewer',token,controller.signal).then(async()=>{
+        if(controller.signal.aborted)return;
+        setShActive(true,startupShDegraded?'SOS · menu Neon senza SH':'SOS collegato');
+        await startGuidedDialog();
+        if(startupShDegraded)await openInformationMenu();
+      }).catch(error=>{
+        if(controller.signal.aborted)return;
+        setShActive(false,'Servizi non pronti');
+        addShBubble('assistant','Preavvio incompleto: '+String(error?.message||error)+
+          '. Riapri il viewer per riprovare.','Nessun ticket o comando eseguito');
+      });
+    }
     document.getElementById('launch-state').textContent='Viewer SOS · collegato, in attesa comandi';
     setStatus('Viewer SOS collegato: attesa showModel.');
     const reader=response.body.getReader(),decoder=new TextDecoder();
