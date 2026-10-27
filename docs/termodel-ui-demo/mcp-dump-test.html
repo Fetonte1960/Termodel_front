@@ -327,11 +327,10 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   async function runStartupReadiness(mode,token,signal){
     if(!window.TiralineeStartupPreflight)
       throw Error('Modulo preavvio servizi non caricato');
-    const lab=mode==='lab'?await ensureLabAccess():null;
-    const url=mode==='lab'?
-      labGatewayHost+'/browser/lab/startup/'+encodeURIComponent(lab.id):
-      base+'/browser/viewer/startup/'+encodeURIComponent(requestedSession);
-    const bearer=mode==='lab'?lab.token:token;
+    // The initial Gateway probe is inside the timed panel too, so a sleeping
+    // Gateway cannot silently block all startup UI before the 60s choice.
+    const viewerUrl=mode==='viewer'?
+      base+'/browser/viewer/startup/'+encodeURIComponent(requestedSession):null;
     const outcome=await window.TiralineeStartupPreflight.run({
       container:chatHistory,signal,
       onStatus:services=>{
@@ -340,6 +339,19 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
           missing.length?'Avvio servizi: '+missing.join(', '):'Servizi pronti');
       },
       probe:async controllerSignal=>{
+        let url=viewerUrl, bearer=token;
+        if(mode==='lab'){
+          if(!labAccess){
+            // Public, read-only Gateway bootstrap; no session or AI cost.
+            const health=await fetch(labGatewayHost+'/health',{
+              method:'GET',cache:'no-store',signal:controllerSignal
+            });
+            if(!health.ok)throw Error('Gateway health HTTP '+health.status);
+            await ensureLabAccess();
+          }
+          url=labGatewayHost+'/browser/lab/startup/'+encodeURIComponent(labAccess.id);
+          bearer=labAccess.token;
+        }
         const response=await fetch(url,{
           method:'GET',cache:'no-store',signal:controllerSignal,
           headers:{'Authorization':'Bearer '+bearer}
