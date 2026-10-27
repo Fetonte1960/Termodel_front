@@ -161,13 +161,13 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-lab.js?v=1.0.0"></script>
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.1"></script>
-<script src="./tiralinee-guided-chat.js?v=1.0.6"></script>
+<script src="./tiralinee-guided-chat.js?v=1.0.7"></script>
 <script src="./tiralinee-sh-wakeup.js?v=1.0.0"></script>
 <script>
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.20.5';
+  const HARNESS_VERSION = '1.20.6';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -1102,11 +1102,18 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
           throw Error('La revisione del modello 3D non coincide con il topologico; ricarica il modello.');
         if(typeof window.__termodelHighlightRoom!=='function')
           throw Error('Visualizzatore 3D non pronto');
+        const component=node.component;
+        if(component && (
+          component.kind!=='apparato'||
+          component.location?.roomId!==node.roomId||
+          component.topologyRevision!==node.topologyRevision))
+          throw Error('Scheda componente e localizzazione non coerenti');
         const result=window.__termodelHighlightRoom({
           roomId:node.roomId,wallSourceIds:node.wallSourceIds,
           topologyRevision:node.topologyRevision
         });
-        return {message:'Locale '+node.label+' evidenziato nel 3D: '+
+        const displayRoom=component?.location?.roomName||node.roomId;
+        return {message:'Locale '+displayRoom+' evidenziato nel 3D: '+
           result.primitiveCount+' superfici di '+result.wallCount+' pareti.'};
       },
       onOpeningSelected:async node=>{
