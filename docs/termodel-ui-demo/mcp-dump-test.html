@@ -165,7 +165,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.20.1';
+  // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
+  const HARNESS_VERSION = '1.20.2';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -300,6 +301,9 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     }
     try{
       await ensureLabAccess();
+      // Modificato da Codex per realizzare: GPT viene abilitato soltanto dopo
+      // l'apertura del canale grafico autenticato della stessa sessione lab.
+      await ensureLabViewer();
       const response=await fetch(labGatewayHost+'/browser/lab/openai-pilot/access/'+
         encodeURIComponent(labAccess.id),{
         method:'POST',cache:'no-store',
@@ -402,6 +406,93 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       throw Error('Credenziale temporanea del Gateway non valida');
     labAccess=credentials;
     return labAccess;
+  }
+  let labViewerController=null,labViewerLabId=null,labViewerTask=null;
+  // Funzione realizzata da Codex in autonomia
+  function renderFocusRoom(message){
+    if(!loaded3DRevision || !loaded3DImportId ||
+       loaded3DRevision!==message.topologyRevision)
+      throw Error('Revisione topologica diversa dal 3D caricato. Apri il modello aggiornato.');
+    if(!/^locale_[0-9]+$/.test(String(message.roomId||'')) ||
+       !Array.isArray(message.wallSourceIds) ||
+       message.wallSourceIds.length<1 || message.wallSourceIds.length>80 ||
+       message.wallSourceIds.some(x=>typeof x!=='string'||!x||x.length>128))
+      throw Error('Dati focusRoom non validi');
+    if(typeof window.__termodelHighlightRoom!=='function')
+      throw Error('Evidenziazione grafica Tiralinee non disponibile');
+    const selected=window.__termodelHighlightRoom({
+      roomId:message.roomId,topologyRevision:message.topologyRevision,
+      wallSourceIds:message.wallSourceIds
+    });
+    if(!selected||selected.wallCount<1||selected.primitiveCount<1)
+      throw Error('Pareti del locale non evidenziate');
+    const detail=('Locale '+message.roomId+' evidenziato: '+selected.wallCount+
+      ' pareti, '+selected.primitiveCount+' primitive').slice(0,300);
+    document.getElementById('launch-state').textContent=detail;
+    return detail;
+  }
+  // Funzione realizzata da Codex in autonomia
+  async function replyLabViewer(requestId,status,detail,token,signal){
+    const response=await fetch(labGatewayHost+'/browser/lab/viewer/reply/'+
+      encodeURIComponent(token.id)+'/'+encodeURIComponent(requestId),{
+        method:'POST',cache:'no-store',signal,
+        headers:{Authorization:'Bearer '+token.token,'Content-Type':'application/json'},
+        body:JSON.stringify({status,detail})
+      });
+    if(!response.ok)throw Error('ACK grafico HTTP '+response.status);
+  }
+  // Funzione realizzata da Codex in autonomia
+  async function handleLabViewerCommand(message,token,signal){
+    const requestId=message?.requestId;
+    if(typeof requestId!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(requestId))return;
+    let status='failed',detail='Elaborazione grafica non completata';
+    try{
+      if(message.action!=='focusRoom'){
+        status='unsupported';detail='Comando visuale laboratorio non supportato';
+      }else{
+        detail=renderFocusRoom(message);status='rendered';
+      }
+    }catch(error){detail=String(error?.message||error).slice(0,300);}
+    await replyLabViewer(requestId,status,detail,token,signal);
+  }
+  // Funzione realizzata da Codex in autonomia
+  async function consumeLabViewerEvents(response,token,controller){
+    const reader=response.body.getReader(),decoder=new TextDecoder();
+    let buffer='';
+    while(!controller.signal.aborted){
+      const {done,value}=await reader.read();if(done)break;
+      buffer+=decoder.decode(value,{stream:true}).replace(/\r\n/g,'\n');
+      if(buffer.length>65536)throw Error('Evento grafico SSE troppo grande');
+      let pos;
+      while((pos=buffer.indexOf('\n\n'))>=0){
+        const frame=buffer.slice(0,pos);buffer=buffer.slice(pos+2);
+        if(!frame.split('\n').some(line=>line==='event: visual'))continue;
+        const data=frame.split('\n').filter(line=>line.startsWith('data: '))
+          .map(line=>line.slice(6)).join('\n');
+        let message;try{message=JSON.parse(data);}catch{continue;}
+        await handleLabViewerCommand(message,token,controller.signal);
+      }
+    }
+    if(!controller.signal.aborted)throw Error('Canale grafico laboratorio terminato');
+  }
+  // Funzione realizzata da Codex in autonomia
+  async function ensureLabViewer(){
+    const token=await ensureLabAccess();
+    if(labViewerController && !labViewerController.signal.aborted &&
+       labViewerLabId===token.id)return;
+    labViewerController?.abort();
+    const controller=new AbortController();
+    const response=await fetch(labGatewayHost+'/browser/lab/viewer/events/'+
+      encodeURIComponent(token.id),{cache:'no-store',signal:controller.signal,
+        headers:{Authorization:'Bearer '+token.token}});
+    if(!response.ok||!response.body){controller.abort();throw Error('Canale grafico HTTP '+response.status);}
+    labViewerController=controller;labViewerLabId=token.id;
+    labViewerTask=consumeLabViewerEvents(response,token,controller).catch(error=>{
+      if(!controller.signal.aborted)
+        addShBubble('assistant','Canale grafico interrotto: '+String(error?.message||error),
+          'Gateway MCP · GPT non può confermare il rendering');
+      if(labViewerController===controller){labViewerController=null;labViewerLabId=null;}
+    });
   }
   async function loadPharmacyTestModel(){
     if(!labGraphics?.loadSosModel)throw Error('Renderer Termodel Service non pronto');
@@ -1021,6 +1112,9 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     addShBubble('user',input);
     const pending=addShBubble('assistant','Interrogo GPT tramite il Gateway MCP...');
     try{
+      // Modificato da Codex per realizzare: riconnessione del canale grafico
+      // prima di ogni turno GPT che potrebbe invocare viewer.dispatch.
+      await ensureLabViewer();
       const response=await fetch(labGatewayHost+'/browser/lab/openai-pilot/'+
         encodeURIComponent(labAccess.id),{
           method:'POST',cache:'no-store',
@@ -1196,7 +1290,12 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     if(typeof requestId!=='string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(requestId)) return;
     let status='failed',detail='Elaborazione non completata';
     try {
-      if(message.action!=='showModel') {status='unsupported';detail='Comando visuale non supportato';}
+      // Modificato da Codex per realizzare: ricezione focusRoom dal Gateway
+      // con verifica revisione e ACK soltanto dopo la selezione grafica reale.
+      if(message.action==='focusRoom') {
+        detail=renderFocusRoom(message);status='rendered';
+      }
+      else if(message.action!=='showModel') {status='unsupported';detail='Comando visuale non supportato';}
       else {
         if(message.modelEndpoint !== '/browser/viewer/model/'+requestedSession) throw Error('Percorso modello inatteso');
         if (message.modelFormat !== 'TermodelWebModel' || message.modelVersion !== 3)
