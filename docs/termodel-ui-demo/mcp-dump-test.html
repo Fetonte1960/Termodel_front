@@ -165,7 +165,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.20.0';
+  const HARNESS_VERSION = '1.20.1';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -235,6 +235,13 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 
   document.getElementById('harness-version').textContent = 'V' + HARNESS_VERSION;
 
+  // Remove the reserved pilot credential from visible URL and history.
+  if(new URLSearchParams(window.location.hash.slice(1)).has('access')){
+    const parts=new URLSearchParams(window.location.hash.slice(1));
+    parts.delete('access');
+    history.replaceState(null,'',window.location.pathname+window.location.search+
+      (parts.toString()?'#'+parts.toString():''));
+  }
   // SOS DEMO: session handoff from the exact originating Service Shell window.
   const SOS_ORIGIN = 'https://fetonte1960.github.io';
   let shChatToken=null, shChatController=null, shBusy=false;
@@ -273,84 +280,40 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   }
   let labGraphics=null, labBusy=false, labAccess=null;
   let standaloneGptActive=false,standalonePilotCode=null;
-  // Private GPT pilot unlock is part of Tiralinee, never the URL or the
-  // public lab bearer. Without this second check the prepaid provider key
-  // would be usable by every anonymous visitor of the synthetic demo.
-  let nativeGptToggle=null,nativeGptUnlock=null,nativeGptField=null;
+  // Tiralinee standalone receives pilot access in its launch fragment,
+  // removes it immediately from browser history, and verifies it on Gateway.
+  // The public lab bearer alone never authorizes prepaid OpenAI usage.
+  let startupPilotChecked=false;
   function disableStandaloneGpt(reason=''){
     standaloneGptActive=false;standalonePilotCode=null;
-    if(nativeGptField)nativeGptField.value='';
-    if(nativeGptUnlock)nativeGptUnlock.hidden=true;
-    if(nativeGptToggle)nativeGptToggle.textContent='Attiva GPT API (collaudo riservato)';
     if(labChatMode){
       chatFooter.textContent='FastPharma SOS | SOS-TEST-001 | SH v0.4.0 | Neon';
       if(reason)addShBubble('assistant',reason,'Motore SH');
     }
   }
-  if(labChatMode){
-    const box=document.createElement('div');
-    box.style.cssText='padding:7px 10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center';
-    nativeGptToggle=document.createElement('button');
-    nativeGptToggle.type='button';
-    nativeGptToggle.textContent='Attiva GPT API (collaudo riservato)';
-    nativeGptToggle.setAttribute('aria-label','Attiva o disattiva GPT API per la demo');
-    nativeGptToggle.style.cssText='padding:7px 10px;border-radius:7px;cursor:pointer';
-    nativeGptUnlock=document.createElement('div');
-    nativeGptUnlock.hidden=true;
-    nativeGptUnlock.style.cssText='gap:6px;align-items:center;flex-wrap:wrap';
-    nativeGptField=document.createElement('input');
-    nativeGptField.type='password';
-    nativeGptField.autocomplete='off';
-    nativeGptField.placeholder='Codice di collaudo riservato';
-    nativeGptField.maxLength=128;
-    nativeGptField.setAttribute('aria-label','Codice pilota GPT custodito su Render');
-    nativeGptField.style.cssText='padding:6px 8px;min-width:190px';
-    const unlockButton=document.createElement('button');
-    unlockButton.type='button';unlockButton.textContent='Verifica';
-    unlockButton.style.cssText='padding:7px 10px;cursor:pointer';
-    nativeGptUnlock.append(nativeGptField,unlockButton);
-    box.append(nativeGptToggle,nativeGptUnlock);
-    chatFooter.before(box);
-    nativeGptToggle.addEventListener('click',()=>{
-      if(standaloneGptActive){disableStandaloneGpt('Uso SH per le prossime richieste.');return;}
-      nativeGptUnlock.hidden=!nativeGptUnlock.hidden;
-      if(!nativeGptUnlock.hidden)nativeGptField.focus();
-    });
-    const tryUnlock=async()=>{
-      const provided=nativeGptField.value;
-      if(!/^[A-Za-z0-9_-]{16,128}$/.test(provided)){
-        addShBubble('assistant','Codice pilota non valido. SH rimane attivo.','Controllo Gateway');
-        return;
-      }
-      unlockButton.disabled=true;
-      try{
-        await ensureLabAccess();
-        const response=await fetch(labGatewayHost+'/browser/lab/openai-pilot/access/'+
-          encodeURIComponent(labAccess.id),{
-          method:'POST',cache:'no-store',
-          headers:{Authorization:'Bearer '+labAccess.token,
-            'X-SOS-Pilot-Code':provided}
-        });
-        if(!response.ok)throw Error('Codice non autorizzato o GPT non configurato');
-        const verification=await response.json();
-        if(verification.engine!=='openai')throw Error('GPT non disponibile');
-        standalonePilotCode=provided;standaloneGptActive=true;
-        nativeGptField.value='';nativeGptUnlock.hidden=true;
-        nativeGptToggle.textContent='Disattiva GPT API (torna a SH)';
-        chatFooter.textContent='FastPharma SOS | SOS-TEST-001 | GPT API privata | Neon';
-        addShBubble('assistant','GPT API abilitato per questa sessione Tiralinee. '+
-          'Il modello demo e le domande ad albero restano disponibili.',
-          'Gateway MCP | test sintetico');
-      }catch(error){
-        disableStandaloneGpt();
-        addShBubble('assistant','GPT non abilitato: '+String(error?.message||error)+
-          '. Le richieste restano su SH.','Gateway MCP');
-      }finally{unlockButton.disabled=false;}
-    };
-    unlockButton.addEventListener('click',()=>void tryUnlock());
-    nativeGptField.addEventListener('keydown',e=>{
-      if(e.key==='Enter'){e.preventDefault();void tryUnlock();}
-    });
+  async function chooseStandaloneEngineAtStartup(){
+    if(!labChatMode||startupPilotChecked)return;
+    startupPilotChecked=true;
+    if(!pilotAccess)return;
+    if(!/^[A-Za-z0-9_-]{16,128}$/.test(pilotAccess)){
+      disableStandaloneGpt('Codice GPT non valido. Uso SH.');return;
+    }
+    try{
+      await ensureLabAccess();
+      const response=await fetch(labGatewayHost+'/browser/lab/openai-pilot/access/'+
+        encodeURIComponent(labAccess.id),{
+        method:'POST',cache:'no-store',
+        headers:{Authorization:'Bearer '+labAccess.token,
+          'X-SOS-Pilot-Code':pilotAccess}
+      });
+      if(!response.ok)throw Error('Not authorized');
+      const check=await response.json();
+      if(check.engine!=='openai')throw Error('Not available');
+      standalonePilotCode=pilotAccess;standaloneGptActive=true;
+      chatFooter.textContent='FastPharma SOS | SOS-TEST-001 | GPT API privata | Neon';
+      addShBubble('assistant','GPT API abilitato. Farmacia demo e dialogatore Neon invariati.',
+        'Gateway MCP | modalità di collaudo');
+    }catch(_){disableStandaloneGpt('GPT non autorizzato: continuo con SH.');}
   }
   let loaded3DRevision=null;
   function setLabReady(ready,detail) {
@@ -508,6 +471,10 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         'Non riesco a caricare il modello della farmacia: '+
         String(error?.message||error)+'. Ricarica la pagina per riprovare.',
         'Nessun modello sostitutivo caricato');
+    }finally{
+      await chooseStandaloneEngineAtStartup();
+      if(labGraphics&&loaded3DRevision)
+        setLabReady(true,standaloneGptActive?'Farmacia demo | GPT API':'Farmacia demo | SH');
     }
   };
   async function askLabEngine(message){
