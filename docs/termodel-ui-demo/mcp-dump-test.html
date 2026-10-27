@@ -162,11 +162,12 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script src="./tiralinee-gateway-retry.js?v=1.0.0"></script>
 <script src="./tiralinee-expert-handoff.js?v=1.0.1"></script>
 <script src="./tiralinee-guided-chat.js?v=1.0.6"></script>
+<script src="./tiralinee-sh-wakeup.js?v=1.0.0"></script>
 <script>
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.20.4';
+  const HARNESS_VERSION = '1.20.5';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -576,38 +577,36 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       (data.error==='sh_unavailable'||data.error==='sh_timeout');
   }
   function needsInformationMenu(data){
-    return Boolean(window.TiralineeExpertHandoff?.isUnrecognized(data)) ||
-      isShUnavailable(data);
+    // A real linguistic FAULT, not a Render/SH cold start.
+    return Boolean(window.TiralineeExpertHandoff?.isUnrecognized(data));
   }
-  async function showInformationFallback(data){
-    if(isShUnavailable(data)){
-      addShBubble('assistant',
-        'Il motore di interpretazione SH è momentaneamente indisponibile. '+
-        'Puoi comunque utilizzare le funzioni guidate della farmacia.',
-        'SOS · Gateway / Neon · nessuna AI');
-    }
-    await openInformationMenu();
+  async function interpretWithWakeup(request,signal){
+    if(!window.TiralineeShWakeup)throw Error('Controllo risveglio SH non disponibile');
+    return window.TiralineeShWakeup.wait({
+      request,container:chatHistory,addMessage:addShBubble,signal
+    });
   }
-  async function askLabEngine(message){
-    const host=labGatewayHost;
+  async function askLabEngine(message,signal){
     await ensureLabAccess();
-    // Avoid waiting for a sleeping SH service when Neon/Gateway is available.
-    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),18000);
-    try{
-      const r=await fetch(host+'/browser/lab/interpret/'+labAccess.id,{
-        method:'POST',cache:'no-store',signal:controller.signal,
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+labAccess.token},
-        body:JSON.stringify({message})});
-      if(r.status===401||r.status===410)labAccess=null;
-      const result=await r.json().catch(()=>null);
-      if(!r.ok&&!isShUnavailable(result))throw Error('SH non disponibile HTTP '+r.status);
-      if(!result)throw Error('SH: risposta non valida');
-      return result;
-    }catch(error){
-      if(error?.name==='AbortError')
-        return {esito:'ERROR',error:'sh_timeout'};
-      throw error;
-    }finally{clearTimeout(timeout);}
+    const r=await fetch(labGatewayHost+'/browser/lab/interpret/'+labAccess.id,{
+      method:'POST',cache:'no-store',signal,
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+labAccess.token},
+      body:JSON.stringify({message})});
+    if(r.status===401||r.status===410)labAccess=null;
+    const result=await r.json().catch(()=>null);
+    if(!r.ok&&!isShUnavailable(result))throw Error('Gateway SH HTTP '+r.status);
+    if(!result)throw Error('Risposta SH non valida');
+    return result;
+  }
+  async function askPairedEngine(message,signal){
+    const r=await fetch(base+'/browser/viewer/interpret/'+encodeURIComponent(requestedSession),{
+      method:'POST',signal,cache:'no-store',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+shChatToken},
+      body:JSON.stringify({message})});
+    const interpreted=await r.json().catch(()=>null);
+    if(!r.ok&&!isShUnavailable(interpreted))throw Error('Gateway HTTP '+r.status);
+    if(!interpreted)throw Error('Risposta SH non valida');
+    return interpreted;
   }
   async function executeShIntent(data,paired=false){
     if(data?.esito!=='SUCCESS')
@@ -1186,9 +1185,17 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     labBusy=true;setLabReady(true,'Interpretazione SH…');
     addShBubble('user',input);const pending=addShBubble('assistant','Interpreto la richiesta…');
     try{
-      const interpreted=await askLabEngine(input);
+      const outcome=await interpretWithWakeup(signal=>askLabEngine(input,signal));
+      if(outcome.kind==='fallback'){
+        pending.remove();
+        addShBubble('assistant',
+          'Hai rinunciato all’attesa di SH. Attivo il fallback: menu delle informazioni sulla farmacia.',
+          'SOS · fallback Neon, senza AI');
+        await openInformationMenu();return;
+      }
+      const interpreted=outcome.data;
       if(needsInformationMenu(interpreted)){
-        pending.remove();await showInformationFallback(interpreted);return;
+        pending.remove();await openInformationMenu();return;
       }
       const result=await executeShIntent(interpreted);
       pending.remove();addShBubble('assistant',result.message,result.source);
@@ -1280,18 +1287,18 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     shBusy=true;setShActive(true,'Interpretazione SH…');
     addShBubble('user',input);const pending=addShBubble('assistant','Interpreto la richiesta…');
     try{
-      // Read the structured 503 from the Gateway instead of letting
-      // viewerRequest throw before the independent Neon menu can open.
-      const r=await fetch(base+'/browser/viewer/interpret/'+encodeURIComponent(requestedSession),{
-        method:'POST',signal:shChatController.signal,cache:'no-store',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+shChatToken},
-        body:JSON.stringify({message:input})});
-      const interpreted=await r.json().catch(()=>null);
-      if(!r.ok&&!isShUnavailable(interpreted))
-        throw Error('Gateway HTTP '+r.status);
-      if(!interpreted)throw Error('Risposta SH non valida');
+      const outcome=await interpretWithWakeup(
+        signal=>askPairedEngine(input,signal),shChatController.signal);
+      if(outcome.kind==='fallback'){
+        pending.remove();
+        addShBubble('assistant',
+          'Hai rinunciato all’attesa di SH. Attivo il fallback: menu delle informazioni sulla farmacia.',
+          'SOS · fallback Neon, senza AI');
+        await openInformationMenu();return;
+      }
+      const interpreted=outcome.data;
       if(needsInformationMenu(interpreted)){
-        pending.remove();await showInformationFallback(interpreted);return;
+        pending.remove();await openInformationMenu();return;
       }
       const result=await executeShIntent(interpreted,true);
       pending.remove();addShBubble('assistant',result.message,result.source);
