@@ -5,6 +5,39 @@
  */
 (function(root){
   'use strict';
+  // Render asset information only from structured Gateway fields.
+  // No lexical extraction of [locale], [Pos] or free-text prose is allowed.
+  function componentMessage(node){
+    const component=node?.component;
+    if(component==null)return null;
+    const loc=component.location;
+    if(component.schemaVersion!==1||component.kind!=='apparato'||
+       typeof component.id!=='string'||!(/^[A-Z0-9-]{2,48}$/.test(component.id))||
+       typeof component.name!=='string'||!component.name.trim()||
+       typeof component.discipline!=='string'||!component.discipline.trim()||
+       !loc||typeof loc.roomId!=='string'||!/^locale_[0-9]+$/.test(loc.roomId)||
+       typeof loc.roomName!=='string'||!loc.roomName.trim()||
+       typeof loc.referenceDoorId!=='string'||!/^P3D-D[0-9]+$/.test(loc.referenceDoorId)||
+       loc.orientation!=='entrando_dalla_porta'||
+       node.roomId!==loc.roomId||
+       component.topologyRevision!==node.topologyRevision||
+       component.provenance!=='sintetico_demo'||component.geometry!=='room_only')
+      throw Error('Scheda componente strutturata non coerente col modello autorizzato');
+    const positions={
+      destra:'sulla destra entrando dalla porta',
+      sinistra:'sulla sinistra entrando dalla porta',
+      fronte:'di fronte alla porta',
+      vicino:'accanto alla porta'
+    };
+    const side=loc.relativePosition;
+    if(side!==null&&side!==undefined&&!Object.hasOwn(positions,side))
+      throw Error('Posizione relativa componente non riconosciuta');
+    return component.name+' ('+component.id+'). Locale: '+loc.roomName+
+      ' ('+loc.roomId+'). Porta di riferimento: '+loc.referenceDoorId+
+      '. Posizione: '+(side==null?'non disponibile':positions[side])+
+      '. Dati sintetici della farmacia demo: Tiralinee evidenzia solo il locale, '+
+      'non la geometria del componente.';
+  }
   function create(config){
     const {container,read,execute,act,addMessage,available,onNoAction,onNavigate,onRequestAssistance,onReviewRequests,onRoomSelected,onOpeningSelected}=config;
     const route=[];
@@ -94,7 +127,8 @@
            data.treeId!==currentTree || !Array.isArray(data.choices))
           throw Error('Risposta del dialogatore non valida');
         pending.remove();
-        const body=String(data.node.message||'').trim();
+        const body=componentMessage(data.node) ??
+          String(data.node.message||'').trim();
         // The route contains only replies explicitly selected by the user.
         // Reset the old branch when returning to the root; never fabricate data.
         if(data.node.id==='inizio'){
