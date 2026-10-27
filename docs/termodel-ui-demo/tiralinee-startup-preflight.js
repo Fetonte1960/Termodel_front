@@ -24,10 +24,11 @@
    if(typeof probe!=='function'||!container)
      throw Error('Preavvio non configurato');
    const controller=new AbortController();
-   const abort=()=>controller.abort();
+   const abort=()=>{controller.abort();if(choose)choose('aborted');};
    if(signal?.aborted)throw stopped();
    signal?.addEventListener('abort',abort,{once:true});
    let last=null,choice=null,choose=null,decision=null,timeout=null,ended=false;
+   let renounced=false;
    const panel=document.createElement('div');
    panel.className='sh-message sh-assistant';
    const bubble=document.createElement('div');
@@ -75,6 +76,7 @@
      make('Rinuncia','sos-guided-back',()=>{
        if(ended||!choice)return;
        const accept=choose;
+       renounced=true;
        choose=null;choice=null;
        accept('renounce');
        // Abort the in-flight probe but retain the last verified status.
@@ -119,11 +121,9 @@
        last.some(s=>s.id===id&&s.status==='ready'));
      return {kind:core?'degraded':'blocked',services:last||[]};
    }catch(error){
-     if(controller.signal.aborted && choose===null &&
-        last && choice===true){
-       // Handled by the explicit renounce branch below.
-       const core=REQUIRED.every(id=>last.some(s=>s.id===id&&s.status==='ready'));
-       return {kind:core?'degraded':'blocked',services:last};
+     if(renounced){
+       const core=last&&REQUIRED.every(id=>last.some(s=>s.id===id&&s.status==='ready'));
+       return {kind:core?'degraded':'blocked',services:last||[]};
      }
      throw error;
    }finally{
