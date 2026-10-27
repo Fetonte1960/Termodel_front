@@ -165,11 +165,11 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.19.1';
+  const HARNESS_VERSION = '1.20.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
-  const chatMode=(launchParams.get('chat') || '').trim().toLowerCase();
+  const chatMode=(launchParams.get('chat') || 'lab').trim().toLowerCase();
   // chat=sh without SOS session => autonomous Tiralinee lab.
   // chat=sh with sessionId => authenticated SOS viewer as before.
   // chat=lab always runs locally, even when an incidental sessionId exists.
@@ -178,7 +178,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   let shChatMode=(chatMode==='sh'&&handoffRequested)||pilotRequested;
   let pilotChatMode=false;
   const pilotAccess=new URLSearchParams(window.location.hash.slice(1)).get('access')||'';
-  const labChatMode=chatMode==='lab'||(chatMode==='sh'&&!handoffRequested);
+  const labChatMode=!handoffRequested&&(chatMode==='lab'||chatMode==='sh'||chatMode==='api'||chatMode==='apis');
   const apiChatMode=['api','apis','sh','lab'].includes(chatMode);
   document.body.classList.toggle('api-chat-mode', apiChatMode);
   if (apiChatMode) {
@@ -254,7 +254,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     chatState.textContent='Collegamento al Gateway MCP…';
     chatDescription.textContent='Consulta il modello 3D con le risposte guidate, oppure descrivi liberamente ciò che desideri fare.';
     chatPlaceholder.textContent='Farmacia demo SOS-TEST-001 · percorsi guidati caricati da Neon e interpretazione libera SH. Nessuna richiesta di assistenza viene creata automaticamente.';
-    chatFooter.textContent='FastPharma SOS · demo sintetica · percorsi guidati aggiornabili e SH v0.4.0';
+    chatFooter.textContent='FastPharma SOS · demo SOS-TEST-001 · SH v0.4.0 · GPT API riservata opzionale';
     chatInput.setAttribute('aria-label','Richiesta all’assistente FastPharma SOS');
     chatInput.placeholder='Collegamento all’assistenza SOS…';
     chatSend.title='Invia richiesta';
@@ -272,6 +272,86 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     chatSend.title='Invia richiesta a SOS';
   }
   let labGraphics=null, labBusy=false, labAccess=null;
+  let standaloneGptActive=false,standalonePilotCode=null;
+  // Private GPT pilot unlock is part of Tiralinee, never the URL or the
+  // public lab bearer. Without this second check the prepaid provider key
+  // would be usable by every anonymous visitor of the synthetic demo.
+  let nativeGptToggle=null,nativeGptUnlock=null,nativeGptField=null;
+  function disableStandaloneGpt(reason=''){
+    standaloneGptActive=false;standalonePilotCode=null;
+    if(nativeGptField)nativeGptField.value='';
+    if(nativeGptUnlock)nativeGptUnlock.hidden=true;
+    if(nativeGptToggle)nativeGptToggle.textContent='Attiva GPT API (collaudo riservato)';
+    if(labChatMode){
+      chatFooter.textContent='FastPharma SOS | SOS-TEST-001 | SH v0.4.0 | Neon';
+      if(reason)addShBubble('assistant',reason,'Motore SH');
+    }
+  }
+  if(labChatMode){
+    const box=document.createElement('div');
+    box.style.cssText='padding:7px 10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+    nativeGptToggle=document.createElement('button');
+    nativeGptToggle.type='button';
+    nativeGptToggle.textContent='Attiva GPT API (collaudo riservato)';
+    nativeGptToggle.setAttribute('aria-label','Attiva o disattiva GPT API per la demo');
+    nativeGptToggle.style.cssText='padding:7px 10px;border-radius:7px;cursor:pointer';
+    nativeGptUnlock=document.createElement('div');
+    nativeGptUnlock.hidden=true;
+    nativeGptUnlock.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap';
+    nativeGptField=document.createElement('input');
+    nativeGptField.type='password';
+    nativeGptField.autocomplete='off';
+    nativeGptField.placeholder='Codice di collaudo riservato';
+    nativeGptField.maxLength=128;
+    nativeGptField.setAttribute('aria-label','Codice pilota GPT custodito su Render');
+    nativeGptField.style.cssText='padding:6px 8px;min-width:190px';
+    const unlockButton=document.createElement('button');
+    unlockButton.type='button';unlockButton.textContent='Verifica';
+    unlockButton.style.cssText='padding:7px 10px;cursor:pointer';
+    nativeGptUnlock.append(nativeGptField,unlockButton);
+    box.append(nativeGptToggle,nativeGptUnlock);
+    chatFooter.before(box);
+    nativeGptToggle.addEventListener('click',()=>{
+      if(standaloneGptActive){disableStandaloneGpt('Uso SH per le prossime richieste.');return;}
+      nativeGptUnlock.hidden=!nativeGptUnlock.hidden;
+      if(!nativeGptUnlock.hidden)nativeGptField.focus();
+    });
+    const tryUnlock=async()=>{
+      const provided=nativeGptField.value;
+      if(!/^[A-Za-z0-9_-]{16,128}$/.test(provided)){
+        addShBubble('assistant','Codice pilota non valido. SH rimane attivo.','Controllo Gateway');
+        return;
+      }
+      unlockButton.disabled=true;
+      try{
+        await ensureLabAccess();
+        const response=await fetch(labGatewayHost+'/browser/lab/openai-pilot/access/'+
+          encodeURIComponent(labAccess.id),{
+          method:'POST',cache:'no-store',
+          headers:{Authorization:'Bearer '+labAccess.token,
+            'X-SOS-Pilot-Code':provided}
+        });
+        if(!response.ok)throw Error('Codice non autorizzato o GPT non configurato');
+        const verification=await response.json();
+        if(verification.engine!=='openai')throw Error('GPT non disponibile');
+        standalonePilotCode=provided;standaloneGptActive=true;
+        nativeGptField.value='';nativeGptUnlock.hidden=true;
+        nativeGptToggle.textContent='Disattiva GPT API (torna a SH)';
+        chatFooter.textContent='FastPharma SOS | SOS-TEST-001 | GPT API privata | Neon';
+        addShBubble('assistant','GPT API abilitato per questa sessione Tiralinee. '+
+          'Il modello demo e le domande ad albero restano disponibili.',
+          'Gateway MCP | test sintetico');
+      }catch(error){
+        disableStandaloneGpt();
+        addShBubble('assistant','GPT non abilitato: '+String(error?.message||error)+
+          '. Le richieste restano su SH.','Gateway MCP');
+      }finally{unlockButton.disabled=false;}
+    };
+    unlockButton.addEventListener('click',()=>void tryUnlock());
+    nativeGptField.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){e.preventDefault();void tryUnlock();}
+    });
+  }
   let loaded3DRevision=null;
   function setLabReady(ready,detail) {
     if(!labChatMode)return;
@@ -965,7 +1045,48 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     });
     await sosGuidedController.start();
   }
+  async function sendLabGptMessage(message){
+    if(!labChatMode||!standaloneGptActive||!standalonePilotCode||
+       !labAccess||labBusy||!labGraphics||expertChatLaunched)return;
+    const input=String(message||'').trim();
+    if(input.length<1||input.length>500)return;
+    labBusy=true;setLabReady(true,'GPT API - elaborazione...');
+    addShBubble('user',input);
+    const pending=addShBubble('assistant','Interrogo GPT tramite il Gateway MCP...');
+    try{
+      const response=await fetch(labGatewayHost+'/browser/lab/openai-pilot/'+
+        encodeURIComponent(labAccess.id),{
+          method:'POST',cache:'no-store',
+          headers:{'Content-Type':'application/json',
+            Authorization:'Bearer '+labAccess.token,
+            'X-SOS-Pilot-Code':standalonePilotCode},
+          body:JSON.stringify({message:input})
+        });
+      const data=await response.json().catch(()=>({error:'invalid_response'}));
+      if(!response.ok){
+        if(response.status===401||response.status===403||
+           response.status===410||data.error==='pilot_not_configured'){
+          disableStandaloneGpt('GPT non autorizzato o sessione scaduta: ripristinato SH.');
+        }
+        throw Error(String(data.error||'Gateway HTTP '+response.status));
+      }
+      if(typeof data.answer!=='string'||!data.answer.trim())
+        throw Error('Risposta GPT vuota');
+      pending.remove();
+      addShBubble('assistant',data.answer,
+        'GPT API | '+data.callsUsed+'/'+data.callsLimit+
+        ' richieste | '+data.inputTokens+' token input / '+
+        data.outputTokens+' output | nessun ticket');
+    }catch(error){
+      pending.remove();
+      addShBubble('assistant','GPT non disponibile: '+String(error?.message||error),
+        'Gateway MCP | nessun ticket creato');
+    }finally{
+      labBusy=false;setLabReady(Boolean(labGraphics),'Farmacia demo pronta');
+    }
+  }
   async function sendLabMessage(message){
+    if(standaloneGptActive)return sendLabGptMessage(message);
     if(!labChatMode||labBusy||!labGraphics||expertChatLaunched)return;
     const input=String(message||'').trim();if(!input||input.length>500)return;
     clearExpertOffer();
