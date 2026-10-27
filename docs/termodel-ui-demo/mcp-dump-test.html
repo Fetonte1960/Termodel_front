@@ -165,7 +165,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 <script>
 (() => {
   'use strict';
-  const HARNESS_VERSION = '1.18.0';
+  const HARNESS_VERSION = '1.19.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -175,6 +175,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   // chat=lab always runs locally, even when an incidental sessionId exists.
   const handoffRequested=Boolean(requestedSession) && chatMode!=='lab';
   const shChatMode=chatMode==='sh'&&handoffRequested;
+  const pilotChatMode=(chatMode==='api'||chatMode==='apis')&&handoffRequested;
   const labChatMode=chatMode==='lab'||(chatMode==='sh'&&!handoffRequested);
   const apiChatMode=['api','apis','sh','lab'].includes(chatMode);
   document.body.classList.toggle('api-chat-mode', apiChatMode);
@@ -235,6 +236,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   // SOS DEMO: session handoff from the exact originating Service Shell window.
   const SOS_ORIGIN = 'https://fetonte1960.github.io';
   let shChatToken=null, shChatController=null, shBusy=false;
+  let pilotCode=null;
   let trustedSosExpertBootstrap='',expertOffer=null,expertChatLaunched=false;
   const chatPane=document.getElementById('api-chat-pane');
   const chatHistory=document.getElementById('api-chat-history');
@@ -255,12 +257,14 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     chatInput.placeholder='Collegamento all’assistenza SOS…';
     chatSend.title='Invia richiesta';
   }
-  if(shChatMode) {
+  if(shChatMode||pilotChatMode) {
     chatTitle.textContent='FastPharma SOS · Assistente';
     chatState.textContent='In attesa della sessione';
     chatDescription.textContent='Scegli una risposta guidata oppure formula una richiesta. I dati SOS richiedono una sessione autorizzata.';
     chatPlaceholder.textContent='Connessione SOS protetta in corso. Le domande guidate verranno caricate dal database al collegamento.';
-    chatFooter.textContent='FastPharma SOS · SH v0.4.0 per testo libero · dialoghi guidati da Neon';
+    chatFooter.textContent=pilotChatMode
+      ? 'FastPharma SOS · GPT API in prova privata · albero guidato Neon invariato'
+      : 'FastPharma SOS · SH v0.4.0 per testo libero · dialoghi guidati da Neon';
     chatInput.placeholder='In attesa del collegamento alla farmacia…';
     chatInput.setAttribute('aria-label','Messaggio SOS');
     chatSend.title='Invia richiesta a SOS';
@@ -900,7 +904,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       if(!response.ok)throw Error('Gateway dialogatore HTTP '+response.status);
       return response.json();
     }
-    if(shChatMode&&shChatToken){
+    if((shChatMode||pilotChatMode)&&shChatToken){
       const url='/browser/viewer/dialog/'+encodeURIComponent(requestedSession)+
         (execute?'/execute/'+node:'?node='+node+'&_refresh='+Date.now());
       const response=await viewerRequest(url,shChatToken,{
@@ -914,10 +918,10 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     sosGuidedController=window.SosGuidedChat.create({
       container:chatHistory,
       available:()=>!expertChatLaunched &&
-        ((labChatMode&&Boolean(labAccess))||(shChatMode&&Boolean(shChatToken))),
+        ((labChatMode&&Boolean(labAccess))||((shChatMode||pilotChatMode)&&Boolean(shChatToken))),
       read:id=>guidedTransport(id,false),
       execute:id=>guidedTransport(id,true),
-      act:data=>executeShIntent(data,shChatMode),
+      act:data=>executeShIntent(data,shChatMode||pilotChatMode),
       addMessage:addShBubble,
       onNavigate:()=>{
         clearExpertOffer();
@@ -1005,6 +1009,46 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     return row;
   }
 
+  async function sendPilotMessage(message){
+    if(!pilotChatMode||expertChatLaunched||!shChatToken||shBusy||
+       !shChatController||shChatController.signal.aborted)return;
+    const input=String(message||'').trim();if(!input||input.length>500)return;
+    if(!pilotCode){
+      const provided=window.prompt('Codice riservato collaudo GPT API (NON inserire la chiave OpenAI):');
+      if(!provided)return;
+      pilotCode=provided;
+    }
+    shBusy=true;setShActive(true,'GPT API · elaborazione…');
+    addShBubble('user',input);
+    const pending=addShBubble('assistant','GPT sta rispondendo…');
+    try{
+      const response=await fetch(base+'/browser/viewer/openai-pilot/'+
+        encodeURIComponent(requestedSession),{
+        method:'POST',signal:shChatController.signal,cache:'no-store',
+        headers:{'Content-Type':'application/json',
+          Authorization:'Bearer '+shChatToken,'X-SOS-Pilot-Code':pilotCode},
+        body:JSON.stringify({message:input})
+      });
+      const data=await response.json().catch(()=>({error:'invalid_response'}));
+      if(!response.ok){
+        if(response.status===403)pilotCode=null;
+        throw Error(String(data.error||'Gateway HTTP '+response.status));
+      }
+      if(typeof data.answer!=='string'||!data.answer.trim())
+        throw Error('Risposta GPT vuota');
+      pending.remove();
+      addShBubble('assistant',data.answer,
+        'GPT API · test sintetico · '+data.callsUsed+'/'+data.callsLimit+
+        ' chiamate sessione · '+data.inputTokens+' in / '+data.outputTokens+' out');
+    }catch(error){
+      pending.remove();
+      addShBubble('assistant','Chat GPT non disponibile: '+
+        String(error?.message||error),'GPT API · nessun ticket');
+    }finally{
+      shBusy=false;
+      setShActive(Boolean(shChatToken&&!shChatController.signal.aborted));
+    }
+  }
   async function sendShMessage(message){
     if(!shChatMode||expertChatLaunched||!shChatToken||shBusy||!shChatController||
        shChatController.signal.aborted)return;
@@ -1028,14 +1072,15 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     }finally{shBusy=false;setShActive(Boolean(shChatToken&&!shChatController.signal.aborted));}
   }
   chatSend.addEventListener('click',()=>{
-    if((!shChatMode&&!labChatMode)||chatInput.disabled)return;
+    if((!shChatMode&&!labChatMode&&!pilotChatMode)||chatInput.disabled)return;
     const message=chatInput.value.trim();if(!message)return;
     chatInput.value='';
     if(labChatMode)void sendLabMessage(message);
+    else if(pilotChatMode)void sendPilotMessage(message);
     else void sendShMessage(message);
   });
   chatInput.addEventListener('keydown',event=>{
-    if((!shChatMode&&!labChatMode)||event.key!=='Enter'||event.shiftKey||event.isComposing)return;
+    if((!shChatMode&&!labChatMode&&!pilotChatMode)||event.key!=='Enter'||event.shiftKey||event.isComposing)return;
     event.preventDefault();chatSend.click();
   });
   let viewerClaimed = false;
@@ -1106,7 +1151,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     const response=await viewerRequest('/browser/viewer/events/'+encodeURIComponent(requestedSession),token,{signal:controller.signal});
     if(!response.body) throw Error('SSE senza stream');
     shellMessage('connected');
-    if(shChatMode){shChatToken=token;shChatController=controller;setShActive(true);void startGuidedDialog();}
+    if(shChatMode||pilotChatMode){shChatToken=token;shChatController=controller;setShActive(true);void startGuidedDialog();}
     document.getElementById('launch-state').textContent='Viewer SOS · collegato, in attesa comandi';
     setStatus('Viewer SOS collegato: attesa showModel.');
     const reader=response.body.getReader(),decoder=new TextDecoder();
@@ -1125,7 +1170,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         await viewerCommand(message,token,controller);
       }
     }
-    if(shChatMode) {shChatToken=null;setShActive(false);}
+    if(shChatMode||pilotChatMode) {shChatToken=null;pilotCode=null;setShActive(false);}
     if(!controller.signal.aborted)throw Error('Connessione viewer terminata');
   }
   if(handoffRequested) {
@@ -1153,7 +1198,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         const detail=String(error?.message||error);
         shellMessage('failed',detail);
         document.getElementById('launch-state').textContent='Viewer SOS · connessione fallita';
-        if(shChatMode){shChatToken=null;setShActive(false,'Connessione SOS fallita');}
+        if(shChatMode||pilotChatMode){shChatToken=null;setShActive(false,'Connessione SOS fallita');}
         setStatus('Viewer SOS: '+detail);
       }
     });
