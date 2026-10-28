@@ -98,31 +98,31 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 .sos-guided-options .sos-guided-review{background:#253a39;border-color:#518b81;color:#eef9f5}
 .sos-guided-options button:disabled{opacity:.45;cursor:default}
 body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!important}
-body.claude-launch-mode .tabs [data-tab="comunicazione"]{display:none!important}
-#claude-launch-panel{display:none;align-items:center;flex-wrap:wrap;gap:10px;background:#eaf6f5;border:1px solid #7bada3;border-radius:7px;padding:8px 12px;margin-bottom:5px;font:12px/1.4 system-ui,Arial,sans-serif;flex:none}
-body.claude-launch-mode #claude-launch-panel{display:flex}
-#claude-launch-panel strong{font-weight:650}
-#claude-launch-panel a[aria-disabled="true"]{pointer-events:none;opacity:.45}
-#claude-launch-panel a{display:inline-block;padding:5px 10px;background:#305b60;color:white;border-radius:7px;text-decoration:none}
-#claude-launch-panel a:focus-visible,#claude-launch-panel button:focus-visible{outline:2px solid #0085ad;outline-offset:2px}
-#claude-retry{margin:0;padding:5px 10px;font:inherit;border-radius:7px;background:white;color:#23474d;border:1px solid #64938e}
-#claude-launch-state{flex:1;min-width:160px}
-#claude-preflight{width:100%;display:flex;flex-wrap:wrap;gap:6px}
-#claude-preflight .sh-message{max-width:100%}
-#claude-preflight .sh-bubble{color:#fff}
-#claude-preflight .sos-guided-options{max-width:100%}
+body.external-launch-mode .tabs [data-tab="comunicazione"]{display:none!important}
+#external-launch-panel{display:none;align-items:center;flex-wrap:wrap;gap:10px;background:#eaf6f5;border:1px solid #7bada3;border-radius:7px;padding:8px 12px;margin-bottom:5px;font:12px/1.4 system-ui,Arial,sans-serif;flex:none}
+body.external-launch-mode #external-launch-panel{display:flex}
+#external-launch-panel strong{font-weight:650}
+#external-launch-panel a[aria-disabled="true"]{pointer-events:none;opacity:.45}
+#external-launch-panel a{display:inline-block;padding:5px 10px;background:#305b60;color:white;border-radius:7px;text-decoration:none}
+#external-launch-panel a:focus-visible,#external-launch-panel button:focus-visible{outline:2px solid #0085ad;outline-offset:2px}
+#external-retry{margin:0;padding:5px 10px;font:inherit;border-radius:7px;background:white;color:#23474d;border:1px solid #64938e}
+#external-launch-state{flex:1;min-width:160px}
+#external-preflight{width:100%;display:flex;flex-wrap:wrap;gap:6px}
+#external-preflight .sh-message{max-width:100%}
+#external-preflight .sh-bubble{color:#fff}
+#external-preflight .sos-guided-options{max-width:100%}
 </style>
 </head>
 <body>
 <div id="viewer-shell">
 <header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small><small id="launch-state" role="status"></small></header>
-<div id="claude-launch-panel" role="region" aria-label="Avvio Claude con MCP Termodel">
-<strong>Claude · Termodel MCP</strong>
-<span id="claude-launch-state" role="status">Preparazione del modello 3D e della pianta 2D…</span>
-<div id="claude-preflight" aria-label="Stato caricamento Gateway e Neon"></div>
-<a id="claude-launch-link" target="_blank" rel="noopener noreferrer" aria-disabled="true">Apri Claude</a>
-<a id="claude-desktop-link" aria-disabled="true">Claude Desktop</a>
-<button type="button" id="claude-retry" hidden>Riprova connessione</button>
+<div id="external-launch-panel" role="region" aria-label="Avvio AI esterna con MCP Termodel">
+<strong>AI esterna · Termodel MCP</strong>
+<span id="external-launch-state" role="status">Preparazione del modello 3D e della pianta 2D…</span>
+<div id="external-preflight" aria-label="Stato caricamento Gateway e Neon"></div>
+<a id="external-launch-link" target="_blank" rel="noopener noreferrer" aria-disabled="true">Apri Claude</a>
+<a id="external-desktop-link" aria-disabled="true">Claude Desktop</a>
+<button type="button" id="external-retry" hidden>Riprova connessione</button>
 </div>
 <nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
 <div id="tab-3d" class="tab-panel active" role="tabpanel">
@@ -184,37 +184,44 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 <script src="./tiralinee-expert-handoff.js?v=1.0.1"></script>
 <script src="./tiralinee-guided-chat.js?v=1.0.7"></script>
 <script src="./tiralinee-startup-preflight.js?v=1.0.1"></script>
-<script src="./tiralinee-mcp-instruction-bootstrap.js?v=2.0.1"></script>
+<script src="./tiralinee-mcp-instruction-bootstrap.js?v=2.1.0"></script>
 <script>
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.21.6';
+  const HARNESS_VERSION = '1.21.7';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
   const chatMode=(launchParams.get('chat') || 'lab').trim().toLowerCase();
-  // Default SOS: the bootstrap generator resolves it to SOS-ISTRUZIONI.md.
-  // An explicit Markdown filename is used directly (no AI-side substitution).
-  const requestedInstruction=(launchParams.get('istruzione')||'').trim()||'SOS';
-  // ?chat=Claude: external Claude bootstrap, no embedded conversation.
-  const claudeLaunchMode=chatMode==='claude';
-  document.body.classList.toggle('claude-launch-mode',claudeLaunchMode);
-  if(claudeLaunchMode && requestedInstruction)
-    document.querySelector('#claude-launch-panel strong').textContent=
-      'Claude · MCP · istruzione '+requestedInstruction;
+  // Default SOS only when the istruzione parameter is absent.
+  // Explicit values must resolve to a Root document, never arbitrary Markdown.
+  const instructionExplicit=launchParams.has('istruzione');
+  const requestedInstruction=instructionExplicit
+    ? (launchParams.get('istruzione')||'').trim() : 'SOS';
+  // Identico bootstrap MCP per i due client esterni, senza chat interna.
+  const externalProvider=chatMode==='claude'?'Claude':
+    (chatMode==='chatgpt'||chatMode==='gpt'?'ChatGPT':null);
+  const externalLaunchMode=Boolean(externalProvider);
+  document.body.classList.toggle('external-launch-mode',externalLaunchMode);
+  if(externalLaunchMode){
+    document.querySelector('#external-launch-panel strong').textContent=
+      externalProvider+' · MCP · istruzione '+requestedInstruction;
+    document.getElementById('external-launch-link').textContent='Apri '+externalProvider;
+    document.getElementById('external-desktop-link').hidden=externalProvider!=='Claude';
+  }
   // chat=sh without SOS session => autonomous Tiralinee lab.
   // chat=sh with sessionId => authenticated SOS viewer as before.
   // chat=lab always runs locally, even when an incidental sessionId exists.
-  const handoffRequested=Boolean(requestedSession) && chatMode!=='lab' && !claudeLaunchMode;
+  const handoffRequested=Boolean(requestedSession) && chatMode!=='lab' && !externalLaunchMode;
   const pilotRequested=(chatMode==='api'||chatMode==='apis')&&handoffRequested;
   let shChatMode=(chatMode==='sh'&&handoffRequested)||pilotRequested;
   let pilotChatMode=false;
   const pilotAccess=new URLSearchParams(window.location.hash.slice(1)).get('access')||'';
-  const labChatMode=!handoffRequested&&!claudeLaunchMode&&
+  const labChatMode=!handoffRequested&&!externalLaunchMode&&
     (chatMode==='lab'||chatMode==='sh'||chatMode==='api'||chatMode==='apis');
   // The authorized synthetic model is needed independently of the chat pane.
-  const labModelMode=labChatMode||claudeLaunchMode;
+  const labModelMode=labChatMode||externalLaunchMode;
   const apiChatMode=['api','apis','sh','lab'].includes(chatMode);
   document.body.classList.toggle('api-chat-mode', apiChatMode);
   if (apiChatMode) {
@@ -361,14 +368,14 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     const viewerUrl=mode==='viewer'?
       base+'/browser/viewer/startup/'+encodeURIComponent(requestedSession):null;
     const outcome=await window.TiralineeStartupPreflight.run({
-      container:claudeLaunchMode?document.getElementById('claude-preflight'):chatHistory,signal,
+      container:externalLaunchMode?document.getElementById('external-preflight'):chatHistory,signal,
       onStatus:services=>{
         const missing=services.filter(s=>s.status!=='ready').map(s=>s.label);
         if(mode==='lab'){
           setLabReady(false,
             missing.length?'Avvio servizi: '+missing.join(', '):'Gateway e Neon pronti');
-          if(claudeLaunchMode)
-            document.getElementById('claude-launch-state').textContent=
+          if(externalLaunchMode)
+            document.getElementById('external-launch-state').textContent=
               missing.length?'Attendo: '+missing.join(', '):'Gateway e Neon pronti';
         }
       },
@@ -455,16 +462,16 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
           setLabReady(false,stage+' · tentativo '+attempt+'/'+total);
           document.getElementById('launch-state').textContent=
             'SOS-TEST-001 · '+stage+' ('+attempt+'/'+total+')';
-          if(claudeLaunchMode)
-            document.getElementById('claude-launch-state').textContent=
+          if(externalLaunchMode)
+            document.getElementById('external-launch-state').textContent=
               stage+' · tentativo '+attempt+'/'+total;
         }
       },
       onRetry:()=>{
         if(labModelMode){
           setLabReady(false,stage+' · attendo il Gateway…');
-          if(claudeLaunchMode)
-            document.getElementById('claude-launch-state').textContent=
+          if(externalLaunchMode)
+            document.getElementById('external-launch-state').textContent=
               stage+' · attendo il Gateway…';
         }
       }
@@ -623,15 +630,15 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     }
     return {...result,revision,cleanFloorLoaded};
   }
-  // Laboratory and Claude both load the same validated 3D model and clean
+  // Laboratory and both external AI modes load the same validated 3D model and clean
   // 2D plan. The chat pane is a separate, optional UI concern.
-  let claudeModelReady=false,claudeModelLoading=false;
+  let externalModelReady=false,externalModelLoading=false;
   window.__termodelLabReady=async graphics=>{
     labGraphics=graphics;
-    if(!labModelMode || (claudeLaunchMode && (claudeModelReady||claudeModelLoading)))return;
-    if(claudeLaunchMode){
-      claudeModelLoading=true;
-      document.getElementById('claude-launch-state').textContent=
+    if(!labModelMode || (externalLaunchMode && (externalModelReady||externalModelLoading)))return;
+    if(externalLaunchMode){
+      externalModelLoading=true;
+      document.getElementById('external-launch-state').textContent=
         'Verifico Gateway e Neon, poi carico 3D e pianta 2D…';
     }
     setLabReady(false,'Connessione Gateway MCP…');
@@ -643,11 +650,11 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
       setLabReady(true,'Farmacia SOS · '+result.primitiveCount+' primitive');
       document.getElementById('launch-state').textContent=
         'Farmacia SOS-TEST-001 · Service 3D · revisione '+result.revision;
-      if(claudeLaunchMode){
+      if(externalLaunchMode){
         // 3D and 2D have been fetched through the same validated lab access.
         // The 2D loader preserves its own visible warning when unavailable.
-        claudeModelReady=true;
-        document.getElementById('claude-launch-state').textContent=
+        externalModelReady=true;
+        document.getElementById('external-launch-state').textContent=
           'Modello 3D ('+result.primitiveCount+' primitive) caricato. '+
           (result.cleanFloorLoaded?'Pianta 2D caricata. ':
             'Pianta 2D non disponibile: controlla la scheda 2D. ')+
@@ -663,11 +670,11 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     }catch(error){
       setLabReady(false,'Modello SOS non disponibile');
       document.getElementById('launch-state').textContent='Errore caricamento modello SOS';
-      if(claudeLaunchMode){
-        const state=document.getElementById('claude-launch-state');
+      if(externalLaunchMode){
+        const state=document.getElementById('external-launch-state');
         state.textContent='Caricamento 3D/2D non completato: '+
           String(error?.message||error)+'. Premi «Riprova connessione».';
-        document.getElementById('claude-retry').hidden=false;
+        document.getElementById('external-retry').hidden=false;
       }else{
         addShBubble('assistant',
           'Non riesco a caricare il modello della farmacia: '+
@@ -675,7 +682,7 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
           'Nessun modello sostitutivo caricato');
       }
     }finally{
-      if(claudeLaunchMode)claudeModelLoading=false;
+      if(externalLaunchMode)externalModelLoading=false;
       else{
         await chooseStandaloneEngineAtStartup();
         if(labGraphics&&loaded3DRevision)
@@ -1667,11 +1674,11 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     if (!dialog.open) dialog.showModal();
   }
   async function readAuthorizedFloorAreas(command,signal){
-    // Only the Claude-driven synthetic demo may use readback; the public MCP
+    // Only the authorized external-AI synthetic demo may use readback; the public MCP
     // session ID alone never grants a database capability.
-    if(!claudeLaunchMode || (command!=='GetProject'&&command!=='GetFloorAreas'))
+    if(!externalLaunchMode || (command!=='GetProject'&&command!=='GetFloorAreas'))
       return null;
-    if(!claudeModelReady || !loaded3DRevision || !loaded3DImportId)
+    if(!externalModelReady || !loaded3DRevision || !loaded3DImportId)
       throw Error('Modello 3D autorizzato non ancora caricato');
     if(!labAccess?.id || !labAccess?.token)
       throw Error('Sessione laboratorio Neon non autorizzata');
@@ -1723,11 +1730,11 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
       });
       if (!res.ok || !res.body) throw Error('SSE HTTP ' + res.status);
       ui(true);
-      setStatus(claudeLaunchMode?'Connesso: in attesa di comandi MCP da Claude.'
+      setStatus(externalLaunchMode?'Connesso: in attesa di comandi MCP da '+externalProvider+'.'
         :'Connesso: in attesa di un comando da ChatGPT.');
-      if(claudeLaunchMode){
-        el('claude-retry').hidden=true;
-        claudeHandoffReady();
+      if(externalLaunchMode){
+        el('external-retry').hidden=true;
+        externalHandoffReady();
       }
       const reader = res.body.getReader(), decoder = new TextDecoder();
       let buffer = '';
@@ -1754,7 +1761,7 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
           setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
           let answer='OK: testo ricevuto nel dump (nessuna importazione).';
           try {
-            // In Claude mode, GetProject/GetFloorAreas are read-only queries
+            // In external-AI mode, GetProject/GetFloorAreas are read-only queries
             // against the exact verified 3D revision, never an import command.
             const readback=await readAuthorizedFloorAreas(value.trim(),controller.signal);
             if(readback!==null){
@@ -1799,101 +1806,83 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
       }
     } catch (err) {
       if (err.name!=='AbortError')setStatus('Errore: '+err.message);
-      if(claudeLaunchMode && !controller.signal.aborted)
-        el('claude-launch-state').textContent=
+      if(externalLaunchMode && !controller.signal.aborted)
+        el('external-launch-state').textContent=
           'Connessione MCP non riuscita: '+String(err?.message||err)+'. Puoi riprovare.';
     } finally {
       if (abort===controller) abort=null;
       sessionId=''; browserToken='';
       ui(false);
-      if(claudeLaunchMode){
-        claudeLaunchAttempted=false;
-        el('claude-launch-link').removeAttribute('href');
-        el('claude-desktop-link').removeAttribute('href');
-        el('claude-launch-link').setAttribute('aria-disabled','true');
-        el('claude-desktop-link').setAttribute('aria-disabled','true');
-        el('claude-retry').hidden=false;
+      if(externalLaunchMode){
+        externalLaunchAttempted=false;
+        el('external-launch-link').removeAttribute('href');
+        el('external-desktop-link').removeAttribute('href');
+        el('external-launch-link').setAttribute('aria-disabled','true');
+        el('external-desktop-link').setAttribute('aria-disabled','true');
+        el('external-retry').hidden=false;
       }
     }
   }
-  // Claude bootstrap always uses direct instructions.get, including default SOS.
-  // Existing MCP receiver, viewer and other chat modes are unchanged.
-  let claudeLaunchAttempted=false;
-  function buildClaudeBootstrap(){
+  // ChatGPT e Claude condividono lo stesso generatore parametrico MCP.
+  let externalLaunchAttempted=false;
+  function buildExternalBootstrap(){
     if(!abort || abort.signal.aborted || !sessionId || el('disconnect').disabled)
       throw Error('Sessione MCP Termodel non ancora pronta');
-    const bootstrap=window.TiralineeMcpInstructionBootstrap;
-    if(!bootstrap)throw Error('Generatore bootstrap MCP non caricato');
-    return bootstrap.build(requestedInstruction,sessionId);
+    const generator=window.TiralineeMcpInstructionBootstrap;
+    if(!generator)throw Error('Generatore bootstrap MCP non caricato');
+    if(instructionExplicit && !requestedInstruction)
+      throw Error('Parametro istruzione esplicito vuoto: specifica la Root');
+    return generator.build(requestedInstruction,sessionId);
   }
-  function claudeHandoffReady(){
-    if(!claudeLaunchMode || claudeLaunchAttempted)return;
-    let initial;
-    try{initial=buildClaudeBootstrap();}
+  function externalChatUrl(provider,prompt){
+    if(provider==='ChatGPT')return 'https://chatgpt.com/?q='+encodeURIComponent(prompt);
+    if(provider==='Claude')return 'https://claude.ai/new?q='+encodeURIComponent(prompt);
+    throw Error('Provider AI esterno non supportato');
+  }
+  function externalHandoffReady(){
+    if(!externalLaunchMode || externalLaunchAttempted)return;
+    let prompt;
+    try{prompt=buildExternalBootstrap();}
     catch(error){
-      el('claude-launch-state').textContent=
+      el('external-launch-state').textContent=
         'Bootstrap non disponibile: '+String(error?.message||error)+
         '. Correggi il parametro istruzione nell’URL.';
       return;
     }
-    claudeLaunchAttempted=true;
-    const webUrl='https://claude.ai/new?q='+encodeURIComponent(initial);
-    const desktopUrl='claude://claude.ai/new?q='+encodeURIComponent(initial);
-    const link=el('claude-launch-link');
+    externalLaunchAttempted=true;
+    const webUrl=externalChatUrl(externalProvider,prompt);
+    const link=el('external-launch-link');
     link.href=webUrl;
     link.removeAttribute('aria-disabled');
-    const desktop=el('claude-desktop-link');
-    desktop.href=desktopUrl;
-    desktop.removeAttribute('aria-disabled');
-    el('claude-launch-state').textContent=
-      'Sessione MCP attiva. Tentativo di apertura Claude con bootstrap…';
-    // Browser popups may be blocked after async SSE startup. Keep real links
-    // to invoke via user gesture, never claim the Claude MCP app is connected.
-    try{window.open(webUrl,'_blank','noopener');}
-    catch(_){ /* Explicit links stay available. */ }
-    el('claude-launch-state').textContent=
-      'Gateway MCP collegato'+(requestedInstruction?' · istruzione '+requestedInstruction:'')+
-      '. Se Claude non si apre, scegli «Apri Claude». Controlla e invia il prompt in Claude.';
-  }
-  // The official bootstrap mirrors Termodel Web's existing GPT launch instruction.
-  const termodelAiBootstrap = [
-    'Sei l’assistente AI di Termodel.',
-    '',
-    'Prima di aiutare l’utente, apri direttamente e leggi le istruzioni aggiornate pubblicate all’indirizzo:',
-    '',
-    'https://www.termodel.it/ai/',
-    '',
-    'Non cercare Termodel sul Web e non sostituire questa pagina con risultati di ricerca relativi ad altri prodotti.',
-    '',
-    'Dopo aver letto le istruzioni, applicale alla richiesta dell’utente.',
-    '',
-    'Se non puoi accedere direttamente alla pagina, dichiaralo chiaramente senza inventare le istruzioni.'
-  ].join('\n');
-  function openProgrammedGpt() {
-    let text = termodelAiBootstrap;
-    // Only an actually open SSE stream can switch the requested delivery channel.
-    if (abort && !abort.signal.aborted && sessionId && el('disconnect').disabled === false) {
-      text += [
-        '',
-        '',
-        'SESSIONE MCP TERMODEL ATTIVA (TEST DUMP, NON IMPORTAZIONE).',
-        'Utilizza il tool MCP CommandToTermodel con il solo parametro stringa command per inviare il progetto Termodel.',
-        'Per questa sessione utilizza esclusivamente il canale MCP, non presentare il progetto in una finestra copiabile anche se istruzioni precedenti descrivono il flusso manuale.',
-        'Costruisci il parametro come @' + sessionId + ', poi un carattere di newline, poi ReadProject, poi un newline, poi il testo integrale del progetto TERMODEL-PROJECT-TEXT-V1.',
-        'Aspetta il risultato del tool. La pagina di collaudo mostra solamente il testo ricevuto e non importa né modifica alcun progetto.',
-        'Se il tool non è disponibile o la comunicazione fallisce, segnala chiaramente il problema; non inventare un esito positivo.'
-      ].join('\n');
+    const desktop=el('external-desktop-link');
+    if(externalProvider==='Claude'){
+      desktop.href='claude://claude.ai/new?q='+encodeURIComponent(prompt);
+      desktop.removeAttribute('aria-disabled');
+    }else{
+      desktop.removeAttribute('href');
+      desktop.setAttribute('aria-disabled','true');
     }
-    const target='https://chatgpt.com/?q='+encodeURIComponent(text);
-    const tab=window.open(target,'_blank','noopener');
-    if (!tab) setStatus('Il browser ha bloccato l’apertura di ChatGPT: consenti i popup.');
+    el('external-launch-state').textContent=
+      'Sessione MCP attiva. Tento di aprire '+externalProvider+' con le istruzioni selezionate…';
+    // L'apertura via SSE asincrono puo' essere bloccata: conservare il link manuale.
+    try{window.open(webUrl,'_blank','noopener');}
+    catch(_){ /* Link manuale disponibile. */ }
+    el('external-launch-state').textContent=
+      'Gateway MCP collegato · Root '+requestedInstruction+
+      '. Se '+externalProvider+' non si apre, premi «Apri '+externalProvider+
+      '». Verifica e invia il prompt nella chat: non viene inviato automaticamente.';
   }
-  el('open-gpt').addEventListener('click',openProgrammedGpt);
-  el('open-alt').addEventListener('click', () => {
-    try{window.open('https://claude.ai/new?q='+
-      encodeURIComponent(buildClaudeBootstrap()),'_blank','noopener');}
-    catch(error){setStatus('Claude non disponibile: '+String(error?.message||error));}
-  });
+  function openExternalChat(provider){
+    try{
+      const prompt=buildExternalBootstrap();
+      window.open(externalChatUrl(provider,prompt),'_blank','noopener');
+      setStatus('Apertura '+provider+' richiesta. Controlla il browser e invia il prompt nella chat.');
+    }catch(error){
+      setStatus('Impossibile avviare '+provider+': '+String(error?.message||error));
+    }
+  }
+  el('open-gpt').addEventListener('click',()=>openExternalChat('ChatGPT'));
+  el('open-alt').addEventListener('click',()=>openExternalChat('Claude'));
 
   document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{
     if(apiChatMode && button.dataset.tab==='comunicazione')return;
@@ -1918,15 +1907,15 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     try { await navigator.clipboard.writeText(project);setStatus('Progetto copiato negli appunti.'); }
     catch { el('dump').focus();el('dump').select();setStatus('Copia automatica non autorizzata: seleziona il testo e premi Ctrl+C.'); }
   });
-  // Auto-register and listen for MCP commands only in ?chat=Claude.
-  el('claude-retry').addEventListener('click',()=>{
-    if(!claudeLaunchMode || abort || claudeModelLoading)return;
-    el('claude-retry').hidden=true;
-    if(!claudeModelReady){
-      el('claude-launch-state').textContent='Ricarico modello 3D e pianta 2D…';
+  // Auto-register and listen for MCP commands in either external-AI mode.
+  el('external-retry').addEventListener('click',()=>{
+    if(!externalLaunchMode || abort || externalModelLoading)return;
+    el('external-retry').hidden=true;
+    if(!externalModelReady){
+      el('external-launch-state').textContent='Ricarico modello 3D e pianta 2D…';
       if(labGraphics)void window.__termodelLabReady(labGraphics);
     }else{
-      el('claude-launch-state').textContent='Riconnessione al Gateway MCP…';
+      el('external-launch-state').textContent='Riconnessione al Gateway MCP…';
       void connect();
     }
   });
