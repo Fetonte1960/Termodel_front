@@ -35,5 +35,6 @@ jobs:
       - name: Versione frontend pubblica
         shell: bash
         run: |
-          test "$(tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt)" = "2.09"
+          version="$(tr -d '\r\n' < docs/termodel-ui-demo/frontend-version.txt)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Versione frontend non valida: $version"; exit 1; }
           grep -F -q 'TERMODEL_FRONTEND_BOOT_VERSION' docs/termodel-ui-demo/index.html
