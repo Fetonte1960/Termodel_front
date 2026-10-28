@@ -117,7 +117,7 @@ body.external-launch-mode #external-launch-panel{display:flex}
 <div id="viewer-shell">
 <header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small><small id="launch-state" role="status"></small></header>
 <div id="external-launch-panel" role="region" aria-label="Avvio AI esterna con MCP Termodel">
-<strong>Claude · Termodel MCP</strong>
+<strong>AI esterna · Termodel MCP</strong>
 <span id="external-launch-state" role="status">Preparazione del modello 3D e della pianta 2D…</span>
 <div id="external-preflight" aria-label="Stato caricamento Gateway e Neon"></div>
 <a id="external-launch-link" target="_blank" rel="noopener noreferrer" aria-disabled="true">Apri Claude</a>
@@ -194,9 +194,11 @@ body.external-launch-mode #external-launch-panel{display:flex}
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
   const chatMode=(launchParams.get('chat') || 'lab').trim().toLowerCase();
-  // Default SOS: the bootstrap generator resolves it to SOS-ISTRUZIONI.md.
-  // An explicit Markdown filename is used directly (no AI-side substitution).
-  const requestedInstruction=(launchParams.get('istruzione')||'').trim()||'SOS';
+  // Default SOS only when the istruzione parameter is absent.
+  // Explicit values must resolve to a Root document, never arbitrary Markdown.
+  const instructionExplicit=launchParams.has('istruzione');
+  const requestedInstruction=instructionExplicit
+    ? (launchParams.get('istruzione')||'').trim() : 'SOS';
   // Identico bootstrap MCP per i due client esterni, senza chat interna.
   const externalProvider=chatMode==='claude'?'Claude':
     (chatMode==='chatgpt'||chatMode==='gpt'?'ChatGPT':null);
@@ -1759,7 +1761,7 @@ body.external-launch-mode #external-launch-panel{display:flex}
           setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
           let answer='OK: testo ricevuto nel dump (nessuna importazione).';
           try {
-            // In Claude mode, GetProject/GetFloorAreas are read-only queries
+            // In external-AI mode, GetProject/GetFloorAreas are read-only queries
             // against the exact verified 3D revision, never an import command.
             const readback=await readAuthorizedFloorAreas(value.trim(),controller.signal);
             if(readback!==null){
@@ -1828,6 +1830,8 @@ body.external-launch-mode #external-launch-panel{display:flex}
       throw Error('Sessione MCP Termodel non ancora pronta');
     const generator=window.TiralineeMcpInstructionBootstrap;
     if(!generator)throw Error('Generatore bootstrap MCP non caricato');
+    if(instructionExplicit && !requestedInstruction)
+      throw Error('Parametro istruzione esplicito vuoto: specifica la Root');
     return generator.build(requestedInstruction,sessionId);
   }
   function externalChatUrl(provider,prompt){
@@ -1903,7 +1907,7 @@ body.external-launch-mode #external-launch-panel{display:flex}
     try { await navigator.clipboard.writeText(project);setStatus('Progetto copiato negli appunti.'); }
     catch { el('dump').focus();el('dump').select();setStatus('Copia automatica non autorizzata: seleziona il testo e premi Ctrl+C.'); }
   });
-  // Auto-register and listen for MCP commands only in ?chat=Claude.
+  // Auto-register and listen for MCP commands in either external-AI mode.
   el('external-retry').addEventListener('click',()=>{
     if(!externalLaunchMode || abort || externalModelLoading)return;
     el('external-retry').hidden=true;
