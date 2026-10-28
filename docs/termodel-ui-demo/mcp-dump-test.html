@@ -201,6 +201,10 @@ body.external-launch-mode #external-launch-panel{display:flex}
   const instructionExplicit=launchParams.has('istruzione');
   const requestedInstruction=instructionExplicit
     ? (launchParams.get('istruzione')||'').trim() : 'SOS';
+  // The same existing istruzione profile scopes Arredi session commands.
+  // Legacy/SOS registration remains unchanged (empty JSON body).
+  const arrediLaunchProfile=Boolean(instructionExplicit &&
+    window.TiralineeMcpInstructionBootstrap?.resolve(requestedInstruction)?.id==='ARREDI');
   // Identico bootstrap MCP per i due client esterni, senza chat interna.
   const externalProvider=chatMode==='claude'?'Claude':
     (chatMode==='chatgpt'||chatMode==='gpt'?'ChatGPT':null);
@@ -1715,7 +1719,8 @@ body.external-launch-mode #external-launch-panel{display:flex}
     const controller = new AbortController();
     try {
       const registered = await fetch(base + '/browser/register', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:'{}',
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:arrediLaunchProfile?'{"profile":"ARREDI"}':'{}',
         signal:controller.signal, cache:'no-store'
       });
       if (!registered.ok) throw Error('Registrazione HTTP ' + registered.status);
