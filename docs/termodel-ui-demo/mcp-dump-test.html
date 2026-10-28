@@ -104,7 +104,8 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 #claude-launch-panel strong{font-weight:650}
 #claude-launch-panel a[aria-disabled="true"]{pointer-events:none;opacity:.45}
 #claude-launch-panel a{display:inline-block;padding:5px 10px;background:#305b60;color:white;border-radius:7px;text-decoration:none}
-#claude-launch-panel a:focus-visible{outline:2px solid #0085ad;outline-offset:2px}
+#claude-launch-panel a:focus-visible,#claude-launch-panel button:focus-visible{outline:2px solid #0085ad;outline-offset:2px}
+#claude-retry{margin:0;padding:5px 10px;font:inherit;border-radius:7px;background:white;color:#23474d;border:1px solid #64938e}
 #claude-launch-state{flex:1;min-width:160px}
 </style>
 </head>
@@ -114,8 +115,9 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 <div id="claude-launch-panel" role="region" aria-label="Avvio Claude con MCP Termodel">
 <strong>Claude · Termodel MCP</strong>
 <span id="claude-launch-state" role="status">Avvio del Gateway e della sessione MCP…</span>
-<a id="claude-launch-link" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">Apri Claude</a>
-<a id="claude-desktop-link" href="#" aria-disabled="true">Claude Desktop</a>
+<a id="claude-launch-link" target="_blank" rel="noopener noreferrer" aria-disabled="true">Apri Claude</a>
+<a id="claude-desktop-link" aria-disabled="true">Claude Desktop</a>
+<button type="button" id="claude-retry" hidden>Riprova connessione</button>
 </div>
 <nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
 <div id="tab-3d" class="tab-panel active" role="tabpanel">
@@ -1635,7 +1637,10 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
       ui(true);
       setStatus(claudeLaunchMode?'Connesso: in attesa di comandi MCP da Claude.'
         :'Connesso: in attesa di un comando da ChatGPT.');
-      if(claudeLaunchMode)claudeHandoffReady();
+      if(claudeLaunchMode){
+        el('claude-retry').hidden=true;
+        claudeHandoffReady();
+      }
       const reader = res.body.getReader(), decoder = new TextDecoder();
       let buffer = '';
       while (!controller.signal.aborted) {
@@ -1698,11 +1703,22 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
         }
       }
     } catch (err) {
-      if (err.name!=='AbortError') setStatus('Errore: '+err.message);
+      if (err.name!=='AbortError')setStatus('Errore: '+err.message);
+      if(claudeLaunchMode && !controller.signal.aborted)
+        el('claude-launch-state').textContent=
+          'Connessione MCP non riuscita: '+String(err?.message||err)+'. Puoi riprovare.';
     } finally {
       if (abort===controller) abort=null;
       sessionId=''; browserToken='';
       ui(false);
+      if(claudeLaunchMode){
+        claudeLaunchAttempted=false;
+        el('claude-launch-link').removeAttribute('href');
+        el('claude-desktop-link').removeAttribute('href');
+        el('claude-launch-link').setAttribute('aria-disabled','true');
+        el('claude-desktop-link').setAttribute('aria-disabled','true');
+        el('claude-retry').hidden=false;
+      }
     }
   }
   // Reuse the validated Claude-specific Termodel bootstrap for manual and
@@ -1812,6 +1828,13 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     catch { el('dump').focus();el('dump').select();setStatus('Copia automatica non autorizzata: seleziona il testo e premi Ctrl+C.'); }
   });
   // Auto-register and listen for MCP commands only in ?chat=Claude.
+  el('claude-retry').addEventListener('click',()=>{
+    if(claudeLaunchMode && !abort){
+      el('claude-retry').hidden=true;
+      el('claude-launch-state').textContent='Riconnessione al Gateway MCP…';
+      void connect();
+    }
+  });
   if(claudeLaunchMode)void connect();
 })();
 </script>
