@@ -167,7 +167,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.20.8';
+  const HARNESS_VERSION = '1.20.9';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -1136,7 +1136,10 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
         offerExpertChat(answer,summary);
       }
     });
-    // Do not show a tree until the user first sends a free-text message.
+    // Restore the primary SOS question tree at startup. Free text still
+    // switches directly to farmacia_info_v1 without calling SH.
+    // startFallback() already queues navigation if this read is in progress.
+    await sosGuidedController.start();
   }
   async function openInformationMenu(){
     if(!sosGuidedController)await startGuidedDialog();
