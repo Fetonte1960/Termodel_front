@@ -30,7 +30,7 @@ function build(value,sessionId){
     payload:JSON.stringify({command:'instructions.get',params:{name:selected.document}})
   },null,2);
   return [
-    'Sei un assistente AI collegato all’applicazione Tiralinee tramite MCP.',
+    'Sei un assistente AI collegato all’applicazione Termodel tramite MCP.',
     '',
     'Documento principale: '+selected.document,
     'Sessione MCP del browser: '+id,
