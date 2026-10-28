@@ -107,6 +107,10 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 #claude-launch-panel a:focus-visible,#claude-launch-panel button:focus-visible{outline:2px solid #0085ad;outline-offset:2px}
 #claude-retry{margin:0;padding:5px 10px;font:inherit;border-radius:7px;background:white;color:#23474d;border:1px solid #64938e}
 #claude-launch-state{flex:1;min-width:160px}
+#claude-preflight{width:100%;display:flex;flex-wrap:wrap;gap:6px}
+#claude-preflight .sh-message{max-width:100%}
+#claude-preflight .sh-bubble{color:#fff}
+#claude-preflight .sos-guided-options{max-width:100%}
 </style>
 </head>
 <body>
@@ -114,7 +118,8 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 <header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small><small id="launch-state" role="status"></small></header>
 <div id="claude-launch-panel" role="region" aria-label="Avvio Claude con MCP Termodel">
 <strong>Claude · Termodel MCP</strong>
-<span id="claude-launch-state" role="status">Avvio del Gateway e della sessione MCP…</span>
+<span id="claude-launch-state" role="status">Preparazione del modello 3D e della pianta 2D…</span>
+<div id="claude-preflight" aria-label="Stato caricamento Gateway e Neon"></div>
 <a id="claude-launch-link" target="_blank" rel="noopener noreferrer" aria-disabled="true">Apri Claude</a>
 <a id="claude-desktop-link" aria-disabled="true">Claude Desktop</a>
 <button type="button" id="claude-retry" hidden>Riprova connessione</button>
@@ -183,7 +188,7 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.21.0';
+  const HARNESS_VERSION = '1.21.1';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -201,6 +206,8 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
   const pilotAccess=new URLSearchParams(window.location.hash.slice(1)).get('access')||'';
   const labChatMode=!handoffRequested&&!claudeLaunchMode&&
     (chatMode==='lab'||chatMode==='sh'||chatMode==='api'||chatMode==='apis');
+  // The authorized synthetic model is needed independently of the chat pane.
+  const labModelMode=labChatMode||claudeLaunchMode;
   const apiChatMode=['api','apis','sh','lab'].includes(chatMode);
   document.body.classList.toggle('api-chat-mode', apiChatMode);
   if (apiChatMode) {
@@ -347,11 +354,16 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     const viewerUrl=mode==='viewer'?
       base+'/browser/viewer/startup/'+encodeURIComponent(requestedSession):null;
     const outcome=await window.TiralineeStartupPreflight.run({
-      container:chatHistory,signal,
+      container:claudeLaunchMode?document.getElementById('claude-preflight'):chatHistory,signal,
       onStatus:services=>{
         const missing=services.filter(s=>s.status!=='ready').map(s=>s.label);
-        if(mode==='lab')setLabReady(false,
-          missing.length?'Avvio servizi: '+missing.join(', '):'Gateway e Neon pronti');
+        if(mode==='lab'){
+          setLabReady(false,
+            missing.length?'Avvio servizi: '+missing.join(', '):'Gateway e Neon pronti');
+          if(claudeLaunchMode)
+            document.getElementById('claude-launch-state').textContent=
+              missing.length?'Attendo: '+missing.join(', '):'Gateway e Neon pronti';
+        }
       },
       probe:async controllerSignal=>{
         let url=viewerUrl, bearer=token;
@@ -432,14 +444,22 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     return window.TiralineeGatewayRetry.request(labGatewayHost+path,init,{
       timeoutMs:35000,
       onAttempt:(attempt,total)=>{
-        if(labChatMode){
+        if(labModelMode){
           setLabReady(false,stage+' · tentativo '+attempt+'/'+total);
           document.getElementById('launch-state').textContent=
             'SOS-TEST-001 · '+stage+' ('+attempt+'/'+total+')';
+          if(claudeLaunchMode)
+            document.getElementById('claude-launch-state').textContent=
+              stage+' · tentativo '+attempt+'/'+total;
         }
       },
       onRetry:()=>{
-        if(labChatMode)setLabReady(false,stage+' · attendo il Gateway…');
+        if(labModelMode){
+          setLabReady(false,stage+' · attendo il Gateway…');
+          if(claudeLaunchMode)
+            document.getElementById('claude-launch-state').textContent=
+              stage+' · attendo il Gateway…';
+        }
       }
     });
   }
@@ -595,11 +615,17 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     }
     return {...result,revision};
   }
-  // All'avvio standalone: connessione al Gateway MCP, lettura 3D Termodel
-  // Service dalla farmacia SOLO sintetica. Nessun fallback silenzioso a fixture.
+  // Laboratory and Claude both load the same validated 3D model and clean
+  // 2D plan. The chat pane is a separate, optional UI concern.
+  let claudeModelReady=false,claudeModelLoading=false;
   window.__termodelLabReady=async graphics=>{
     labGraphics=graphics;
-    if(!labChatMode)return;
+    if(!labModelMode || (claudeLaunchMode && (claudeModelReady||claudeModelLoading)))return;
+    if(claudeLaunchMode){
+      claudeModelLoading=true;
+      document.getElementById('claude-launch-state').textContent=
+        'Verifico Gateway e Neon, poi carico 3D e pianta 2D…';
+    }
     setLabReady(false,'Connessione Gateway MCP…');
     document.getElementById('launch-state').textContent=
       'Farmacia SOS-TEST-001 · recupero modello Service';
@@ -609,23 +635,41 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
       setLabReady(true,'Farmacia SOS · '+result.primitiveCount+' primitive');
       document.getElementById('launch-state').textContent=
         'Farmacia SOS-TEST-001 · Service 3D · revisione '+result.revision;
-      addShBubble('assistant',
-        'Modello 3D della farmacia SOS-TEST-001 caricato: '+
-        result.primitiveCount+' primitive. Questa chat fornisce solo informazioni: scrivi qualcosa per aprire il menu.',
-        'Termodel Service · revisione '+result.revision);
-      await startGuidedDialog();
+      if(claudeLaunchMode){
+        // 3D and 2D have been fetched through the same validated lab access.
+        // The 2D loader preserves its own visible warning when unavailable.
+        claudeModelReady=true;
+        document.getElementById('claude-launch-state').textContent=
+          'Modello 3D ('+result.primitiveCount+' primitive) e verifica pianta 2D completati. Collegamento MCP…';
+        void connect();
+      }else{
+        addShBubble('assistant',
+          'Modello 3D della farmacia SOS-TEST-001 caricato: '+
+          result.primitiveCount+' primitive. Questa chat fornisce solo informazioni: scrivi qualcosa per aprire il menu.',
+          'Termodel Service · revisione '+result.revision);
+        await startGuidedDialog();
+      }
     }catch(error){
       setLabReady(false,'Modello SOS non disponibile');
-      document.getElementById('launch-state').textContent=
-        'Errore caricamento modello SOS';
-      addShBubble('assistant',
-        'Non riesco a caricare il modello della farmacia: '+
-        String(error?.message||error)+'. Ricarica la pagina per riprovare.',
-        'Nessun modello sostitutivo caricato');
+      document.getElementById('launch-state').textContent='Errore caricamento modello SOS';
+      if(claudeLaunchMode){
+        const state=document.getElementById('claude-launch-state');
+        state.textContent='Caricamento 3D/2D non completato: '+
+          String(error?.message||error)+'. Premi «Riprova connessione».';
+        document.getElementById('claude-retry').hidden=false;
+      }else{
+        addShBubble('assistant',
+          'Non riesco a caricare il modello della farmacia: '+
+          String(error?.message||error)+'. Ricarica la pagina per riprovare.',
+          'Nessun modello sostitutivo caricato');
+      }
     }finally{
-      await chooseStandaloneEngineAtStartup();
-      if(labGraphics&&loaded3DRevision)
-        setLabReady(true,standaloneGptActive?'Farmacia demo | GPT API':'Farmacia demo | informazioni Neon');
+      if(claudeLaunchMode)claudeModelLoading=false;
+      else{
+        await chooseStandaloneEngineAtStartup();
+        if(labGraphics&&loaded3DRevision)
+          setLabReady(true,standaloneGptActive?'Farmacia demo | GPT API':'Farmacia demo | informazioni Neon');
+      }
     }
   };
   // Free-text requests go straight to the authorized Neon information tree.
@@ -1829,13 +1873,17 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
   });
   // Auto-register and listen for MCP commands only in ?chat=Claude.
   el('claude-retry').addEventListener('click',()=>{
-    if(claudeLaunchMode && !abort){
-      el('claude-retry').hidden=true;
+    if(!claudeLaunchMode || abort || claudeModelLoading)return;
+    el('claude-retry').hidden=true;
+    if(!claudeModelReady){
+      el('claude-launch-state').textContent='Ricarico modello 3D e pianta 2D…';
+      if(labGraphics)void window.__termodelLabReady(labGraphics);
+    }else{
       el('claude-launch-state').textContent='Riconnessione al Gateway MCP…';
       void connect();
     }
   });
-  if(claudeLaunchMode)void connect();
+  // Auto-connect starts from __termodelLabReady ONLY after 3D/2D loading.
 })();
 </script>
 
