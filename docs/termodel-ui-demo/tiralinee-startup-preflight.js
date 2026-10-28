@@ -1,12 +1,12 @@
 /* FastPharmaSOS / Tiralinee — startup checks of already existing services.
- * Only authenticated Gateway routes are probed. Never sends chat text, creates
+ * Only Gateway and authorized Neon are checked. Never sends chat text, creates
  * SOS tickets, spends AI credit or calls arbitrary user-provided endpoints.
  */
 (function(root){
  'use strict';
  const PROMPT_MS=60000,RETRY_MS=4500;
  const REQUIRED=['gateway','neon'];
- const IDs=['gateway','neon','sh','sos'];
+ const IDs=['gateway','neon'];
  function stopped(){
    const error=new Error('Verifica servizi interrotta');
    error.name='AbortError';return error;
