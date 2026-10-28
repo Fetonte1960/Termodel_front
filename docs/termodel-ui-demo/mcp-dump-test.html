@@ -188,7 +188,7 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.21.1';
+  const HARNESS_VERSION = '1.21.2';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
@@ -1659,6 +1659,39 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     const dialog=el('failure-modal');
     if (!dialog.open) dialog.showModal();
   }
+  async function readAuthorizedFloorAreas(command,signal){
+    // Only the Claude-driven synthetic demo may use readback; the public MCP
+    // session ID alone never grants a database capability.
+    if(!claudeLaunchMode || (command!=='GetProject'&&command!=='GetFloorAreas'))
+      return null;
+    if(!claudeModelReady || !loaded3DRevision || !loaded3DImportId)
+      throw Error('Modello 3D autorizzato non ancora caricato');
+    if(!labAccess?.id || !labAccess?.token)
+      throw Error('Sessione laboratorio Neon non autorizzata');
+    const response=await fetch(labGatewayHost+'/browser/lab/floor-areas/'+
+      encodeURIComponent(labAccess.id),{
+        method:'GET',cache:'no-store',signal,
+        headers:{Authorization:'Bearer '+labAccess.token}
+      });
+    if(!response.ok)throw Error('Lettura aree Gateway HTTP '+response.status);
+    const result=await response.json();
+    if(result?.status!=='available' || result?.schemaVersion!==1 ||
+       result?.topology?.revision!==loaded3DRevision ||
+       result?.units?.area!=='m2'||!Array.isArray(result?.rooms))
+      throw Error('Aree topologiche assenti, non coerenti con il modello 3D o non autorizzate');
+    const payload=JSON.stringify({
+      command,interpretation:command==='GetProject'
+        ? 'riepilogo geometrico verificato del progetto DEMO (non progetto CAD integrale)'
+        : 'superfici geometriche dei locali DEMO',
+      ...result
+    },null,2);
+    if(payload.length>256000)throw Error('Lettura aree oltre il limite di risposta');
+    el('dump').value=payload;
+    el('size').textContent='Risposta geometrica verificata: '+result.rooms.length+
+      ' locali, m² totali '+String(result.totalAreaM2);
+    setStatus('GetProject: superfici pavimento lette da topologia verificata');
+    return payload;
+  }
   async function connect() {
     if (abort) return;
     el('connect').disabled = true;
@@ -1714,6 +1747,12 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
           setStatus('Comando ricevuto e visualizzato (nessuna importazione).');
           let answer='OK: testo ricevuto nel dump (nessuna importazione).';
           try {
+            // In Claude mode, GetProject/GetFloorAreas are read-only queries
+            // against the exact verified 3D revision, never an import command.
+            const readback=await readAuthorizedFloorAreas(value.trim(),controller.signal);
+            if(readback!==null){
+              answer=readback;
+            }else{
             const validation=await validateIncoming(value);
             if (validation.handled) {
               validatedProjectText=validation.correctedText ?? value.replace(/^ReadProject\r?\n?/, '');
@@ -1734,12 +1773,13 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
               answer='VALIDO: '+validation.label+' ('+validation.detail+').'+report+' '+delivery+' Nessuna importazione nel CAD.';
               setStatus('VALIDO: '+validation.label+'. '+delivery);
             }
+            }
           } catch (error) {
             const reason=String(error?.message || error);
-            answer='NON VALIDO: '+reason+'. Nessun progetto importato.';
+            answer='ERRORE LETTURA MCP: '+reason+'. Nessun dato geometrico inventato, nessuna importazione.';
             el('copy-project').disabled=true;
-            failure(reason);
-            setStatus('NON VALIDO: '+reason);
+            if(value.trim()!=='GetProject'&&value.trim()!=='GetFloorAreas')failure(reason);
+            setStatus('ERRORE: '+reason);
           }
           try {
             const reply=await fetch(base+'/browser/reply/'+encodeURIComponent(sessionId)+'/'+encodeURIComponent(packet.requestId),{
@@ -1787,7 +1827,10 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
       'Per la consegna usa esclusivamente il tool MCP CommandToTermodel con UN SOLO parametro stringa command.',
       'Il contenuto del parametro deve essere: @' + sessionId + ' seguito da un carattere newline reale, ReadProject, un altro newline reale, e il testo integrale del progetto generato nel formato prescritto dalle istruzioni.',
       'Non mostrare un blocco copiabile in sostituzione dell’invio MCP. Attendi la risposta effettiva del tool, e riferisci l’esito senza inventare un’importazione.',
-      'Questa sessione usa un ricevitore DUMP: visualizza il testo senza importarlo né eseguirlo.',
+      'Questa sessione mantiene ReadProject in sola modalità DUMP: registra e valida il testo senza importarlo nel CAD.',
+      'FUNZIONI DI LETTURA AGGIUNTE PER LA DEMO SOS-TEST-001: quando vuoi conoscere le superfici del pavimento del modello aperto, chiama CommandToTermodel con command esattamente @' + sessionId + ' seguito da newline e GetFloorAreas; anche @' + sessionId + ' seguito da newline e GetProject restituisce il medesimo riepilogo geometrico verificato, NON il file CAD integrale.',
+      'La risposta contiene per ogni locale ID, nome, piano, vertici in centimetri, superficie geometrica in m², perimetro e revisione topologica. Usa i numeri effettivamente restituiti dal tool, non inventarli. Distingui superficie planimetrica del perimetro delle pareti da area netta pavimentabile, sfrido, soglie e battiscopa non verificati.',
+      'Se la lettura restituisce un errore di revisione o di autorizzazione non effettuare un calcolo e chiedi di aggiornare il modello in Tiralinee.',
       'Se il sito o lo strumento MCP non sono accessibili, segnala la difficoltà senza inventare contenuti o esiti.'
     ].join('\n');
   }
