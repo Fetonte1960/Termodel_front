@@ -677,7 +677,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     addShBubble('assistant',guided?
       'Ho raccolto le informazioni disponibili, ma non ho ancora un’azione automatica per questo disservizio. Vuoi continuare con un assistente AI esperto senza ripetere le risposte già date?':
       window.TiralineeExpertHandoff.QUESTION,
-      guided?'SOS · passaggio di consegne pronto':'SH-IntelligenceEngine · richiesta non riconosciuta');
+      guided?'SOS · passaggio di consegne pronto':'Chat informativa');
     const actionRow=document.createElement('div');
     actionRow.className='sh-expert-actions';
     const yes=document.createElement('button');
@@ -712,7 +712,7 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       addShBubble('assistant',
         guided?'Va bene. Puoi tornare alle domande iniziali oppure scrivere liberamente a SOS.':
           'Va bene. Puoi riformulare la richiesta e continuare con SH.',
-        guided?'Percorso guidato SOS':'SH-IntelligenceEngine');
+        guided?'Percorso guidato SOS':'Chat informativa');
       chatInput.focus();
     });
     actionRow.append(yes,no);
@@ -2075,8 +2075,8 @@ function redrawService(model){
  labFixtureLoaded=true;
  return {frameRendered:true,drawCalls:calls,primitiveCount:count,triangles};
 }
-// Standalone viewer lab. Only enumerated local actions are accepted;
-// SH-IntelligenceEngine is separately contacted only on explicit SH: queries.
+// Standalone viewer lab: free text opens only the Neon information tree.
+// No SH-IntelligenceEngine queries are initiated by this page.
 const labDefaultFilters=new Map(filterState);
 let labFixtureLoaded=false;
 function labCounts(){
