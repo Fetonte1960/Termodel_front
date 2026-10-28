@@ -44,7 +44,7 @@ function build(value,sessionId){
     '',
     '1. VERIFICA IL COLLEGAMENTO',
     'Verifica che il client AI disponga dello strumento MCP '+TOOL+'.',
-    'Se non e' disponibile, dichiara il problema e chiedi se l’utente vuole essere guidato nella configurazione.',
+    'Se non e’ disponibile, dichiara il problema e chiedi se l’utente vuole essere guidato nella configurazione.',
     'Solo dopo conferma dell’utente, indica questi dati pubblici:',
     'Nome: Termodel MCP',
     'Tipo: server MCP remoto HTTPS',
