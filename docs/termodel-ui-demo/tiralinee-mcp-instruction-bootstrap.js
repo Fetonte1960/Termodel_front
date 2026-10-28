@@ -11,7 +11,7 @@
       id:'SOS',
       // The only published source for FastPharmaSOS instructions.
       initializationTool:'MessageToSOS',
-      initializationArguments:Object.freeze({operation:'initialize'})
+      initializationArguments:Object.freeze({operation:'initialize',payload:'guide:SOS'})
     })
   });
   const normalize=value=>String(value??'').trim().toUpperCase();
@@ -32,8 +32,10 @@
       'PRIMA OPERAZIONE OBBLIGATORIA:',
       '1. Verifica la presenza e la disponibilità del tool MCP '+profile.initializationTool+'.',
       '2. Chiamalo con gli argomenti '+JSON.stringify(profile.initializationArguments)+'.',
-      '3. Leggi integralmente le istruzioni aggiornate restituite dal tool e applicale alla richiesta dell’utente.',
-      '4. Utilizza esclusivamente le funzioni e i dati che quelle istruzioni e gli strumenti effettivamente disponibili autorizzano.',
+      '3. La risposta di initialize è una GUIDA di navigazione, non l’istruzione operativa: leggi la guida.',
+      '4. Usa esattamente il comando instructions.get e il nome della root indicati nella guida per leggere integralmente l’istruzione principale del profilo richiesto.',
+      '5. Applica la root acquisita. Consulta solo i documenti di dettaglio che la root indica, mediante instructions.get con i nomi esatti riportati dalla root.',
+      '6. Utilizza esclusivamente le funzioni e i dati che la root e gli strumenti effettivamente disponibili autorizzano. Non presentare elenchi di documenti pubblicati.',
       '',
       'La sessione ricevitore del browser ha identificativo: '+id+'.',
       'Questo identificativo è soltanto un riferimento di instradamento, NON una credenziale o autorizzazione.',
