@@ -184,18 +184,19 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 <script src="./tiralinee-expert-handoff.js?v=1.0.1"></script>
 <script src="./tiralinee-guided-chat.js?v=1.0.7"></script>
 <script src="./tiralinee-startup-preflight.js?v=1.0.1"></script>
-<script src="./tiralinee-mcp-instruction-bootstrap.js?v=1.0.1"></script>
+<script src="./tiralinee-mcp-instruction-bootstrap.js?v=2.0.0"></script>
 <script>
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.21.4';
+  const HARNESS_VERSION = '1.21.5';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
   const chatMode=(launchParams.get('chat') || 'lab').trim().toLowerCase();
-  // Parameter selects an instruction profile; it does not grant MCP privileges.
-  const requestedInstruction=(launchParams.get('istruzione')||'').trim().toUpperCase();
+  // Default SOS: the bootstrap generator resolves it to SOS-ISTRUZIONI.md.
+  // An explicit Markdown filename is used directly (no AI-side substitution).
+  const requestedInstruction=(launchParams.get('istruzione')||'').trim()||'SOS';
   // ?chat=Claude: external Claude bootstrap, no embedded conversation.
   const claudeLaunchMode=chatMode==='claude';
   document.body.classList.toggle('claude-launch-mode',claudeLaunchMode);
@@ -1815,37 +1816,15 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
       }
     }
   }
-  // A named instruction profile uses the universal bootstrap. Without the
-  // parameter the legacy Termodel Claude bootstrap remains unchanged.
-  // The Gateway is already hosted: connect() only registers
-  // the receiver session and opens its authorized SSE channel.
+  // Claude bootstrap always uses direct instructions.get, including default SOS.
+  // Existing MCP receiver, viewer and other chat modes are unchanged.
   let claudeLaunchAttempted=false;
   function buildClaudeBootstrap(){
     if(!abort || abort.signal.aborted || !sessionId || el('disconnect').disabled)
       throw Error('Sessione MCP Termodel non ancora pronta');
-    if(requestedInstruction){
-      const selector=window.TiralineeMcpInstructionBootstrap;
-      if(!selector || !selector.resolve(requestedInstruction))
-        throw Error('Istruzione '+requestedInstruction+' non disponibile. Per ora è previsto istruzione=SOS.');
-      return selector.build(requestedInstruction,sessionId);
-    }
-    return [
-      'Sei l’assistente AI di Termodel.',
-      'PRIMO PASSAGGIO OBBLIGATORIO: apri direttamente https://www.termodel.it/ai/ e LEGGI PER INTERO la programmazione ufficiale. Consulta anche i documenti collegati quando richiesti da quelle istruzioni.',
-      'APPLICA TUTTE le istruzioni ufficiali, inclusi il messaggio iniziale, le opzioni e le domande da presentare all’utente. Non limitarti a riassumerle o a dire che le hai lette.',
-      'Adesso mostra il menu o il prompt iniziale previsto dalla programmazione Termodel e attendi che l’utente scelga o descriva il progetto. Non chiedere di incollare un progetto preesistente e non inviare ReadProject finché non è stato generato il contenuto.',
-      '',
-      'UNICA MODIFICA ALLE ISTRUZIONI UFFICIALI: quando la programmazione prevede di PRESENTARE IL PROGETTO GENERATO IN UNA FINESTRA DI TESTO COPIABILE, sostituisci esclusivamente quella fase di consegna con l’invio tramite il connettore MCP Termodel. Tutte le altre regole, formati e interazioni restano in vigore.',
-      'Prima di procedere verifica che il connettore Termodel MCP in Claude sia disponibile e autorizzato. Il browser NON può collegarlo automaticamente a Claude. Se il tool CommandToTermodel non è disponibile, dichiaralo senza inventare una connessione.',
-      'Per la consegna usa esclusivamente il tool MCP CommandToTermodel con UN SOLO parametro stringa command.',
-      'Il contenuto del parametro deve essere: @' + sessionId + ' seguito da un carattere newline reale, ReadProject, un altro newline reale, e il testo integrale del progetto generato nel formato prescritto dalle istruzioni.',
-      'Non mostrare un blocco copiabile in sostituzione dell’invio MCP. Attendi la risposta effettiva del tool, e riferisci l’esito senza inventare un’importazione.',
-      'Questa sessione mantiene ReadProject in sola modalità DUMP: registra e valida il testo senza importarlo nel CAD.',
-      'FUNZIONI DI LETTURA AGGIUNTE PER LA DEMO SOS-TEST-001: quando vuoi conoscere le superfici del pavimento del modello aperto, chiama CommandToTermodel con command esattamente @' + sessionId + ' seguito da newline e GetFloorAreas; anche @' + sessionId + ' seguito da newline e GetProject restituisce il medesimo riepilogo geometrico verificato, NON il file CAD integrale.',
-      'La risposta contiene per ogni locale ID, nome, piano, vertici in centimetri, superficie geometrica in m², perimetro e revisione topologica. Usa i numeri effettivamente restituiti dal tool, non inventarli. Distingui superficie planimetrica del perimetro delle pareti da area netta pavimentabile, sfrido, soglie e battiscopa non verificati.',
-      'Se la lettura restituisce un errore di revisione o di autorizzazione non effettuare un calcolo e chiedi di aggiornare il modello in Tiralinee.',
-      'Se il sito o lo strumento MCP non sono accessibili, segnala la difficoltà senza inventare contenuti o esiti.'
-    ].join('\n');
+    const bootstrap=window.TiralineeMcpInstructionBootstrap;
+    if(!bootstrap)throw Error('Generatore bootstrap MCP non caricato');
+    return bootstrap.build(requestedInstruction,sessionId);
   }
   function claudeHandoffReady(){
     if(!claudeLaunchMode || claudeLaunchAttempted)return;
