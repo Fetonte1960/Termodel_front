@@ -603,17 +603,18 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     const revisionHeader=response.headers.get('X-SOS-Project-Revision')||'';
     loaded3DRevision=revisionHeader?decodeURIComponent(revisionHeader):null;
     const revision=loaded3DRevision?.slice(0,8)||'n/d';
+    let cleanFloorLoaded=false;
     try {
       const floor=await gatewayRequest('/browser/lab/clean-floor/'+
         encodeURIComponent(credentials.id)+'/'+encodeURIComponent(cleanFloorName),{
         method:'GET',cache:'no-store',
         headers:{Authorization:'Bearer '+credentials.token}
       },'Caricamento Pianta pulita');
-      await renderCleanFloor(floor);
+      cleanFloorLoaded=await renderCleanFloor(floor);
     }catch(error){
       showCleanFloorMessage('Pianta pulita non caricata: '+String(error?.message||error));
     }
-    return {...result,revision};
+    return {...result,revision,cleanFloorLoaded};
   }
   // Laboratory and Claude both load the same validated 3D model and clean
   // 2D plan. The chat pane is a separate, optional UI concern.
@@ -640,7 +641,10 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
         // The 2D loader preserves its own visible warning when unavailable.
         claudeModelReady=true;
         document.getElementById('claude-launch-state').textContent=
-          'Modello 3D ('+result.primitiveCount+' primitive) e verifica pianta 2D completati. Collegamento MCP…';
+          'Modello 3D ('+result.primitiveCount+' primitive) caricato. '+
+          (result.cleanFloorLoaded?'Pianta 2D caricata. ':
+            'Pianta 2D non disponibile: controlla la scheda 2D. ')+
+          'Collegamento MCP…';
         void connect();
       }else{
         addShBubble('assistant',
