@@ -98,11 +98,25 @@ body.api-chat-mode #api-chat-pane{display:flex;flex-direction:column;min-width:0
 .sos-guided-options .sos-guided-review{background:#253a39;border-color:#518b81;color:#eef9f5}
 .sos-guided-options button:disabled{opacity:.45;cursor:default}
 body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!important}
+body.claude-launch-mode .tabs [data-tab="comunicazione"]{display:none!important}
+#claude-launch-panel{display:none;align-items:center;flex-wrap:wrap;gap:10px;background:#eaf6f5;border:1px solid #7bada3;border-radius:7px;padding:8px 12px;margin-bottom:5px;font:12px/1.4 system-ui,Arial,sans-serif;flex:none}
+body.claude-launch-mode #claude-launch-panel{display:flex}
+#claude-launch-panel strong{font-weight:650}
+#claude-launch-panel a[aria-disabled="true"]{pointer-events:none;opacity:.45}
+#claude-launch-panel a{display:inline-block;padding:5px 10px;background:#305b60;color:white;border-radius:7px;text-decoration:none}
+#claude-launch-panel a:focus-visible{outline:2px solid #0085ad;outline-offset:2px}
+#claude-launch-state{flex:1;min-width:160px}
 </style>
 </head>
 <body>
 <div id="viewer-shell">
 <header><h1>Termodel MCP — Laboratorio</h1><small id="harness-version"></small><small id="launch-state" role="status"></small></header>
+<div id="claude-launch-panel" role="region" aria-label="Avvio Claude con MCP Termodel">
+<strong>Claude · Termodel MCP</strong>
+<span id="claude-launch-state" role="status">Avvio del Gateway e della sessione MCP…</span>
+<a id="claude-launch-link" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">Apri Claude</a>
+<a id="claude-desktop-link" href="#" aria-disabled="true">Claude Desktop</a>
+</div>
 <nav class="tabs" aria-label="Viste"><button type="button" role="tab" aria-selected="true" data-tab="3d">3D</button><button type="button" role="tab" aria-selected="false" data-tab="2d">2D</button><button type="button" role="tab" aria-selected="false" data-tab="comunicazione">Comunicazione</button></nav>
 <div id="tab-3d" class="tab-panel active" role="tabpanel">
   <div class="workspace3d"><div id="view3d" class="view"></div><aside id="harness-filter-panel" aria-label="Filtri grafici">
@@ -167,20 +181,24 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.20.9';
+  const HARNESS_VERSION = '1.21.0';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
   const chatMode=(launchParams.get('chat') || 'lab').trim().toLowerCase();
+  // ?chat=Claude: external Claude bootstrap, no embedded conversation.
+  const claudeLaunchMode=chatMode==='claude';
+  document.body.classList.toggle('claude-launch-mode',claudeLaunchMode);
   // chat=sh without SOS session => autonomous Tiralinee lab.
   // chat=sh with sessionId => authenticated SOS viewer as before.
   // chat=lab always runs locally, even when an incidental sessionId exists.
-  const handoffRequested=Boolean(requestedSession) && chatMode!=='lab';
+  const handoffRequested=Boolean(requestedSession) && chatMode!=='lab' && !claudeLaunchMode;
   const pilotRequested=(chatMode==='api'||chatMode==='apis')&&handoffRequested;
   let shChatMode=(chatMode==='sh'&&handoffRequested)||pilotRequested;
   let pilotChatMode=false;
   const pilotAccess=new URLSearchParams(window.location.hash.slice(1)).get('access')||'';
-  const labChatMode=!handoffRequested&&(chatMode==='lab'||chatMode==='sh'||chatMode==='api'||chatMode==='apis');
+  const labChatMode=!handoffRequested&&!claudeLaunchMode&&
+    (chatMode==='lab'||chatMode==='sh'||chatMode==='api'||chatMode==='apis');
   const apiChatMode=['api','apis','sh','lab'].includes(chatMode);
   document.body.classList.toggle('api-chat-mode', apiChatMode);
   if (apiChatMode) {
@@ -1615,7 +1633,9 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       });
       if (!res.ok || !res.body) throw Error('SSE HTTP ' + res.status);
       ui(true);
-      setStatus('Connesso: in attesa di un comando da ChatGPT.');
+      setStatus(claudeLaunchMode?'Connesso: in attesa di comandi MCP da Claude.'
+        :'Connesso: in attesa di un comando da ChatGPT.');
+      if(claudeLaunchMode)claudeHandoffReady();
       const reader = res.body.getReader(), decoder = new TextDecoder();
       let buffer = '';
       while (!controller.signal.aborted) {
@@ -1685,6 +1705,49 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
       ui(false);
     }
   }
+  // Reuse the validated Claude-specific Termodel bootstrap for manual and
+  // automatic launch. The Gateway is already hosted: connect() only registers
+  // the receiver session and opens its authorized SSE channel.
+  let claudeLaunchAttempted=false;
+  function buildClaudeBootstrap(){
+    if(!abort || abort.signal.aborted || !sessionId || el('disconnect').disabled)
+      throw Error('Sessione MCP Termodel non ancora pronta');
+    return [
+      'Sei l’assistente AI di Termodel.',
+      'PRIMO PASSAGGIO OBBLIGATORIO: apri direttamente https://www.termodel.it/ai/ e LEGGI PER INTERO la programmazione ufficiale. Consulta anche i documenti collegati quando richiesti da quelle istruzioni.',
+      'APPLICA TUTTE le istruzioni ufficiali, inclusi il messaggio iniziale, le opzioni e le domande da presentare all’utente. Non limitarti a riassumerle o a dire che le hai lette.',
+      'Adesso mostra il menu o il prompt iniziale previsto dalla programmazione Termodel e attendi che l’utente scelga o descriva il progetto. Non chiedere di incollare un progetto preesistente e non inviare ReadProject finché non è stato generato il contenuto.',
+      '',
+      'UNICA MODIFICA ALLE ISTRUZIONI UFFICIALI: quando la programmazione prevede di PRESENTARE IL PROGETTO GENERATO IN UNA FINESTRA DI TESTO COPIABILE, sostituisci esclusivamente quella fase di consegna con l’invio tramite il connettore MCP Termodel. Tutte le altre regole, formati e interazioni restano in vigore.',
+      'Prima di procedere verifica che il connettore Termodel MCP in Claude sia disponibile e autorizzato. Il browser NON può collegarlo automaticamente a Claude. Se il tool CommandToTermodel non è disponibile, dichiaralo senza inventare una connessione.',
+      'Per la consegna usa esclusivamente il tool MCP CommandToTermodel con UN SOLO parametro stringa command.',
+      'Il contenuto del parametro deve essere: @' + sessionId + ' seguito da un carattere newline reale, ReadProject, un altro newline reale, e il testo integrale del progetto generato nel formato prescritto dalle istruzioni.',
+      'Non mostrare un blocco copiabile in sostituzione dell’invio MCP. Attendi la risposta effettiva del tool, e riferisci l’esito senza inventare un’importazione.',
+      'Questa sessione usa un ricevitore DUMP: visualizza il testo senza importarlo né eseguirlo.',
+      'Se il sito o lo strumento MCP non sono accessibili, segnala la difficoltà senza inventare contenuti o esiti.'
+    ].join('\\n');
+  }
+  function claudeHandoffReady(){
+    if(!claudeLaunchMode || claudeLaunchAttempted)return;
+    claudeLaunchAttempted=true;
+    const initial=buildClaudeBootstrap();
+    const webUrl='https://claude.ai/new?q='+encodeURIComponent(initial);
+    const desktopUrl='claude://claude.ai/new?q='+encodeURIComponent(initial);
+    const link=el('claude-launch-link');
+    link.href=webUrl;
+    link.removeAttribute('aria-disabled');
+    const desktop=el('claude-desktop-link');
+    desktop.href=desktopUrl;
+    desktop.removeAttribute('aria-disabled');
+    el('claude-launch-state').textContent=
+      'Sessione MCP attiva. Tentativo di apertura Claude con bootstrap…';
+    // Browser popups may be blocked after async SSE startup. Keep real links
+    // to invoke via user gesture, never claim the Claude MCP app is connected.
+    try{window.open(webUrl,'_blank','noopener');}
+    catch(_){ /* Explicit links stay available. */ }
+    el('claude-launch-state').textContent=
+      'Gateway MCP collegato. Se Claude non si apre, scegli «Apri Claude». Controlla e invia il prompt in Claude.';
+  }
   // The official bootstrap mirrors Termodel Web's existing GPT launch instruction.
   const termodelAiBootstrap = [
     'Sei l’assistente AI di Termodel.',
@@ -1720,22 +1783,9 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
   }
   el('open-gpt').addEventListener('click',openProgrammedGpt);
   el('open-alt').addEventListener('click', () => {
-    const active = Boolean(abort && !abort.signal.aborted && sessionId && !el('disconnect').disabled);
-    if (!active) { setStatus('Attiva prima la comunicazione MCP.'); return; }
-    const initial = [
-      'Sei l’assistente AI di Termodel.',
-      'PRIMO PASSAGGIO OBBLIGATORIO: apri direttamente https://www.termodel.it/ai/ e LEGGI PER INTERO la programmazione ufficiale. Consulta anche i documenti collegati quando richiesti da quelle istruzioni.',
-      'APPLICA TUTTE le istruzioni ufficiali, inclusi il messaggio iniziale, le opzioni e le domande da presentare all’utente. Non limitarti a riassumerle o a dire che le hai lette.',
-      'Adesso mostra il menu o il prompt iniziale previsto dalla programmazione Termodel e attendi che l’utente scelga o descriva il progetto. Non chiedere di incollare un progetto preesistente e non inviare ReadProject finché non è stato generato il contenuto.',
-      '',
-      'UNICA MODIFICA ALLE ISTRUZIONI UFFICIALI: quando la programmazione prevede di PRESENTARE IL PROGETTO GENERATO IN UNA FINESTRA DI TESTO COPIABILE, sostituisci esclusivamente quella fase di consegna con l’invio tramite il connettore MCP Termodel. Tutte le altre regole, formati e interazioni restano in vigore.',
-      'Per la consegna usa esclusivamente il tool MCP CommandToTermodel con UN SOLO parametro stringa command.',
-      'Il contenuto del parametro deve essere: @' + sessionId + ' seguito da un carattere newline reale, ReadProject, un altro newline reale, e il testo integrale del progetto generato nel formato prescritto dalle istruzioni.',
-      'Non mostrare un blocco copiabile in sostituzione dell’invio MCP. Attendi la risposta effettiva del tool, e riferisci l’esito senza inventare un’importazione.',
-      'Questa sessione usa un ricevitore DUMP: visualizza il testo senza importarlo né eseguirlo.',
-      'Se il sito o lo strumento MCP non sono accessibili, segnala la difficoltà senza inventare contenuti o esiti.'
-    ].join('\n');
-    window.open('https://claude.ai/new?q=' + encodeURIComponent(initial), '_blank', 'noopener');
+    try{window.open('https://claude.ai/new?q='+
+      encodeURIComponent(buildClaudeBootstrap()),'_blank','noopener');}
+    catch(error){setStatus('Claude non disponibile: '+String(error?.message||error));}
   });
 
   document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{
@@ -1761,6 +1811,8 @@ body.expert-chat-launched .tabs [data-tab="comunicazione"]{display:none!importan
     try { await navigator.clipboard.writeText(project);setStatus('Progetto copiato negli appunti.'); }
     catch { el('dump').focus();el('dump').select();setStatus('Copia automatica non autorizzata: seleziona il testo e premi Ctrl+C.'); }
   });
+  // Auto-register and listen for MCP commands only in ?chat=Claude.
+  if(claudeLaunchMode)void connect();
 })();
 </script>
 
