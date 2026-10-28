@@ -184,18 +184,24 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
 <script src="./tiralinee-expert-handoff.js?v=1.0.1"></script>
 <script src="./tiralinee-guided-chat.js?v=1.0.7"></script>
 <script src="./tiralinee-startup-preflight.js?v=1.0.1"></script>
+<script src="./tiralinee-mcp-instruction-bootstrap.js?v=1.0.0"></script>
 <script>
 (() => {
   'use strict';
   // Modificato da Codex per realizzare: bridge GPT-MCP focusRoom con ACK grafico.
-  const HARNESS_VERSION = '1.21.2';
+  const HARNESS_VERSION = '1.21.3';
   // Avvio delegato: l'ID non autorizza da solo l'accesso SSE.
   const launchParams = new URLSearchParams(window.location.search);
   const requestedSession = launchParams.get('sessionId')?.trim() || '';
   const chatMode=(launchParams.get('chat') || 'lab').trim().toLowerCase();
+  // Parameter selects an instruction profile; it does not grant MCP privileges.
+  const requestedInstruction=(launchParams.get('istruzione')||'').trim().toUpperCase();
   // ?chat=Claude: external Claude bootstrap, no embedded conversation.
   const claudeLaunchMode=chatMode==='claude';
   document.body.classList.toggle('claude-launch-mode',claudeLaunchMode);
+  if(claudeLaunchMode && requestedInstruction)
+    document.querySelector('#claude-launch-panel strong').textContent=
+      'Claude · MCP · istruzione '+requestedInstruction;
   // chat=sh without SOS session => autonomous Tiralinee lab.
   // chat=sh with sessionId => authenticated SOS viewer as before.
   // chat=lab always runs locally, even when an incidental sessionId exists.
@@ -1809,13 +1815,20 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
       }
     }
   }
-  // Reuse the validated Claude-specific Termodel bootstrap for manual and
-  // automatic launch. The Gateway is already hosted: connect() only registers
+  // A named instruction profile uses the universal bootstrap. Without the
+  // parameter the legacy Termodel Claude bootstrap remains unchanged.
+  // The Gateway is already hosted: connect() only registers
   // the receiver session and opens its authorized SSE channel.
   let claudeLaunchAttempted=false;
   function buildClaudeBootstrap(){
     if(!abort || abort.signal.aborted || !sessionId || el('disconnect').disabled)
       throw Error('Sessione MCP Termodel non ancora pronta');
+    if(requestedInstruction){
+      const selector=window.TiralineeMcpInstructionBootstrap;
+      if(!selector || !selector.resolve(requestedInstruction))
+        throw Error('Istruzione '+requestedInstruction+' non disponibile. Per ora è previsto istruzione=SOS.');
+      return selector.build(requestedInstruction,sessionId);
+    }
     return [
       'Sei l’assistente AI di Termodel.',
       'PRIMO PASSAGGIO OBBLIGATORIO: apri direttamente https://www.termodel.it/ai/ e LEGGI PER INTERO la programmazione ufficiale. Consulta anche i documenti collegati quando richiesti da quelle istruzioni.',
@@ -1836,8 +1849,15 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
   }
   function claudeHandoffReady(){
     if(!claudeLaunchMode || claudeLaunchAttempted)return;
+    let initial;
+    try{initial=buildClaudeBootstrap();}
+    catch(error){
+      el('claude-launch-state').textContent=
+        'Bootstrap non disponibile: '+String(error?.message||error)+
+        '. Correggi il parametro istruzione nell’URL.';
+      return;
+    }
     claudeLaunchAttempted=true;
-    const initial=buildClaudeBootstrap();
     const webUrl='https://claude.ai/new?q='+encodeURIComponent(initial);
     const desktopUrl='claude://claude.ai/new?q='+encodeURIComponent(initial);
     const link=el('claude-launch-link');
@@ -1853,7 +1873,8 @@ body.claude-launch-mode #claude-launch-panel{display:flex}
     try{window.open(webUrl,'_blank','noopener');}
     catch(_){ /* Explicit links stay available. */ }
     el('claude-launch-state').textContent=
-      'Gateway MCP collegato. Se Claude non si apre, scegli «Apri Claude». Controlla e invia il prompt in Claude.';
+      'Gateway MCP collegato'+(requestedInstruction?' · istruzione '+requestedInstruction:'')+
+      '. Se Claude non si apre, scegli «Apri Claude». Controlla e invia il prompt in Claude.';
   }
   // The official bootstrap mirrors Termodel Web's existing GPT launch instruction.
   const termodelAiBootstrap = [
