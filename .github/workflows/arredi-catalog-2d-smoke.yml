@@ -1,0 +1,32 @@
+name: MCP Arredi 2D catalog sidebar smoke
+on:
+  pull_request:
+    paths:
+      - 'docs/termodel-ui-demo/arredi-2d-catalog.js'
+      - 'docs/termodel-ui-demo/mcp-dump-test.html'
+      - 'docs/termodel-ui-demo/tests/arredi-catalog-smoke.cjs'
+      - '.github/workflows/arredi-catalog-2d-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arredi-sidebar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and functional guard/catalog smoke
+        run: |
+          node --check docs/termodel-ui-demo/arredi-2d-catalog.js
+          node docs/termodel-ui-demo/tests/arredi-catalog-smoke.cjs
+      - name: Legacy view and profile selector presence
+        shell: bash
+        run: |
+          grep -Fq '<div id="view2d" class="view"></div>' docs/termodel-ui-demo/mcp-dump-test.html
+          grep -Fq 'arredi-2d-catalog.js?v=0.1.0' docs/termodel-ui-demo/mcp-dump-test.html
+          grep -Fq 'TiralineeMcpInstructionBootstrap' docs/termodel-ui-demo/mcp-dump-test.html

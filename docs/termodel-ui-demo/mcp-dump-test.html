@@ -185,6 +185,27 @@ body.external-launch-mode #external-launch-panel{display:flex}
 <script src="./tiralinee-guided-chat.js?v=1.0.7"></script>
 <script src="./tiralinee-startup-preflight.js?v=1.0.1"></script>
 <script src="./tiralinee-mcp-instruction-bootstrap.js?v=2.1.0"></script>
+<!-- Load even the Arredi JS asset ONLY for the explicit ARREDI launch profile. -->
+<script>
+(() => {
+  const params=new URLSearchParams(window.location.search);
+  if (!params.has('istruzione')) return;
+  const selected=window.TiralineeMcpInstructionBootstrap?.resolve(params.get('istruzione'));
+  if (selected?.id !== 'ARREDI') return;
+  const loadArredi=() => {
+    // Wait until #tab-2d and #view2d exist. Otherwise the side panel
+    // could be silently skipped if the network returns the JS too quickly.
+    const script=document.createElement('script');
+    script.src='./arredi-2d-catalog.js?v=0.1.0';
+    document.head.appendChild(script);
+  };
+  if(document.readyState==='loading') {
+    document.addEventListener('DOMContentLoaded',loadArredi,{once:true});
+  } else {
+    loadArredi();
+  }
+})();
+</script>
 <script>
 (() => {
   'use strict';
@@ -199,6 +220,10 @@ body.external-launch-mode #external-launch-panel{display:flex}
   const instructionExplicit=launchParams.has('istruzione');
   const requestedInstruction=instructionExplicit
     ? (launchParams.get('istruzione')||'').trim() : 'SOS';
+  // The same existing istruzione profile scopes Arredi session commands.
+  // Legacy/SOS registration remains unchanged (empty JSON body).
+  const arrediLaunchProfile=Boolean(instructionExplicit &&
+    window.TiralineeMcpInstructionBootstrap?.resolve(requestedInstruction)?.id==='ARREDI');
   // Identico bootstrap MCP per i due client esterni, senza chat interna.
   const externalProvider=chatMode==='claude'?'Claude':
     (chatMode==='chatgpt'||chatMode==='gpt'?'ChatGPT':null);
@@ -1713,7 +1738,8 @@ body.external-launch-mode #external-launch-panel{display:flex}
     const controller = new AbortController();
     try {
       const registered = await fetch(base + '/browser/register', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:'{}',
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:arrediLaunchProfile?'{"profile":"ARREDI"}':'{}',
         signal:controller.signal, cache:'no-store'
       });
       if (!registered.ok) throw Error('Registrazione HTTP ' + registered.status);
