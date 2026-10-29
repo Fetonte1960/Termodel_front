@@ -266,8 +266,7 @@
     cancel.disabled=!info.pending;
     remove.disabled=!info.selected;
     angleSlider.disabled=!(info.pending||info.selected);
-    if(info.ready && info.planKey && documentState.key!==info.planKey &&
-       documentState.mode!=='loading' && documentState.mode!=='saving'){
+    if(info.ready && info.planKey && documentState.key!==info.planKey){
       void restoreForPlan({...info,
         floor:window.TiralineeArrediPlacement?.getState?.().floor});
     }else if(documentState.mode==='ready' &&
