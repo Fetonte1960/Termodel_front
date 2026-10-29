@@ -1,4 +1,4 @@
-/* MCP_Arredi catalog and placement sidebar MVP 0.3 — 2026-10-29
+/* MCP_Arredi catalog, placement and SOS DEMO JSON persistence M6 — 2026-10-29
  * Activates ONLY with explicit istruzione=ARREDI.
  * Uses the shared MCP Gateway REST catalog endpoint. No credentials in browser.
  * Furniture rectangles live on an overlay. The Termodel clean-floor SVG is immutable.
@@ -79,12 +79,25 @@
   refresh.type = 'button';
   refresh.textContent = 'Aggiorna catalogo';
   actions.appendChild(refresh);
+  const save=document.createElement('button');
+  save.id='arredi-save';save.type='button';save.textContent='Salva';
+  save.title='Salva arredi nel documento JSON della farmacia SOS demo';
+  save.disabled=true;
+  actions.appendChild(save);
   sidebar.appendChild(actions);
   const status = document.createElement('p');
   status.className = 'arredi-status';
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
   sidebar.appendChild(status);
+  const saveStatus=document.createElement('p');
+  saveStatus.className='arredi-status';
+  saveStatus.id='arredi-save-status';
+  saveStatus.setAttribute('role','status');
+  saveStatus.setAttribute('aria-live','polite');
+  saveStatus.textContent='Documento Arredi: in attesa della pianta.';
+  sidebar.appendChild(saveStatus);
+  const documentState={key:null,mode:'idle',version:null,savedEditRevision:0};
   const list = document.createElement('div');
   list.className = 'arredi-items';
   list.setAttribute('aria-label', 'Voci catalogo');
@@ -152,6 +165,93 @@
   zoomLabel.className='arredi-help';
   zoomLabel.textContent='Rotellina: zoom · OSNAP: parete/arredo oppure 2 pareti/arredi · aggancio immediato';
   sidebar.appendChild(zoomLabel);
+
+  function setDocumentStatus(message){
+    saveStatus.textContent=message;
+  }
+  function enableSave(){
+    const context=window.TiralineeArrediDocumentIo?.context?.();
+    const current=window.TiralineeArrediPlacement?.getState?.();
+    save.disabled=!(documentState.mode==='ready' && context &&
+      current?.ready && documentState.key===current.planKey &&
+      context.floorName===current.floor);
+  }
+  async function restoreForPlan(info){
+    const key=info.planKey;
+    const io=window.TiralineeArrediDocumentIo;
+    const context=io?.context?.();
+    if(!io || !context || context.floorName!==info.floor){
+      setDocumentStatus('Salvataggio disponibile solo con farmacia SOS demo e pianta collegata.');
+      save.disabled=true;
+      return;
+    }
+    documentState.key=key;
+    documentState.mode='loading';
+    documentState.version=null;
+    setDocumentStatus('Cerco il documento Arredi della farmacia…');
+    enableSave();
+    const originalEditRevision=info.editRevision;
+    try{
+      const saved=await io.load();
+      const current=window.TiralineeArrediPlacement?.getState?.();
+      if(documentState.key!==key || !current?.ready || current.planKey!==key)return;
+      if(current.editRevision!==originalEditRevision){
+        documentState.mode='conflict';
+        setDocumentStatus('Pianta modificata durante la lettura: ricarica prima di salvare.');
+        enableSave();return;
+      }
+      if(saved){
+        const layout=saved.layout;
+        if(layout.importId!==context.importId ||
+           layout.projectRevision!==context.projectRevision ||
+           layout.floorName!==context.floorName)
+          throw Error('Documento Arredi riferito a una diversa revisione');
+        const count=window.TiralineeArrediPlacement.restoreLayout(layout);
+        documentState.version=saved.version;
+        setDocumentStatus('Ripristinati '+count+' arredi dal documento SOS.');
+      }else{
+        documentState.version=null;
+        setDocumentStatus('Nessun documento Arredi per questa revisione: pronto al primo salvataggio.');
+      }
+      documentState.mode='ready';
+      documentState.savedEditRevision=
+        window.TiralineeArrediPlacement?.getState?.().editRevision??0;
+    }catch(error){
+      if(documentState.key!==key)return;
+      documentState.mode='error';
+      setDocumentStatus('Ripristino non riuscito: '+String(error?.message||error)+
+        '. Ricarica la pagina; il salvataggio è bloccato per proteggere i dati.');
+    }
+    enableSave();
+  }
+  save.addEventListener('click',async()=>{
+    if(documentState.mode!=='ready' || save.disabled)return;
+    const placement=window.TiralineeArrediPlacement;
+    const io=window.TiralineeArrediDocumentIo;
+    const context=io?.context?.();
+    const before=placement?.getState?.();
+    if(!context || !before?.ready || before.planKey!==documentState.key)return;
+    documentState.mode='saving';enableSave();
+    setDocumentStatus('Salvataggio documento Arredi in SOS…');
+    try{
+      const layout=placement.exportLayout(context);
+      const saved=await io.save(layout,documentState.version);
+      if(documentState.key!==before.planKey)return;
+      documentState.version=saved.version;
+      documentState.savedEditRevision=before.editRevision;
+      documentState.mode='ready';
+      const after=placement.getState();
+      setDocumentStatus('Salvati '+saved.itemCount+' arredi nel documento SOS'+
+        (after.editRevision!==before.editRevision?
+          '. Nuove modifiche ancora da salvare.':'.'));
+    }catch(error){
+      if(documentState.key!==before.planKey)return;
+      documentState.mode='error';
+      setDocumentStatus('Salvataggio NON riuscito: '+String(error?.message||error)+
+        '. Ricarica per rileggere la versione corrente.');
+    }
+    enableSave();
+  });
   window.TiralineeArrediPlacement?.onChange?.(info=>{
     placementState.textContent=info.message ||
       (info.ready?'Pianta in centimetri pronta.':'In attesa della pianta pulita…');
@@ -166,6 +266,15 @@
     cancel.disabled=!info.pending;
     remove.disabled=!info.selected;
     angleSlider.disabled=!(info.pending||info.selected);
+    if(info.ready && info.planKey && documentState.key!==info.planKey &&
+       documentState.mode!=='loading' && documentState.mode!=='saving'){
+      void restoreForPlan({...info,
+        floor:window.TiralineeArrediPlacement?.getState?.().floor});
+    }else if(documentState.mode==='ready' &&
+             info.editRevision!==documentState.savedEditRevision){
+      setDocumentStatus('Modifiche agli arredi non ancora salvate in SOS.');
+    }
+    enableSave();
   });
   function showStatus(message) { status.textContent = message; }
   function safeNumber(value) { return typeof value === 'number' && Number.isFinite(value) && value > 0; }
