@@ -206,7 +206,7 @@
     }
   }
   function onPointerDown(e){
-    if(e.button!==0 || !state.overlay)return;
+    if(e.button!==0 || !state.overlay || state.snapMode==='pick-wall')return;
     const placed=e.target?.closest?.('[data-placement-id]');
     if(!placed)return;
     const item=state.items.find(x=>x.id===placed.getAttribute('data-placement-id'));
@@ -248,8 +248,11 @@
         state.angle+'° · clicca per confermare');
       return; // Wall click selects/snap only, never commits an item.
     }
+    // A snapped preview has a precise wall-aligned center. The confirming
+    // click must NEVER replace it with the mouse click coordinates.
+    const center=state.snapMode==='aligned'?state.pending:point;
     const item=Object.assign({},state.pending,{
-      id:'AR-'+(++state.sequence),x:point.x,y:point.y,angle:state.angle
+      id:'AR-'+(++state.sequence),x:center.x,y:center.y,angle:state.angle
     });
     state.items.push(item);
     state.selectedId=item.id;
