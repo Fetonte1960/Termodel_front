@@ -220,6 +220,32 @@ const flush=()=>new Promise(r=>setImmediate(r));
   assert.equal(mixedApi.getState().items.length,2,'mixed targets finalize on click two');
   assert.equal(mixedApi.getState().pending,null);
 
+  // M6: the saved JSON carries geometry, catalog reference and revision
+  // but never the DOM, temporary preview or underlying Termodel SVG.
+  const original=furnitureApi.getState();
+  const demoContext={importId:'11111111-1111-4111-8111-111111111111',
+    projectRevision:'revision-test',floorName:'Unico'};
+  const layout=furnitureApi.exportLayout(demoContext);
+  assert.equal(layout.format,'TERMODEL-ARREDI-LAYOUT-V1');
+  assert.equal(layout.units,'cm');
+  assert.equal(layout.items.length,original.items.length);
+  assert.equal(layout.items[0].catalogId,'catalog-test');
+  assert.equal(layout.items[0].widthCm,180);
+  assert.equal(layout.items[0].depthCm,90);
+  assert.ok(!('pending' in layout),'preview must not be persisted');
+  assert.throws(()=>furnitureApi.exportLayout({...demoContext,floorName:'other'}),
+    /Pianta\/revisione/);
+  furnitureApi.remove();
+  assert.equal(furnitureApi.restoreLayout(layout),layout.items.length);
+  assert.equal(furnitureApi.getState().items.length,layout.items.length);
+  assert.equal(furnitureApi.getState().items[0].id,'AR-1');
+  assert.equal(furnitureApi.getState().items[0].catalogId,'catalog-test');
+  assert.throws(()=>furnitureApi.restoreLayout({...layout,floorName:'other'}),
+    /incompatibile/);
+  const after=furnitureApi.getState();
+  assert.equal(after.items.length,layout.items.length,
+    'invalid restore cannot erase a valid current layout');
+
   const invalid=harness('?istruzione=ARREDI','OTHER-FORMAT');
   await flush();assert.equal(invalid.window.TiralineeArrediPlacement.getState().ready,false,
     'unknown SVG must not be used as a metric plan');

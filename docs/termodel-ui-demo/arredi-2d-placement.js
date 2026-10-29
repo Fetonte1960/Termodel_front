@@ -2,7 +2,7 @@
  * Only for explicit istruzione=ARREDI, separate from the immutable Termodel SVG.
  * Canonical clean floor: TERMODEL-CLEAN-FLOOR-SVG-V1; units: centimeters.
  * The mouse wheel is reserved exclusively for zooming; rotation uses sidebar slider.
- * Positioned items are session-local (no server save or invented project persistence).
+ * Confirmed items can be exported to a revision-bound SOS DEMO JSON document.
  */
 (function(root){
   'use strict';
@@ -16,7 +16,7 @@
   const state = {
     view, stage:null, overlay:null, sourceImg:null, planKey:null, meta:null,
     items:[], pending:null, selectedId:null, dragging:null, angle:0,
-    zoom:1, panX:0, panY:0, sequence:0,
+    zoom:1, panX:0, panY:0, sequence:0, editRevision:0,
     onChange:null, loadingSource:null, lastError:'',
     walls:[], snapMode:'', hoveredWall:null, snapSideIndex:null, contextMenu:null,
     snapFirstWall:null, snapOriginal:null, snapSecondWall:null, snapInfo:null
@@ -27,12 +27,13 @@
       selected: state.items.find(x=>x.id===state.selectedId) || null,
       count:state.items.length,
       zoom:Math.round(state.zoom*100),
-      ready:!!state.overlay,
+      ready:!!state.overlay, planKey:state.planKey, editRevision:state.editRevision,
       snapMode:state.snapMode, wallCount:state.walls.length,
       snapInfo:state.snapInfo,
       message:message || state.lastError
     });
   }
+  function changed(){state.editRevision++;}
   function positive(n){return typeof n==='number' && Number.isFinite(n) && n>0;}
   function canonical(item){
     return item && typeof item.id==='string' && item.id.length>0 &&
@@ -256,6 +257,7 @@
   function onPointerUp(e){
     if(!state.dragging)return;
     state.dragging=null;
+    changed();
     state.overlay.releasePointerCapture?.(e.pointerId);
     redraw();
     emit('Posizione consolidata nel layout corrente');
@@ -269,6 +271,7 @@
       id:'AR-'+(++state.sequence),x:center.x,y:center.y,angle:state.angle
     });
     state.items.push(item);
+    changed();
     state.selectedId=item.id;
     state.pending=null;
     state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
@@ -360,7 +363,7 @@
   function clearStage(){
     state.stage=null;state.overlay=null;state.sourceImg=null;
     state.meta=null;state.planKey=null;state.pending=null;state.selectedId=null;
-    state.items=[];state.sequence=0;state.zoom=1;state.panX=0;state.panY=0;
+    state.items=[];state.sequence=0;state.editRevision=0;state.zoom=1;state.panX=0;state.panY=0;
     state.walls=[];state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
     state.snapFirstWall=null;state.snapSecondWall=null;
     state.snapOriginal=null;state.snapInfo=null;
@@ -378,9 +381,12 @@
       const source=await response.text();
       const meta=parsePlan(source);
       if(!img.isConnected || !view.contains(img))return;
-      const identity=source.length+':'+source.slice(0,110)+':'+source.slice(-110);
+      const documentContext=root.TiralineeArrediDocumentIo?.context?.();
+      const identity=(documentContext?.importId||'')+':'+
+        (documentContext?.projectRevision||'')+':'+
+        source.length+':'+source.slice(0,110)+':'+source.slice(-110);
       if(state.planKey!==null && state.planKey!==identity){
-        state.items=[];state.sequence=0;state.pending=null;state.selectedId=null;
+        state.items=[];state.sequence=0;state.editRevision=0;state.pending=null;state.selectedId=null;
         state.lastError='Pianta cambiata: layout precedente azzerato (solo sessione)';
       }
       state.planKey=identity;
@@ -456,7 +462,7 @@
     }
     else {
       const item=state.items.find(x=>x.id===state.selectedId);
-      if(item)item.angle=state.angle;
+      if(item && item.angle!==state.angle){item.angle=state.angle;changed();}
     }
     redraw();emit();
     return state.angle;
@@ -472,6 +478,7 @@
   function remove(){
     if(!state.selectedId)return false;
     state.items=state.items.filter(x=>x.id!==state.selectedId);
+    changed();
     state.selectedId=null;
     redraw();emit('Arredo rimosso dal layout corrente');
     return true;
@@ -479,13 +486,64 @@
   function resetZoom(){
     state.zoom=1;state.panX=0;state.panY=0;updateZoom();
   }
+  // The canonical layout is separate from the Termodel SVG/3D model.
+  // Export only confirmed rectangles, never a pending preview or DOM nodes.
+  function exportLayout(context){
+    if(!state.overlay || !state.meta || !state.planKey ||
+       !context || context.floorName!==state.meta.floor ||
+       !context.importId || !context.projectRevision)
+      throw Error('Pianta/revisione Termodel non pronta per il salvataggio');
+    return {
+      format:'TERMODEL-ARREDI-LAYOUT-V1',version:1,units:'cm',
+      importId:context.importId,projectRevision:context.projectRevision,
+      floorName:context.floorName,
+      items:state.items.map(x=>({
+        id:x.id,catalogId:x.catalogId,name:x.name,
+        description:x.description||'',widthCm:x.widthCm,depthCm:x.depthCm,
+        x:x.x,y:x.y,angle:angleNumber(x.angle)
+      }))
+    };
+  }
+  function restoreLayout(layout){
+    if(!state.overlay || !state.meta || !layout ||
+       layout.format!=='TERMODEL-ARREDI-LAYOUT-V1' ||
+       layout.version!==1 || layout.units!=='cm' ||
+       layout.floorName!==state.meta.floor ||
+       !Array.isArray(layout.items) || layout.items.length>500)
+      throw Error('Layout salvato incompatibile con la pianta');
+    const seen=new Set();
+    const restored=layout.items.map(item=>{
+      if(!item || typeof item.id!=='string' ||
+         !/^AR-[1-9]\d*$/.test(item.id) || seen.has(item.id) ||
+         !canonical(item) || typeof item.catalogId!=='string' ||
+         !Number.isFinite(item.x) || !Number.isFinite(item.y) ||
+         !Number.isFinite(item.angle) ||
+         typeof item.description!=='string')
+        throw Error('Elemento di arredo salvato non valido');
+      seen.add(item.id);
+      return {id:item.id,catalogId:item.catalogId,name:item.name,
+        description:item.description,widthCm:item.widthCm,
+        depthCm:item.depthCm,x:item.x,y:item.y,angle:angleNumber(item.angle)};
+    });
+    closeContextMenu();
+    state.items=restored;
+    state.sequence=Math.max(0,...restored.map(x=>Number(x.id.slice(3))));
+    state.selectedId=null;state.pending=null;state.dragging=null;
+    state.snapMode='';state.snapFirstWall=null;state.snapSecondWall=null;
+    state.hoveredWall=null;state.snapOriginal=null;state.snapInfo=null;
+    changed();
+    redraw();emit('Ripristinati '+restored.length+' arredi dal documento SOS');
+    return restored.length;
+  }
   root.TiralineeArrediPlacement=Object.freeze({
     start,setAngle,cancel,remove,resetZoom,beginWallSnap,
+    exportLayout,restoreLayout,
     onChange(fn){state.onChange=typeof fn==='function'?fn:null;emit();},
     getState(){return {ready:!!state.overlay,zoom:state.zoom,
       items:state.items.map(x=>({...x})),pending:state.pending?{...state.pending}:null,
       selectedId:state.selectedId,angle:state.angle,unit:state.meta?'cm':null,
-      floor:state.meta?.floor||null,
+      floor:state.meta?.floor||null,planKey:state.planKey,
+      editRevision:state.editRevision,
       wallCount:state.walls.length,snapMode:state.snapMode,
       snapSideIndex:state.snapSideIndex,
       snapInfo:state.snapInfo?{...state.snapInfo}:null};}

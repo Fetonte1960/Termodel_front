@@ -40,7 +40,7 @@ function node(tag = 'div') {
   };
   return el;
 }
-async function harness(search, catalogPayload, status = 200) {
+async function harness(search, catalogPayload, status = 200, documentIo = null) {
   const tab = node('div');
   const view = node('div');
   tab.appendChild(view);
@@ -53,15 +53,30 @@ async function harness(search, catalogPayload, status = 200) {
     createElement(name) {return node(name);}
   };
   let fetches = 0;
-  const placement={started:[],angles:[],listener:null};
+  const placement={started:[],angles:[],listener:null,restored:null,
+    current:{ready:true,pending:null,selected:null,zoom:100,
+      planKey:documentIo?'demo-plan':null,floor:'Unico',editRevision:0,
+      items:[]}};
   const win = {
     TiralineeArrediPlacement: {
-      onChange(fn){placement.listener=fn;fn({ready:true,pending:null,selected:null,zoom:100,message:'Pianta pronta'});},
+      onChange(fn){placement.listener=fn;fn({...placement.current,message:'Pianta pronta'});},
+      getState(){return placement.current;},
+      restoreLayout(layout){
+        placement.restored=layout;
+        placement.current.items=layout.items;
+        placement.current.editRevision++;
+        placement.listener?.({...placement.current,message:'Ripristinato'});
+        return layout.items.length;
+      },
+      exportLayout(context){return {
+        format:'TERMODEL-ARREDI-LAYOUT-V1',
+        version:1,units:'cm',...context,items:placement.current.items};},
       start(item){placement.started.push(item);placement.listener?.({ready:true,pending:{...item,angle:0},selected:null,zoom:100,message:'Anteprima'});return true;},
       setAngle(angle){placement.angles.push(angle);return angle;},
       cancel(){},remove(){},resetZoom(){}
     },
     location: {search},
+    TiralineeArrediDocumentIo:documentIo,
     TiralineeMcpInstructionBootstrap: {
       resolve(input) {
         const profile = input.toUpperCase().replace(/-ISTRUZIONI\.MD$/, '');
@@ -117,6 +132,46 @@ async function run() {
     assert.equal(h.placement.angles.at(-1),42,'slider angle must drive furniture rotation');
     assert.equal(rotation.children[0].children[0].textContent,'42°');
   }
+  // M6: auto-restore only on matching plan, explicit Save uses the
+  // version from GET. The test farm document is never written on load.
+  const layout={format:'TERMODEL-ARREDI-LAYOUT-V1',version:1,units:'cm',
+    importId:'demo-import',projectRevision:'rev',floorName:'Unico',
+    items:[{id:'AR-1',catalogId:'1',name:'DEMO Tavolo',description:'',
+      widthCm:180,depthCm:90,x:250,y:250,angle:30}]};
+  const requests={reads:0,writes:[]};
+  const documentIo={
+    context:()=>({importId:'demo-import',projectRevision:'rev',floorName:'Unico'}),
+    async load(){requests.reads++;return {layout,version:'version-1'};},
+    async save(data,version){requests.writes.push({data,version});return {
+      version:'version-2',importId:'demo-import',projectRevision:'rev',
+      itemCount:data.items.length};}
+  };
+  const withDocument=await harness('?istruzione=ARREDI',catalog,200,documentIo);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requests.reads,1,'must read the current pharmacy JSON on opening');
+  assert.equal(withDocument.placement.restored.items.length,1,'layout is restored');
+  assert.equal(requests.writes.length,0,'opening must NEVER overwrite the document');
+  const documentSidebar=withDocument.view.parentNode.children[1];
+  const saveButton=documentSidebar.children.flatMap(x=>x.children)
+    .find(x=>x.textContent==='Salva');
+  assert.ok(saveButton,'Save button is present in right toolbar');
+  assert.equal(saveButton.disabled,false,'Save enabled after successful read');
+  await saveButton.events.click();
+  assert.equal(requests.writes.length,1);
+  assert.equal(requests.writes[0].version,'version-1');
+  assert.equal(requests.writes[0].data.floorName,'Unico');
+  const savedStatus=documentSidebar.children.find(x=>x.id==='arredi-save-status');
+  assert.match(savedStatus.textContent,/Salvati 1 arredi/);
+  // If the read fails, do not let a blind POST destroy server data.
+  const failRead={context:documentIo.context,
+    async load(){throw Error('DB offline');},async save(){throw Error('MUST NOT WRITE');}};
+  const unavailable=await harness('?istruzione=ARREDI',catalog,200,failRead);
+  await new Promise(resolve=>setImmediate(resolve));
+  const unavailableSidebar=unavailable.view.parentNode.children[1];
+  const blocked=unavailableSidebar.children.flatMap(x=>x.children)
+    .find(x=>x.textContent==='Salva');
+  assert.equal(blocked.disabled,true,'save must remain blocked after read failure');
+
   const failed = await harness('?istruzione=ARREDI', null, 503);
   const sidebar = failed.view.parentNode.children[1];
   const items = sidebar.children.find(c => c.className === 'arredi-items');

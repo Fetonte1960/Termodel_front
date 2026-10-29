@@ -197,14 +197,14 @@ body.external-launch-mode #external-launch-panel{display:flex}
     // could be silently skipped if the network returns the JS too quickly.
     const catalog=()=>{
       const script=document.createElement('script');
-      script.src='./arredi-2d-catalog.js?v=0.4.0';
+      script.src='./arredi-2d-catalog.js?v=0.5.0';
       document.head.appendChild(script);
     };
     // Only for istruzione=ARREDI: OSNAP geometry before placement, then sidebar.
     // If the OSNAP asset fails, preserve ordinary placement and catalog.
     const placement=()=>{
       const script=document.createElement('script');
-      script.src='./arredi-2d-placement.js?v=0.4.0';
+      script.src='./arredi-2d-placement.js?v=0.5.0';
       script.onload=catalog;
       script.onerror=catalog;
       document.head.appendChild(script);
@@ -456,6 +456,53 @@ body.external-launch-mode #external-launch-panel{display:flex}
 
   let loaded3DImportId=null;
   const cleanFloorName='Unico'; // SOS-TEST-001: piano canonico del project manifest
+
+  // M6: the ARREDI profile may read/write ONLY the synthetic SOS-TEST-001
+  // document linked to the currently approved 3D/clean-floor import.
+  // No real-pharmacy claims or credentials are introduced in this browser.
+  function arrediDocumentContext(){
+    if(!arrediLaunchProfile || !labModelMode ||
+       !loaded3DImportId || !loaded3DRevision)return null;
+    return {importId:loaded3DImportId,projectRevision:loaded3DRevision,
+      floorName:cleanFloorName};
+  }
+  async function arrediDocumentRequest(method,layout,expectedVersion){
+    const context=arrediDocumentContext();
+    if(!context)throw Error('Modello/pianta SOS demo non pronti');
+    const access=await ensureLabAccess();
+    const path='/browser/lab/arredi/layout/'+encodeURIComponent(access.id)+
+      '/'+encodeURIComponent(context.floorName);
+    const options={method,cache:'no-store',headers:{
+      Authorization:'Bearer '+access.token,
+      Accept:'application/json'
+    }};
+    if(method==='POST'){
+      options.headers['Content-Type']='application/json';
+      options.body=JSON.stringify({layout,expectedVersion});
+    }
+    const response=await gatewayRequest(path,options,
+      method==='POST'?'Salvataggio Arredi in SOS demo':'Lettura Arredi da SOS demo');
+    if(method==='GET' && response.status===404)return null;
+    if(!response.ok){
+      let error='';
+      try{error=(await response.json()).error||'';}catch(_){}
+      if(response.status===409 && error==='layout_version_conflict')
+        throw Error('Salvataggio rifiutato: documento modificato da un’altra sessione. Ricarica la pagina.');
+      throw Error('Documento Arredi SOS non disponibile: HTTP '+response.status+
+        (error?' ('+error+')':''));
+    }
+    const result=await response.json();
+    if(result.importId!==context.importId ||
+       result.projectRevision!==context.projectRevision)
+      throw Error('Documento Arredi associato a una revisione diversa');
+    return result;
+  }
+  if(arrediLaunchProfile)window.TiralineeArrediDocumentIo=Object.freeze({
+    context:arrediDocumentContext,
+    load:()=>arrediDocumentRequest('GET'),
+    save:(layout,expectedVersion)=>arrediDocumentRequest('POST',layout,expectedVersion)
+  });
+
   function showCleanFloorMessage(message) {
     const host=document.getElementById('view2d');
     host.replaceChildren();
