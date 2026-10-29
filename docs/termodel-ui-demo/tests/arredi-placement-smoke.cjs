@@ -79,7 +79,7 @@ const flush=()=>new Promise(r=>setImmediate(r));
   assert.equal(api.getState().ready,true,'Termodel SVG units cm must enable placement');
   assert.equal(api.getState().unit,'cm');
   assert.equal(api.getState().floor,'Unico');
-  assert.equal(api.getState().wallCount,3,'wall segments parsed from SVG clean-boundary polyline');
+  assert.equal(api.getState().wallCount,2,'2 wall segments parsed from 3 SVG polyline points');
   const item={id:'catalog-test',name:'DEMO Tavolo',description:'',widthCm:180,depthCm:90};
   assert.equal(api.start(item),true);
   assert.equal(api.getState().pending.widthCm,180);
