@@ -25,7 +25,7 @@ const standalone=expert.buildPrompt({paired:false,
    {role:'user',text:'Nascondi il quadro elettrico'},
    {role:'assistant',text:'Risposta non riconosciuta'}
  ]});
-assert.ok(standalone.includes('https://www.termodel.it/ai/'));
+assert.ok(standalone.includes('Non cercare istruzioni SOS su termodel.it/ai'), 'Standalone prompt must direct SOS to MCP, not legacy web instructions');
 assert.ok(standalone.includes('SOS-TEST-001'));
 assert.ok(standalone.includes('Non è stata aperta una sessione assistenza SOS'));
 assert.ok(standalone.includes('Nascondi il quadro elettrico'));
