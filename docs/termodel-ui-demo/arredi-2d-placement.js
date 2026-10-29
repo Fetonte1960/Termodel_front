@@ -381,7 +381,10 @@
       const source=await response.text();
       const meta=parsePlan(source);
       if(!img.isConnected || !view.contains(img))return;
-      const identity=source.length+':'+source.slice(0,110)+':'+source.slice(-110);
+      const documentContext=root.TiralineeArrediDocumentIo?.context?.();
+      const identity=(documentContext?.importId||'')+':'+
+        (documentContext?.projectRevision||'')+':'+
+        source.length+':'+source.slice(0,110)+':'+source.slice(-110);
       if(state.planKey!==null && state.planKey!==identity){
         state.items=[];state.sequence=0;state.editRevision=0;state.pending=null;state.selectedId=null;
         state.lastError='Pianta cambiata: layout precedente azzerato (solo sessione)';
