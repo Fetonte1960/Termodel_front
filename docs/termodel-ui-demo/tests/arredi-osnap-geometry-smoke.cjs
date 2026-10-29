@@ -77,7 +77,7 @@ assert.ok(two,'two-wall snap should produce a result');
 assert.equal(two.firstSideIndex,one.sideIndex,
   'first side must be selected using ORIGINAL rotation, not second-wall geometry');
 assert.equal(two.secondSideIndex,3,'near left side must contact second wall');
-near(two.angle,one.angle,'first wall fixes the final angle');
+near(two.angle,one.angle);
 near(two.x,190);
 near(two.y,145);
 near(two.firstGapCm,0);
