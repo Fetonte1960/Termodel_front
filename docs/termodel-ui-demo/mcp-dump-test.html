@@ -192,9 +192,18 @@ body.external-launch-mode #external-launch-panel{display:flex}
   if (!params.has('istruzione')) return;
   const selected=window.TiralineeMcpInstructionBootstrap?.resolve(params.get('istruzione'));
   if (selected?.id !== 'ARREDI') return;
-  const script=document.createElement('script');
-  script.src='./arredi-2d-catalog.js?v=0.1.0';
-  document.head.appendChild(script);
+  const loadArredi=() => {
+    // Wait until #tab-2d and #view2d exist. Otherwise the side panel
+    // could be silently skipped if the network returns the JS too quickly.
+    const script=document.createElement('script');
+    script.src='./arredi-2d-catalog.js?v=0.1.0';
+    document.head.appendChild(script);
+  };
+  if(document.readyState==='loading') {
+    document.addEventListener('DOMContentLoaded',loadArredi,{once:true});
+  } else {
+    loadArredi();
+  }
 })();
 </script>
 <script>
