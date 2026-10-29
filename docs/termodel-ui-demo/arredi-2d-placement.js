@@ -283,7 +283,7 @@
     const point=pointFromEvent(e);
     if(!point)return;
     if(['pick-wall','pick-first-wall','pick-second-wall'].includes(state.snapMode)){
-      const candidate=hitWall(point);
+      const candidate=hitTarget(point);
       if(!candidate){emit('Clicca vicino a una parete o a un lato di arredo');return;}
       if(state.snapMode==='pick-first-wall'){
         const alignedFirst=root.TiralineeArrediOsnap?.alignFurniture(
