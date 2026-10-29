@@ -1,0 +1,67 @@
+{
+  "schema": "TERMODEL-ARREDI-MODELS-V1",
+  "ready": false,
+  "source": "demo-static-assets",
+  "models": [
+    {
+      "catalogId": "844c8e8b-ef8d-431b-bfae-b1584e117a2a",
+      "version": 1,
+      "url": "https://www.termodel.it/termodel-ui-demo/arredi-assets/demo-tavolo.glb",
+      "sha256": "298d2025a6d36ccd099c8be8a64a7f53937c1608b7aa7f623ad2a7ad5c91acc5",
+      "license": "Modello originale DEMO Termodel",
+      "widthCm": 180,
+      "depthCm": 90,
+      "heightCm": 76,
+      "semantics": {
+        "parts": [
+          "piano",
+          "gambe",
+          "traverse"
+        ],
+        "material": "legno",
+        "front": "+Z"
+      }
+    },
+    {
+      "catalogId": "d492cf3e-ad1d-4bc2-b691-69c3f4780c68",
+      "version": 1,
+      "url": "https://www.termodel.it/termodel-ui-demo/arredi-assets/demo-divano.glb",
+      "sha256": "8cb4df1321544b917dca7bc90e89f230887b1fa82887cf1079ee13b33acb1f53",
+      "license": "Modello originale DEMO Termodel",
+      "widthCm": 220,
+      "depthCm": 90,
+      "heightCm": 85,
+      "semantics": {
+        "parts": [
+          "struttura",
+          "seduta",
+          "schienale",
+          "braccioli",
+          "piedini"
+        ],
+        "material": "tessuto",
+        "front": "+Z"
+      }
+    },
+    {
+      "catalogId": "5297b4bf-7244-4dfa-a0e8-daafd74537ad",
+      "version": 1,
+      "url": "https://www.termodel.it/termodel-ui-demo/arredi-assets/demo-armadio.glb",
+      "sha256": "94d92f2d017385e900fdef101137c9f28d5e752575f93f9214aadf333bed2413",
+      "license": "Modello originale DEMO Termodel",
+      "widthCm": 120,
+      "depthCm": 60,
+      "heightCm": 200,
+      "semantics": {
+        "parts": [
+          "corpo",
+          "ante",
+          "maniglie",
+          "zoccolo"
+        ],
+        "material": "legno",
+        "front": "+Z"
+      }
+    }
+  ]
+}
