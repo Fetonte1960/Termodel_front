@@ -53,7 +53,14 @@ async function harness(search, catalogPayload, status = 200) {
     createElement(name) {return node(name);}
   };
   let fetches = 0;
+  const placement={started:[],angles:[],listener:null};
   const win = {
+    TiralineeArrediPlacement: {
+      onChange(fn){placement.listener=fn;fn({ready:true,pending:null,selected:null,zoom:100,message:'Pianta pronta'});},
+      start(item){placement.started.push(item);placement.listener?.({ready:true,pending:{...item,angle:0},selected:null,zoom:100,message:'Anteprima'});return true;},
+      setAngle(angle){placement.angles.push(angle);return angle;},
+      cancel(){},remove(){},resetZoom(){}
+    },
     location: {search},
     TiralineeMcpInstructionBootstrap: {
       resolve(input) {
@@ -71,7 +78,7 @@ async function harness(search, catalogPayload, status = 200) {
     }};
   vm.runInNewContext(script, ctx, {filename: 'arredi-2d-catalog.js'});
   await new Promise(resolve => setImmediate(resolve));
-  return {view, doc, win, addedClasses, get fetches() {return fetches;}};
+  return {view, doc, win, placement, addedClasses, get fetches() {return fetches;}};
 }
 async function run() {
   for (const inactive of ['', '?istruzione=SOS', '?istruzione=IMPIANTI', '?istruzione=', '?chat=claude']) {
@@ -98,6 +105,17 @@ async function run() {
     assert.equal(list.children[0].children[1].textContent, '180 × 90 cm');
     list.children[0].events.click();
     assert.equal(h.win.TiralineeArrediCatalog.getSelected().id, '1');
+    assert.equal(h.placement.started.length,1,'catalog item must start a metric preview');
+    assert.equal(h.placement.started[0].widthCm,180);
+    assert.equal(h.placement.started[0].depthCm,90);
+    const rotation=sidebar.children.find(c=>c.className==='arredi-rotation');
+    assert.ok(rotation,'right sidebar must have an angle slider');
+    const slider=rotation.children.find(c=>c.tagName==='input');
+    assert.equal(slider.type,'range');
+    assert.equal(slider.min,'0');assert.equal(slider.max,'359');
+    slider.value='42';slider.events.input();
+    assert.equal(h.placement.angles.at(-1),42,'slider angle must drive furniture rotation');
+    assert.equal(rotation.children[0].children[0].textContent,'42°');
   }
   const failed = await harness('?istruzione=ARREDI', null, 503);
   const sidebar = failed.view.parentNode.children[1];
