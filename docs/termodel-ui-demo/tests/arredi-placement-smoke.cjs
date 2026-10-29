@@ -121,8 +121,7 @@ const flush=()=>new Promise(r=>setImmediate(r));
   assert.equal(api.remove(),true);assert.equal(api.getState().items.length,0);
   assert.equal(api.start(item),true);api.cancel();
   assert.equal(api.getState().pending,null);
-  // OSNAP is available ONLY in placement mode via right-click. It does not
-  // commit on wall selection; it fixes the original nearest furniture side.
+  // One-target OSNAP: selection immediately commits the placed furniture.
   assert.equal(api.start(item),true);
   api.setAngle(75);
   overlay.events.pointermove({clientX:300,clientY:320});
@@ -131,35 +130,25 @@ const flush=()=>new Promise(r=>setImmediate(r));
     preventDefault(){contextPrevented=true;}});
   assert.ok(contextPrevented);
   const menu=h.view.children.find(n=>n.id==='arredi-osnap-menu');
-  assert.ok(menu,'context menu must open on right click during placement');
-  assert.equal(menu.children[0].textContent,'OSNAP');
-  assert.equal(menu.children[1].textContent,'Allinea con parete');
+  assert.ok(menu,'context menu must open during placement');
+  assert.equal(menu.children.length,3,'keep exactly the two existing OSNAP choices');
+  assert.equal(menu.children[1].textContent,'Allinea con parete/arredo');
+  assert.equal(menu.children[2].textContent,'Allinea con 2 pareti/arredi');
   menu.children[1].events.click();
   assert.equal(api.getState().snapMode,'pick-wall');
   overlay.events.pointermove({clientX:390,clientY:105});
   assert.ok(overlay.children.some(n=>n.getAttribute('data-arredi-osnap-target')==='wall'));
   overlay.events.click({button:0,clientX:390,clientY:105});
-  assert.equal(api.getState().snapMode,'aligned');
-  const snapped=api.getState().pending;
-  assert.notEqual(snapped.angle,75,'whole furniture must turn to selected wall');
-  assert.equal(api.getState().items.length,0,'wall click must not commit furniture');
-  overlay.events.pointermove({clientX:550,clientY:500});
-  assert.equal(api.getState().pending.x,snapped.x,'snap remains fixed during preview');
-  assert.equal(api.getState().pending.y,snapped.y);
-  overlay.events.click({button:0,clientX:550,clientY:500});
-  assert.equal(api.getState().items.length,1,'second click confirms');
-  assert.equal(api.getState().items[0].x,snapped.x,
-    'confirm must NOT override wall-aligned x with click x');
-  assert.equal(api.getState().items[0].y,snapped.y);
-  assert.equal(api.getState().items[0].angle,snapped.angle);
+  assert.equal(api.getState().items.length,1,'one wall click MUST finalize');
+  assert.equal(api.getState().pending,null,'no extra confirmation click');
+  assert.notEqual(api.getState().items[0].angle,75,'furniture takes wall direction');
   assert.equal(api.getState().snapMode,'');
-  // Outside insertion the default context menu remains available.
+  // Outside insertion preserve the native browser contextual menu.
   let preventedOutside=false;
   h.view.events.contextmenu({clientX:300,clientY:300,
     preventDefault(){preventedOutside=true;}});
-  assert.equal(preventedOutside,false,'OSNAP menu only while placing');
-  // Two-wall OSNAP: first click fixes angle, second fixes the position
-  // along the first wall, third confirms. The right-context menu exposes both.
+  assert.equal(preventedOutside,false);
+  // Two-target OSNAP: only TWO target clicks, no third click.
   const dual=harness('?istruzione=ARREDI');await flush();
   const dualApi=dual.window.TiralineeArrediPlacement;
   const dualOverlay=dual.view.querySelector('svg');
@@ -167,28 +156,69 @@ const flush=()=>new Promise(r=>setImmediate(r));
   dualOverlay.events.pointermove({clientX:500,clientY:330});
   dual.view.events.contextmenu({clientX:500,clientY:330,preventDefault(){}});
   const dualMenu=dual.view.children.find(x=>x.id==='arredi-osnap-menu');
-  assert.equal(dualMenu.children[2].textContent,'Allinea due pareti');
+  assert.equal(dualMenu.children[2].textContent,'Allinea con 2 pareti/arredi');
   dualMenu.children[2].events.click();
   assert.equal(dualApi.getState().snapMode,'pick-first-wall');
   dualOverlay.events.click({button:0,clientX:390,clientY:105});
   assert.equal(dualApi.getState().snapMode,'pick-second-wall');
+  assert.equal(dualApi.getState().items.length,0);
   const firstAngle=dualApi.getState().angle;
   assert.ok(dualOverlay.children.some(n=>n.getAttribute('data-arredi-osnap-target')==='first-wall'));
   dualOverlay.events.click({button:0,clientX:390,clientY:105});
   assert.equal(dualApi.getState().snapMode,'pick-second-wall','same wall cannot be selected twice');
   dualOverlay.events.click({button:0,clientX:695,clientY:260});
-  assert.equal(dualApi.getState().snapMode,'aligned');
-  const both=dualApi.getState();
-  assert.equal(both.angle,firstAngle,'first wall fixes rotation');
-  assert.equal(both.items.length,0,'wall selection does not commit a furniture item');
-  assert.ok(both.snapInfo && both.snapInfo.firstSideIndex!==both.snapInfo.secondSideIndex);
-  assert.ok(both.snapInfo.firstGapCm<.05);
-  assert.ok(both.snapInfo.secondGapCm<.05,'corner should be in contact with both walls');
-  dualOverlay.events.click({button:0,clientX:550,clientY:460});
-  assert.equal(dualApi.getState().items.length,1);
-  assert.equal(dualApi.getState().items[0].x,both.pending.x);
-  assert.equal(dualApi.getState().items[0].y,both.pending.y);
+  assert.equal(dualApi.getState().items.length,1,'second target click MUST finalize');
+  assert.equal(dualApi.getState().pending,null);
+  assert.equal(dualApi.getState().angle,firstAngle,'first wall keeps priority');
   assert.equal(dualApi.getState().items[0].angle,firstAngle);
+  assert.equal(dualApi.getState().snapMode,'');
+
+  // Place another item, then snap onto the ROTATED FOUR EDGES of that item.
+  const furniture=harness('?istruzione=ARREDI');await flush();
+  const furnitureApi=furniture.window.TiralineeArrediPlacement;
+  const furnitureOverlay=furniture.view.querySelector('svg');
+  furnitureApi.start(item);
+  furnitureOverlay.events.click({button:0,clientX:430,clientY:290});
+  assert.equal(furnitureApi.getState().items.length,1);
+  const existing=furnitureApi.getState().items[0];
+  const edges=osnap.furnitureSegments([existing]);
+  assert.equal(edges.length,4,'four metric edges selectable on existing furniture');
+  assert.equal(edges[0].source,'arredo');
+  assert.equal(edges[0].sourceId,existing.id);
+  // First use the right sidebar handler and click the first furniture side.
+  furnitureApi.start(item);
+  assert.equal(furnitureApi.beginWallSnap(1),true);
+  furnitureOverlay.events.click({button:0,clientX:430,clientY:245});
+  assert.equal(furnitureApi.getState().items.length,2,'furniture edge snaps immediately');
+  assert.equal(furnitureApi.getState().pending,null);
+  // Two furniture edges of the SAME existing item count as distinct targets.
+  // Use original rectangle left/right corners at center 430,290.
+  furnitureApi.start(item);furnitureApi.setAngle(22);
+  assert.equal(furnitureApi.beginWallSnap(2),true);
+  furnitureOverlay.events.click({button:0,clientX:430,clientY:245});
+  assert.equal(furnitureApi.getState().snapMode,'pick-second-wall');
+  const firstFurnitureAngle=furnitureApi.getState().angle;
+  furnitureOverlay.events.click({button:0,clientX:520,clientY:290});
+  assert.equal(furnitureApi.getState().pending,null);
+  assert.equal(furnitureApi.getState().items.length,3,'second furniture side finalizes');
+  assert.equal(furnitureApi.getState().items[2].angle,firstFurnitureAngle);
+  // Wheel preserves its established zoom purpose, even with placed furniture.
+  furnitureApi.start(item);furnitureApi.setAngle(45);
+  furniture.view.events.wheel({deltaY:-30,clientX:430,clientY:290,preventDefault(){}});
+  assert.equal(furnitureApi.getState().angle,45);
+  furnitureApi.cancel();
+  // Mixed walls and furniture also work with the same two-target command.
+  const mixed=harness('?istruzione=ARREDI');await flush();
+  const mixedApi=mixed.window.TiralineeArrediPlacement;
+  const mixedOverlay=mixed.view.querySelector('svg');
+  mixedApi.start(item);
+  mixedOverlay.events.click({button:0,clientX:430,clientY:290});
+  mixedApi.start(item);
+  mixedApi.beginWallSnap(2);
+  mixedOverlay.events.click({button:0,clientX:390,clientY:105}); // wall
+  mixedOverlay.events.click({button:0,clientX:520,clientY:290}); // furniture
+  assert.equal(mixedApi.getState().items.length,2,'mixed targets finalize on click two');
+  assert.equal(mixedApi.getState().pending,null);
 
   const invalid=harness('?istruzione=ARREDI','OTHER-FORMAT');
   await flush();assert.equal(invalid.window.TiralineeArrediPlacement.getState().ready,false,
@@ -196,5 +226,5 @@ const flush=()=>new Promise(r=>setImmediate(r));
   const wrongUnit=harness('?istruzione=ARREDI','TERMODEL-CLEAN-FLOOR-SVG-V1','px');
   await flush();assert.equal(wrongUnit.window.TiralineeArrediPlacement.getState().ready,false,
     'pixels are not allowed as metric coordinates');
-  console.log('ARREDI_PLACEMENT_SMOKE_OK: cm/viewBox, preview, click commit, slider angle, wheel zoom, drag, OSNAP one/two walls and primary angle, SOS guard, invalid SVG');
+  console.log('ARREDI_PLACEMENT_SMOKE_OK: cm/viewBox, preview, click commit, slider angle, wheel zoom, drag, OSNAP furniture edges / walls and immediate confirmation, SOS guard, invalid SVG');
 })().catch(err=>{console.error(err);process.exitCode=1;});
