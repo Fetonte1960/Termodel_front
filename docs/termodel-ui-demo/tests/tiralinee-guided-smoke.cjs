@@ -67,10 +67,10 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
    'new options published in Neon must appear without reloading Tiralinee');
  assert.ok(history.children.some(c=>c.textContent===
    'assistant: Nuova domanda root aggiornata da Neon'));
- // The return control is available AT THE ROOT too and forces another read.
- assert.ok(findButton('Torna al menu iniziale'));
+ // Root has no redundant back button. A fresh start explicitly reloads the root.
+ assert.ok(!findButton('Torna al menu iniziale'));
  tree.inizio.choices=[{id:'filtri',label:'Menu nuovamente aggiornato'}];
- findButton('Torna al menu iniziale').click();await flush();
+ await dialogue.start();await flush();
  assert.deepEqual(queried,['inizio','filtri','filtri.nascondi','inizio','inizio']);
  assert.ok(findButton('Menu nuovamente aggiornato'));
  assert.ok(!findButton('Nuovo percorso da Neon'));
