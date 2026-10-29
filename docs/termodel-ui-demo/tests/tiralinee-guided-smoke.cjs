@@ -20,13 +20,13 @@ vm.runInNewContext(fs.readFileSync(path.join(folder,'tiralinee-guided-chat.js'),
 assert.equal(typeof window.SosGuidedChat.create,'function');
 const history=new Element('section');let queried=[],executed=[],rendered=[];
 const tree={
- inizio:{node:{id:'inizio',message:'Come posso aiutarti?',canExecute:false},choices:[
+ inizio:{treeId:'farmacia_test_v1',node:{id:'inizio',message:'Come posso aiutarti?',canExecute:false},choices:[
    {id:'modello',label:'Modello 3D'},{id:'filtri',label:'Filtri'}
  ]},
- filtri:{node:{id:'filtri',message:'Scegli un filtro.',canExecute:false},choices:[
+ filtri:{treeId:'farmacia_test_v1',node:{id:'filtri',message:'Scegli un filtro.',canExecute:false},choices:[
    {id:'filtri.nascondi',label:'Nascondi pareti'}
  ]},
- 'filtri.nascondi':{node:{id:'filtri.nascondi',message:'Nascondo le pareti.',canExecute:true},
+ 'filtri.nascondi':{treeId:'farmacia_test_v1',node:{id:'filtri.nascondi',message:'Nascondo le pareti.',canExecute:true},
   choices:[]}
 };
 const config={
