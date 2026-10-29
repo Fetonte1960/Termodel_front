@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           grep -Fq '<div id="view2d" class="view"></div>' docs/termodel-ui-demo/mcp-dump-test.html
-          grep -Fq 'arredi-2d-catalog.js?v=0.4.0' docs/termodel-ui-demo/mcp-dump-test.html
-          grep -Fq 'arredi-2d-placement.js?v=0.4.0' docs/termodel-ui-demo/mcp-dump-test.html
+          grep -Fq 'arredi-2d-catalog.js?v=0.5.0' docs/termodel-ui-demo/mcp-dump-test.html
+          grep -Fq 'arredi-2d-placement.js?v=0.5.0' docs/termodel-ui-demo/mcp-dump-test.html
           grep -Fq 'arredi-2d-osnap.js?v=0.4.0' docs/termodel-ui-demo/mcp-dump-test.html
           grep -Fq 'TiralineeMcpInstructionBootstrap' docs/termodel-ui-demo/mcp-dump-test.html
