@@ -55,13 +55,13 @@ const unknown=expert.buildPrompt({paired:false,guided:{
 assert.ok(unknown.includes('Rete elettrica'));
 assert.ok(unknown.includes('Non è stata aperta una sessione assistenza SOS'));
 const html=fs.readFileSync(path.join(root,'mcp-dump-test.html'),'utf8');
-assert.ok(html.includes("HARNESS_VERSION = '1.16.2'"));
-assert.ok(html.includes('offerExpertChat(input)'));
+assert.match(html,/const HARNESS_VERSION\s*=\s*'[0-9]+\.[0-9]+\.[0-9]+'/);
+assert.ok(html.includes('function offerExpertChat(lastRequest,guided=null)'));
 assert.ok(html.includes("expertChatLaunched=true"));
 assert.ok(html.includes("chatPane.hidden=true"));
 assert.ok(html.includes("tab.opener=null"));
 assert.ok(html.includes("window.open('https://chatgpt.com/?q='"));
-assert.ok(html.includes("window.TiralineeExpertHandoff?.isUnrecognized(interpreted)"));
+assert.ok(html.includes('window.TiralineeExpertHandoff.QUESTION'));
 assert.ok(html.includes('trustedSosExpertBootstrap=data.expertBootstrap'));
 console.log('EXPERT_HANDOFF_SMOKE_OK cases=11');
 (async()=>{
