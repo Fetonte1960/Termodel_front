@@ -195,9 +195,18 @@ body.external-launch-mode #external-launch-panel{display:flex}
   const loadArredi=() => {
     // Wait until #tab-2d and #view2d exist. Otherwise the side panel
     // could be silently skipped if the network returns the JS too quickly.
-    const script=document.createElement('script');
-    script.src='./arredi-2d-catalog.js?v=0.1.0';
-    document.head.appendChild(script);
+    const catalog=()=>{
+      const script=document.createElement('script');
+      script.src='./arredi-2d-catalog.js?v=0.2.0';
+      document.head.appendChild(script);
+    };
+    // Placement must register before the catalog sidebar (slider/selection).
+    // If it fails to load, preserve the read-only catalog for diagnosis.
+    const placement=document.createElement('script');
+    placement.src='./arredi-2d-placement.js?v=0.2.0';
+    placement.onload=catalog;
+    placement.onerror=catalog;
+    document.head.appendChild(placement);
   };
   if(document.readyState==='loading') {
     document.addEventListener('DOMContentLoaded',loadArredi,{once:true});
