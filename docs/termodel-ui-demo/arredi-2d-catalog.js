@@ -1,4 +1,4 @@
-/* MCP_Arredi catalog and placement sidebar MVP 0.2 — 2026-10-29
+/* MCP_Arredi catalog and placement sidebar MVP 0.3 — 2026-10-29
  * Activates ONLY with explicit istruzione=ARREDI.
  * Uses the shared MCP Gateway REST catalog endpoint. No credentials in browser.
  * Furniture rectangles live on an overlay. The Termodel clean-floor SVG is immutable.
@@ -106,7 +106,7 @@
   const angleSlider=document.createElement('input');
   angleSlider.id='arredi-angle';
   angleSlider.type='range';
-  angleSlider.min='0';angleSlider.max='359';angleSlider.step='1';
+  angleSlider.min='0';angleSlider.max='359.99';angleSlider.step='0.01';
   angleSlider.value='0';
   angleSlider.setAttribute('aria-label','Angolo rotazione arredo in gradi');
   angleSlider.addEventListener('input',()=>{
@@ -137,7 +137,7 @@
   sidebar.appendChild(placementActions);
   const zoomLabel=document.createElement('p');
   zoomLabel.className='arredi-help';
-  zoomLabel.textContent='Rotellina: zoom · rotazione: barra angolare · Esc: annulla · clic: conferma';
+  zoomLabel.textContent='Rotellina: zoom · tasto destro: OSNAP → Allinea con parete · barra: angolo · clic: conferma';
   sidebar.appendChild(zoomLabel);
   window.TiralineeArrediPlacement?.onChange?.(info=>{
     placementState.textContent=info.message ||
@@ -147,7 +147,7 @@
       angleSlider.value=String(next);
       angleOutput.textContent=next+'°';
     }
-    zoomLabel.textContent='Zoom: '+info.zoom+'% · rotellina: zoom · barra: rotazione · Esc: annulla';
+    zoomLabel.textContent='Zoom '+info.zoom+'% · rotellina: zoom · tasto destro: OSNAP → Allinea con parete · Esc: annulla';
     cancel.disabled=!info.pending;
     remove.disabled=!info.selected;
     angleSlider.disabled=!(info.pending||info.selected);

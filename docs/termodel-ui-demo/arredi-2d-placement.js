@@ -17,7 +17,8 @@
     view, stage:null, overlay:null, sourceImg:null, planKey:null, meta:null,
     items:[], pending:null, selectedId:null, dragging:null, angle:0,
     zoom:1, panX:0, panY:0, sequence:0,
-    onChange:null, loadingSource:null, lastError:''
+    onChange:null, loadingSource:null, lastError:'',
+    walls:[], snapMode:'', hoveredWall:null, snapSideIndex:null, contextMenu:null
   };
   function emit(message='') {
     state.onChange?.({
@@ -26,6 +27,7 @@
       count:state.items.length,
       zoom:Math.round(state.zoom*100),
       ready:!!state.overlay,
+      snapMode:state.snapMode, wallCount:state.walls.length,
       message:message || state.lastError
     });
   }
@@ -37,7 +39,7 @@
   }
   function angleNumber(n){
     const value=Number(n);
-    return Number.isFinite(value)?((Math.round(value)%360)+360)%360:0;
+    return Number.isFinite(value)?((Math.round(value*100)/100%360)+360)%360:0;
   }
   function parsePlan(source){
     const xml=new DOMParser().parseFromString(source,'image/svg+xml');
@@ -51,7 +53,8 @@
     if(raw.length!==4 || !raw.every(Number.isFinite) || raw[2]<=0 || raw[3]<=0)
       throw Error('viewBox metrico della pianta non valido');
     return {x:raw[0],y:raw[1],width:raw[2],height:raw[3],
-      floor:svg.getAttribute('data-termodel-floor-name')||''};
+      floor:svg.getAttribute('data-termodel-floor-name')||'',
+      walls:root.TiralineeArrediOsnap?.extractWalls(xml)||[]};
   }
   function svgNode(tag,attrs={}){
     const node=document.createElementNS(NS,tag);
@@ -91,6 +94,13 @@
       node.setAttribute('data-placement-id',placement.id);
       state.overlay.appendChild(node);
     }
+    if(state.hoveredWall){
+      const {a,b}=state.hoveredWall;
+      const hit=svgNode('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,
+        stroke:'#f18821','stroke-width':8,'stroke-linecap':'round',
+        'pointer-events':'none','data-arredi-osnap-target':'wall'});
+      state.overlay.appendChild(hit);
+    }
     if(state.pending){
       const node=makeFootprint(state.pending,true);
       transform(node,state.pending);
@@ -115,6 +125,61 @@
        pt.y<state.meta.y||pt.y>state.meta.y+state.meta.height)return null;
     return {x:Math.round(pt.x*100)/100,y:Math.round(pt.y*100)/100};
   }
+  // The pick radius is measured in screen pixels and converted through
+  // the actual SVG screen transform, so zoom never changes hit accuracy.
+  function hitWall(point){
+    if(!state.walls.length || !root.TiralineeArrediOsnap)return null;
+    const matrix=state.overlay?.getScreenCTM?.();
+    let pixelsPerCm=Math.hypot(matrix?.a??NaN,matrix?.b??NaN);
+    if(!Number.isFinite(pixelsPerCm)||pixelsPerCm<=0){
+      const box=view.getBoundingClientRect();
+      pixelsPerCm=Math.min(box.width/state.meta.width,
+        box.height/state.meta.height)*state.zoom;
+    }
+    return root.TiralineeArrediOsnap.selectWall(
+      state.walls,point,12/Math.max(pixelsPerCm,.001));
+  }
+  function closeContextMenu(){
+    state.contextMenu?.remove?.();
+    state.contextMenu=null;
+  }
+  function onContextMenu(e){
+    if(!state.pending||!state.overlay)return;
+    e.preventDefault();
+    closeContextMenu();
+    const box=view.getBoundingClientRect();
+    const menu=document.createElement('div');
+    menu.id='arredi-osnap-menu';
+    menu.setAttribute('role','menu');
+    menu.setAttribute('aria-label','OSNAP arredi');
+    menu.style.cssText='position:absolute;z-index:50;min-width:190px;'+
+      'padding:7px;background:#fff;border:1px solid #7c91aa;'+
+      'border-radius:6px;box-shadow:0 5px 20px #0003;color:#1a3349';
+    menu.style.left=Math.max(0,Math.min(e.clientX-box.left,box.width-215))+'px';
+    menu.style.top=Math.max(0,Math.min(e.clientY-box.top,box.height-80))+'px';
+    const title=document.createElement('strong');
+    title.textContent='OSNAP';
+    title.style.cssText='display:block;margin:2px 5px 6px;font-size:12px';
+    const align=document.createElement('button');
+    align.type='button';align.setAttribute('role','menuitem');
+    align.textContent='Allinea con parete';
+    align.style.cssText='display:block;margin:0;width:100%;padding:9px;'+
+      'text-align:left;cursor:pointer;background:#e8f3fb;'+
+      'border:1px solid #9cbbd2;border-radius:4px';
+    align.addEventListener('click',()=>{
+      closeContextMenu();
+      if(!state.walls.length){
+        emit('OSNAP non disponibile: nessuna parete architettonica nella pianta');
+        return;
+      }
+      state.snapMode='pick-wall';
+      state.hoveredWall=null;
+      redraw();
+      emit('OSNAP: clicca sulla parete da selezionare (in arancione)');
+    });
+    menu.append(title,align);
+    view.appendChild(menu);state.contextMenu=menu;
+  }
   function onMove(e){
     const point=pointFromEvent(e);
     if(!point)return;
@@ -126,6 +191,14 @@
         redraw();emit('Spostamento: rilascia il mouse per confermare');
       }
     }else if(state.pending){
+      if(state.snapMode==='pick-wall'){
+        const candidate=hitWall(point);
+        state.hoveredWall=candidate?.segment||null;
+        redraw();emit(candidate?'Parete individuata: clicca per allineare il mobile':
+          'Seleziona una linea della parete architettonica');
+        return;
+      }
+      if(state.snapMode==='aligned')return;
       state.pending.x=point.x;
       state.pending.y=point.y;
       redraw();
@@ -133,7 +206,7 @@
     }
   }
   function onPointerDown(e){
-    if(e.button!==0 || !state.overlay)return;
+    if(e.button!==0 || !state.overlay || state.snapMode==='pick-wall')return;
     const placed=e.target?.closest?.('[data-placement-id]');
     if(!placed)return;
     const item=state.items.find(x=>x.id===placed.getAttribute('data-placement-id'));
@@ -159,12 +232,32 @@
     if(e.button!==0 || !state.pending || state.dragging)return;
     const point=pointFromEvent(e);
     if(!point)return;
+    if(state.snapMode==='pick-wall'){
+      const candidate=hitWall(point);
+      if(!candidate){emit('Clicca vicino a una parete architettonica (linea nera)');return;}
+      const aligned=root.TiralineeArrediOsnap?.alignFurniture(state.pending,candidate.segment);
+      if(!aligned){emit('Impossibile allineare alla parete selezionata');return;}
+      state.pending.x=aligned.x;
+      state.pending.y=aligned.y;
+      state.pending.angle=angleNumber(aligned.angle);
+      state.angle=state.pending.angle;
+      state.snapSideIndex=aligned.sideIndex;
+      state.snapMode='aligned';
+      state.hoveredWall=candidate.segment;
+      redraw();emit('OSNAP: lato '+(aligned.sideIndex+1)+' allineato alla parete · '+
+        state.angle+'° · clicca per confermare');
+      return; // Wall click selects/snap only, never commits an item.
+    }
+    // A snapped preview has a precise wall-aligned center. The confirming
+    // click must NEVER replace it with the mouse click coordinates.
+    const center=state.snapMode==='aligned'?state.pending:point;
     const item=Object.assign({},state.pending,{
-      id:'AR-'+(++state.sequence),x:point.x,y:point.y,angle:state.angle
+      id:'AR-'+(++state.sequence),x:center.x,y:center.y,angle:state.angle
     });
     state.items.push(item);
     state.selectedId=item.id;
     state.pending=null;
+    state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
     redraw();
     emit('Collocato '+item.name+' · '+item.widthCm+' × '+item.depthCm+
       ' cm · '+item.angle+'° (layout di sessione)');
@@ -193,6 +286,8 @@
     state.stage=null;state.overlay=null;state.sourceImg=null;
     state.meta=null;state.planKey=null;state.pending=null;state.selectedId=null;
     state.items=[];state.sequence=0;state.zoom=1;state.panX=0;state.panY=0;
+    state.walls=[];state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
+    closeContextMenu();
   }
   async function prepare(img){
     if(!img || img===state.sourceImg || img===state.loadingSource)return;
@@ -213,6 +308,8 @@
       }
       state.planKey=identity;
       state.meta=meta;
+      state.walls=meta.walls;
+      state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
       const stage=document.createElement('div');
       stage.id='arredi-2d-stage';
       stage.style.cssText='position:absolute;inset:0;transform-origin:0 0;';
@@ -247,13 +344,16 @@
   });
   observer.observe(view,{childList:true});
   view.addEventListener('wheel',onWheel,{passive:false});
+  view.addEventListener('contextmenu',onContextMenu);
   document.addEventListener('keydown',onKey);
   const initial=view.querySelector('img');
   if(initial)void prepare(initial);
   function start(item){
     if(!canonical(item))return false;
+    closeContextMenu();
     state.selectedId=null;
     state.angle=0;
+    state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
     state.pending={catalogId:item.id,id:item.id,name:item.name,
       description:item.description||'',widthCm:item.widthCm,
       depthCm:item.depthCm,x:state.meta?.x+state.meta?.width/2||0,
@@ -265,7 +365,12 @@
   }
   function setAngle(angle){
     state.angle=angleNumber(angle);
-    if(state.pending)state.pending.angle=state.angle;
+    if(state.pending){
+      state.pending.angle=state.angle;
+      if(state.snapMode==='aligned'){
+        state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
+      }
+    }
     else {
       const item=state.items.find(x=>x.id===state.selectedId);
       if(item)item.angle=state.angle;
@@ -274,7 +379,9 @@
     return state.angle;
   }
   function cancel(){
+    closeContextMenu();
     state.pending=null;state.dragging=null;
+    state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
     redraw();emit('Posizionamento annullato');
   }
   function remove(){
@@ -293,6 +400,8 @@
     getState(){return {ready:!!state.overlay,zoom:state.zoom,
       items:state.items.map(x=>({...x})),pending:state.pending?{...state.pending}:null,
       selectedId:state.selectedId,angle:state.angle,unit:state.meta?'cm':null,
-      floor:state.meta?.floor||null};}
+      floor:state.meta?.floor||null,
+      wallCount:state.walls.length,snapMode:state.snapMode,
+      snapSideIndex:state.snapSideIndex};}
   });
 })(window);

@@ -3,6 +3,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const assert=require('node:assert/strict');
 const source=fs.readFileSync(path.join(__dirname,'..','arredi-2d-placement.js'),'utf8');
+const osnap=require('../arredi-2d-osnap.js');
 function harness(search,svgFormat='TERMODEL-CLEAN-FLOOR-SVG-V1',unit='cm'){
   const nodes=[];
   class Element {
@@ -15,6 +16,8 @@ function harness(search,svgFormat='TERMODEL-CLEAN-FLOOR-SVG-V1',unit='cm'){
     get isConnected(){return this===view || Boolean(this.parentNode?.isConnected);}
     append(...items){for(const n of items){if(n.parentNode)n.parentNode.children=n.parentNode.children.filter(x=>x!==n);n.parentNode=this;this.children.push(n);}}
     appendChild(item){this.append(item);return item;}
+    remove(){if(this.parentNode){const a=this.parentNode.children;
+      a.splice(a.indexOf(this),1);this.parentNode=null;}}
     replaceChildren(...items){for(const n of this.children)n.parentNode=null;this.children=[];this.append(...items);}
     setAttribute(k,v){this.attributes[k]=String(v);}
     getAttribute(k){return this.attributes[k]??null;}
@@ -37,7 +40,9 @@ function harness(search,svgFormat='TERMODEL-CLEAN-FLOOR-SVG-V1',unit='cm'){
   view.append(img);
   let fetchCount=0,observer=null;
   const context={
-    window:{location:{search},TiralineeMcpInstructionBootstrap:{resolve(s){return {id:String(s).toUpperCase()};}}},
+    window:{location:{search},TiralineeArrediOsnap:osnap,
+      TiralineeMcpInstructionBootstrap:{resolve(s){return {id:String(s).toUpperCase()};}}},
+
     URLSearchParams,
     document:{getElementById(id){return id==='view2d'?view:null;},
       createElement:t=>new Element(t),createElementNS:(ns,t)=>new Element(t),
@@ -46,7 +51,9 @@ function harness(search,svgFormat='TERMODEL-CLEAN-FLOOR-SVG-V1',unit='cm'){
     DOMParser:class {parseFromString(){
       const attrs={'data-termodel-format':svgFormat,'data-termodel-units':unit,
         'data-termodel-floor-name':'Unico',viewBox:'43.1 48.1 1889.994 1588.742'};
-      return {documentElement:{localName:'svg',getAttribute:x=>attrs[x]??null},
+      return {documentElement:{localName:'svg',getAttribute:x=>attrs[x]??null,
+        querySelectorAll:q=>q==='polyline.clean-boundary'?[{
+          getAttribute:k=>k==='points'?'100,100 700,100 700,500':null}]:[]},
         querySelector(){return null;}};
     }},
     fetch:async url=>{
@@ -72,6 +79,7 @@ const flush=()=>new Promise(r=>setImmediate(r));
   assert.equal(api.getState().ready,true,'Termodel SVG units cm must enable placement');
   assert.equal(api.getState().unit,'cm');
   assert.equal(api.getState().floor,'Unico');
+  assert.equal(api.getState().wallCount,2,'2 wall segments parsed from 3 SVG polyline points');
   const item={id:'catalog-test',name:'DEMO Tavolo',description:'',widthCm:180,depthCm:90};
   assert.equal(api.start(item),true);
   assert.equal(api.getState().pending.widthCm,180);
@@ -113,11 +121,48 @@ const flush=()=>new Promise(r=>setImmediate(r));
   assert.equal(api.remove(),true);assert.equal(api.getState().items.length,0);
   assert.equal(api.start(item),true);api.cancel();
   assert.equal(api.getState().pending,null);
+  // OSNAP is available ONLY in placement mode via right-click. It does not
+  // commit on wall selection; it fixes the original nearest furniture side.
+  assert.equal(api.start(item),true);
+  api.setAngle(75);
+  overlay.events.pointermove({clientX:300,clientY:320});
+  let contextPrevented=false;
+  h.view.events.contextmenu({clientX:320,clientY:310,
+    preventDefault(){contextPrevented=true;}});
+  assert.ok(contextPrevented);
+  const menu=h.view.children.find(n=>n.id==='arredi-osnap-menu');
+  assert.ok(menu,'context menu must open on right click during placement');
+  assert.equal(menu.children[0].textContent,'OSNAP');
+  assert.equal(menu.children[1].textContent,'Allinea con parete');
+  menu.children[1].events.click();
+  assert.equal(api.getState().snapMode,'pick-wall');
+  overlay.events.pointermove({clientX:390,clientY:105});
+  assert.ok(overlay.children.some(n=>n.getAttribute('data-arredi-osnap-target')==='wall'));
+  overlay.events.click({button:0,clientX:390,clientY:105});
+  assert.equal(api.getState().snapMode,'aligned');
+  const snapped=api.getState().pending;
+  assert.notEqual(snapped.angle,75,'whole furniture must turn to selected wall');
+  assert.equal(api.getState().items.length,0,'wall click must not commit furniture');
+  overlay.events.pointermove({clientX:550,clientY:500});
+  assert.equal(api.getState().pending.x,snapped.x,'snap remains fixed during preview');
+  assert.equal(api.getState().pending.y,snapped.y);
+  overlay.events.click({button:0,clientX:550,clientY:500});
+  assert.equal(api.getState().items.length,1,'second click confirms');
+  assert.equal(api.getState().items[0].x,snapped.x,
+    'confirm must NOT override wall-aligned x with click x');
+  assert.equal(api.getState().items[0].y,snapped.y);
+  assert.equal(api.getState().items[0].angle,snapped.angle);
+  assert.equal(api.getState().snapMode,'');
+  // Outside insertion the default context menu remains available.
+  let preventedOutside=false;
+  h.view.events.contextmenu({clientX:300,clientY:300,
+    preventDefault(){preventedOutside=true;}});
+  assert.equal(preventedOutside,false,'OSNAP menu only while placing');
   const invalid=harness('?istruzione=ARREDI','OTHER-FORMAT');
   await flush();assert.equal(invalid.window.TiralineeArrediPlacement.getState().ready,false,
     'unknown SVG must not be used as a metric plan');
   const wrongUnit=harness('?istruzione=ARREDI','TERMODEL-CLEAN-FLOOR-SVG-V1','px');
   await flush();assert.equal(wrongUnit.window.TiralineeArrediPlacement.getState().ready,false,
     'pixels are not allowed as metric coordinates');
-  console.log('ARREDI_PLACEMENT_SMOKE_OK: cm/viewBox, preview, click commit, slider angle, wheel zoom, drag, SOS guard, invalid SVG');
+  console.log('ARREDI_PLACEMENT_SMOKE_OK: cm/viewBox, preview, click commit, slider angle, wheel zoom, drag, OSNAP wall select and snap preview, SOS guard, invalid SVG');
 })().catch(err=>{console.error(err);process.exitCode=1;});

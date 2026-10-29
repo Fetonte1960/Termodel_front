@@ -197,16 +197,23 @@ body.external-launch-mode #external-launch-panel{display:flex}
     // could be silently skipped if the network returns the JS too quickly.
     const catalog=()=>{
       const script=document.createElement('script');
-      script.src='./arredi-2d-catalog.js?v=0.2.0';
+      script.src='./arredi-2d-catalog.js?v=0.3.0';
       document.head.appendChild(script);
     };
-    // Placement must register before the catalog sidebar (slider/selection).
-    // If it fails to load, preserve the read-only catalog for diagnosis.
-    const placement=document.createElement('script');
-    placement.src='./arredi-2d-placement.js?v=0.2.0';
-    placement.onload=catalog;
-    placement.onerror=catalog;
-    document.head.appendChild(placement);
+    // Only for istruzione=ARREDI: OSNAP geometry before placement, then sidebar.
+    // If the OSNAP asset fails, preserve ordinary placement and catalog.
+    const placement=()=>{
+      const script=document.createElement('script');
+      script.src='./arredi-2d-placement.js?v=0.3.0';
+      script.onload=catalog;
+      script.onerror=catalog;
+      document.head.appendChild(script);
+    };
+    const osnap=document.createElement('script');
+    osnap.src='./arredi-2d-osnap.js?v=0.3.0';
+    osnap.onload=placement;
+    osnap.onerror=placement;
+    document.head.appendChild(osnap);
   };
   if(document.readyState==='loading') {
     document.addEventListener('DOMContentLoaded',loadArredi,{once:true});

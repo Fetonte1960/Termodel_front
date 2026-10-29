@@ -112,7 +112,7 @@ async function run() {
     assert.ok(rotation,'right sidebar must have an angle slider');
     const slider=rotation.children.find(c=>c.tagName==='input');
     assert.equal(slider.type,'range');
-    assert.equal(slider.min,'0');assert.equal(slider.max,'359');
+    assert.equal(slider.min,'0');assert.equal(slider.max,'359.99');assert.equal(slider.step,'0.01');
     slider.value='42';slider.events.input();
     assert.equal(h.placement.angles.at(-1),42,'slider angle must drive furniture rotation');
     assert.equal(rotation.children[0].children[0].textContent,'42°');
