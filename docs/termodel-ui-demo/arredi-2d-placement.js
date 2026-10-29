@@ -222,7 +222,7 @@
         'aria-label':'Arredi sovrapposti alla pianta in centimetri'
       });
       overlay.id='arredi-2d-overlay';
-      overlay.style.cssText='position:absolute;inset:0;width:100%;height:100%;touch-action:none';
+      overlay.style.cssText='position:absolute;inset:0;width:100%;height:100%;touch-action:none;pointer-events:all';
       stage.append(img,overlay);
       view.replaceChildren(stage);
       state.stage=stage;state.overlay=overlay;state.sourceImg=img;
