@@ -4,9 +4,11 @@ on:
     paths:
       - 'docs/termodel-ui-demo/arredi-2d-catalog.js'
       - 'docs/termodel-ui-demo/arredi-2d-placement.js'
+      - 'docs/termodel-ui-demo/arredi-2d-osnap.js'
       - 'docs/termodel-ui-demo/mcp-dump-test.html'
       - 'docs/termodel-ui-demo/tests/arredi-catalog-smoke.cjs'
       - 'docs/termodel-ui-demo/tests/arredi-placement-smoke.cjs'
+      - 'docs/termodel-ui-demo/tests/arredi-osnap-geometry-smoke.cjs'
       - '.github/workflows/arredi-catalog-2d-smoke.yml'
   workflow_dispatch:
 
@@ -26,12 +28,15 @@ jobs:
         run: |
           node --check docs/termodel-ui-demo/arredi-2d-catalog.js
           node --check docs/termodel-ui-demo/arredi-2d-placement.js
+          node --check docs/termodel-ui-demo/arredi-2d-osnap.js
           node docs/termodel-ui-demo/tests/arredi-catalog-smoke.cjs
           node docs/termodel-ui-demo/tests/arredi-placement-smoke.cjs
+          node docs/termodel-ui-demo/tests/arredi-osnap-geometry-smoke.cjs
       - name: Legacy view and profile selector presence
         shell: bash
         run: |
           grep -Fq '<div id="view2d" class="view"></div>' docs/termodel-ui-demo/mcp-dump-test.html
-          grep -Fq 'arredi-2d-catalog.js?v=0.2.0' docs/termodel-ui-demo/mcp-dump-test.html
-          grep -Fq 'arredi-2d-placement.js?v=0.2.0' docs/termodel-ui-demo/mcp-dump-test.html
+          grep -Fq 'arredi-2d-catalog.js?v=0.3.0' docs/termodel-ui-demo/mcp-dump-test.html
+          grep -Fq 'arredi-2d-placement.js?v=0.3.0' docs/termodel-ui-demo/mcp-dump-test.html
+          grep -Fq 'arredi-2d-osnap.js?v=0.3.0' docs/termodel-ui-demo/mcp-dump-test.html
           grep -Fq 'TiralineeMcpInstructionBootstrap' docs/termodel-ui-demo/mcp-dump-test.html
