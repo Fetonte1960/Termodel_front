@@ -14,6 +14,7 @@ function harness(search,svgFormat='TERMODEL-CLEAN-FLOOR-SVG-V1',unit='cm'){
     }
     get isConnected(){return this===view || Boolean(this.parentNode?.isConnected);}
     append(...items){for(const n of items){if(n.parentNode)n.parentNode.children=n.parentNode.children.filter(x=>x!==n);n.parentNode=this;this.children.push(n);}}
+    appendChild(item){this.append(item);return item;}
     replaceChildren(...items){for(const n of this.children)n.parentNode=null;this.children=[];this.append(...items);}
     setAttribute(k,v){this.attributes[k]=String(v);}
     getAttribute(k){return this.attributes[k]??null;}
