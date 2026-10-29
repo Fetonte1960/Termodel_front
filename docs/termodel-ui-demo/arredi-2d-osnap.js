@@ -89,11 +89,11 @@
     const sides=localSides(placement.widthCm,placement.depthCm);
     let chosen=null;
     for(const side of sides){
-      const a=rotate(side.a,currentAngle),b=rotate(side.b,currentAngle);
-      const world={a:{x:placement.x+a.x,y:placement.y+a.y},
-        b:{x:placement.x+b.x,y:placement.y+b.y}};
-      const nearest=nearestOnSegment({x:q.x,y:q.y},world);
-      const dist=nearest?.distance??Infinity;
+      // Compare SIDE MIDPOINTS in the CURRENT orientation. Comparing closest
+      // corner-to-wall distance is ambiguous: a shared corner would equally
+      // nominate two adjacent sides, making the result depend on enumeration.
+      const mid=rotate(side.mid,currentAngle);
+      const dist=Math.hypot(placement.x+mid.x-q.x,placement.y+mid.y-q.y);
       if(!chosen||dist<chosen.distance-1e-6)chosen={side,distance:dist};
     }
     if(!chosen)return null;
