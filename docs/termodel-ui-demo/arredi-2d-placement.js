@@ -18,7 +18,8 @@
     items:[], pending:null, selectedId:null, dragging:null, angle:0,
     zoom:1, panX:0, panY:0, sequence:0,
     onChange:null, loadingSource:null, lastError:'',
-    walls:[], snapMode:'', hoveredWall:null, snapSideIndex:null, contextMenu:null
+    walls:[], snapMode:'', hoveredWall:null, snapSideIndex:null, contextMenu:null,
+    snapFirstWall:null, snapOriginal:null, snapSecondWall:null, snapInfo:null
   };
   function emit(message='') {
     state.onChange?.({
@@ -28,6 +29,7 @@
       zoom:Math.round(state.zoom*100),
       ready:!!state.overlay,
       snapMode:state.snapMode, wallCount:state.walls.length,
+      snapInfo:state.snapInfo,
       message:message || state.lastError
     });
   }
@@ -94,6 +96,12 @@
       node.setAttribute('data-placement-id',placement.id);
       state.overlay.appendChild(node);
     }
+    if(state.snapFirstWall){
+      const {a,b}=state.snapFirstWall;
+      state.overlay.appendChild(svgNode('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,
+        stroke:'#26a269','stroke-width':8,'stroke-linecap':'round',
+        'pointer-events':'none','data-arredi-osnap-target':'first-wall'}));
+    }
     if(state.hoveredWall){
       const {a,b}=state.hoveredWall;
       const hit=svgNode('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,
@@ -143,6 +151,21 @@
     state.contextMenu?.remove?.();
     state.contextMenu=null;
   }
+  function beginWallSnap(count=1){
+    if(!state.pending || !state.overlay || !state.walls.length){
+      emit('OSNAP non disponibile: nessun arredo in inserimento o pareti non presenti');
+      return false;
+    }
+    closeContextMenu();
+    state.snapMode=count===2?'pick-first-wall':'pick-wall';
+    state.snapOriginal={...state.pending};
+    state.snapFirstWall=null;state.snapSecondWall=null;
+    state.snapInfo=null;state.snapSideIndex=null;state.hoveredWall=null;
+    redraw();
+    emit(count===2?'OSNAP due pareti: seleziona la PRIMA parete architettonica':
+      'OSNAP: clicca sulla parete da selezionare (in arancione)');
+    return true;
+  }
   function onContextMenu(e){
     if(!state.pending||!state.overlay)return;
     e.preventDefault();
@@ -166,18 +189,13 @@
     align.style.cssText='display:block;margin:0;width:100%;padding:9px;'+
       'text-align:left;cursor:pointer;background:#e8f3fb;'+
       'border:1px solid #9cbbd2;border-radius:4px';
-    align.addEventListener('click',()=>{
-      closeContextMenu();
-      if(!state.walls.length){
-        emit('OSNAP non disponibile: nessuna parete architettonica nella pianta');
-        return;
-      }
-      state.snapMode='pick-wall';
-      state.hoveredWall=null;
-      redraw();
-      emit('OSNAP: clicca sulla parete da selezionare (in arancione)');
-    });
-    menu.append(title,align);
+    align.addEventListener('click',()=>beginWallSnap(1));
+    const alignTwo=document.createElement('button');
+    alignTwo.type='button';alignTwo.setAttribute('role','menuitem');
+    alignTwo.textContent='Allinea due pareti';
+    alignTwo.style.cssText=align.style.cssText+'margin-top:5px';
+    alignTwo.addEventListener('click',()=>beginWallSnap(2));
+    menu.append(title,align,alignTwo);
     view.appendChild(menu);state.contextMenu=menu;
   }
   function onMove(e){
@@ -191,11 +209,18 @@
         redraw();emit('Spostamento: rilascia il mouse per confermare');
       }
     }else if(state.pending){
-      if(state.snapMode==='pick-wall'){
+      if(['pick-wall','pick-first-wall','pick-second-wall'].includes(state.snapMode)){
         const candidate=hitWall(point);
         state.hoveredWall=candidate?.segment||null;
-        redraw();emit(candidate?'Parete individuata: clicca per allineare il mobile':
-          'Seleziona una linea della parete architettonica');
+        if(state.snapMode==='pick-second-wall' &&
+          root.TiralineeArrediOsnap?.wallSame(state.snapFirstWall,state.hoveredWall))
+          state.hoveredWall=null;
+        redraw();
+        const found=!!state.hoveredWall;
+        const hint=state.snapMode==='pick-first-wall'?'PRIMA':
+          state.snapMode==='pick-second-wall'?'SECONDA':'unica';
+        emit(found?'Parete '+hint+' individuata: clicca per selezionarla':
+          'Seleziona la '+hint+' parete architettonica');
         return;
       }
       if(state.snapMode==='aligned')return;
@@ -206,7 +231,8 @@
     }
   }
   function onPointerDown(e){
-    if(e.button!==0 || !state.overlay || state.snapMode==='pick-wall')return;
+    if(e.button!==0 || !state.overlay ||
+      ['pick-wall','pick-first-wall','pick-second-wall'].includes(state.snapMode))return;
     const placed=e.target?.closest?.('[data-placement-id]');
     if(!placed)return;
     const item=state.items.find(x=>x.id===placed.getAttribute('data-placement-id'));
@@ -232,9 +258,48 @@
     if(e.button!==0 || !state.pending || state.dragging)return;
     const point=pointFromEvent(e);
     if(!point)return;
-    if(state.snapMode==='pick-wall'){
+    if(['pick-wall','pick-first-wall','pick-second-wall'].includes(state.snapMode)){
       const candidate=hitWall(point);
       if(!candidate){emit('Clicca vicino a una parete architettonica (linea nera)');return;}
+      if(state.snapMode==='pick-first-wall'){
+        const alignedFirst=root.TiralineeArrediOsnap?.alignFurniture(
+          state.snapOriginal,candidate.segment);
+        if(!alignedFirst){emit('Impossibile allineare alla prima parete');return;}
+        state.snapFirstWall=candidate.segment;
+        state.pending.x=alignedFirst.x;state.pending.y=alignedFirst.y;
+        state.pending.angle=angleNumber(alignedFirst.angle);
+        state.angle=state.pending.angle;
+        state.snapSideIndex=alignedFirst.sideIndex;
+        state.snapMode='pick-second-wall';state.hoveredWall=null;
+        redraw();emit('Prima parete acquisita, angolo '+state.angle+
+          '°. Ora clicca la SECONDA parete');
+        return;
+      }
+      if(state.snapMode==='pick-second-wall'){
+        if(root.TiralineeArrediOsnap?.wallSame(state.snapFirstWall,candidate.segment)){
+          emit('Seleziona una seconda parete differente dalla prima');return;
+        }
+        const result=root.TiralineeArrediOsnap?.alignTwoWalls(
+          state.snapOriginal,state.snapFirstWall,candidate.segment);
+        if(!result){emit('Impossibile allineare alle due pareti');return;}
+        state.pending.x=result.x;state.pending.y=result.y;
+        state.pending.angle=angleNumber(result.angle);
+        state.angle=state.pending.angle;
+        state.snapInfo=result;
+        state.snapSideIndex=result.firstSideIndex;
+        state.snapSecondWall=candidate.segment;
+        state.hoveredWall=candidate.segment;
+        state.snapMode='aligned';
+        redraw();
+        const conflict=result.secondAngleErrorDeg>1;
+        const gap=result.secondGapCm>1;
+        emit('OSNAP due pareti: angolo '+state.angle+'° · '+
+          (conflict?'direzioni contrastanti, priorità PRIMA parete; ':
+            'due lati orientati; ')+
+          'scostamento seconda parete '+result.secondGapCm+' cm'+
+          (gap?' (accostamento parziale)':'')+' · clicca per confermare');
+        return;
+      }
       const aligned=root.TiralineeArrediOsnap?.alignFurniture(state.pending,candidate.segment);
       if(!aligned){emit('Impossibile allineare alla parete selezionata');return;}
       state.pending.x=aligned.x;
@@ -258,6 +323,8 @@
     state.selectedId=item.id;
     state.pending=null;
     state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
+    state.snapFirstWall=null;state.snapSecondWall=null;
+    state.snapOriginal=null;state.snapInfo=null;
     redraw();
     emit('Collocato '+item.name+' · '+item.widthCm+' × '+item.depthCm+
       ' cm · '+item.angle+'° (layout di sessione)');
@@ -287,6 +354,8 @@
     state.meta=null;state.planKey=null;state.pending=null;state.selectedId=null;
     state.items=[];state.sequence=0;state.zoom=1;state.panX=0;state.panY=0;
     state.walls=[];state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
+    state.snapFirstWall=null;state.snapSecondWall=null;
+    state.snapOriginal=null;state.snapInfo=null;
     closeContextMenu();
   }
   async function prepare(img){
@@ -310,6 +379,8 @@
       state.meta=meta;
       state.walls=meta.walls;
       state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
+      state.snapFirstWall=null;state.snapSecondWall=null;
+      state.snapOriginal=null;state.snapInfo=null;
       const stage=document.createElement('div');
       stage.id='arredi-2d-stage';
       stage.style.cssText='position:absolute;inset:0;transform-origin:0 0;';
@@ -354,6 +425,8 @@
     state.selectedId=null;
     state.angle=0;
     state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
+    state.snapFirstWall=null;state.snapSecondWall=null;
+    state.snapOriginal=null;state.snapInfo=null;
     state.pending={catalogId:item.id,id:item.id,name:item.name,
       description:item.description||'',widthCm:item.widthCm,
       depthCm:item.depthCm,x:state.meta?.x+state.meta?.width/2||0,
@@ -369,6 +442,8 @@
       state.pending.angle=state.angle;
       if(state.snapMode==='aligned'){
         state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
+        state.snapFirstWall=null;state.snapSecondWall=null;
+        state.snapOriginal=null;state.snapInfo=null;
       }
     }
     else {
@@ -382,6 +457,8 @@
     closeContextMenu();
     state.pending=null;state.dragging=null;
     state.snapMode='';state.hoveredWall=null;state.snapSideIndex=null;
+    state.snapFirstWall=null;state.snapSecondWall=null;
+    state.snapOriginal=null;state.snapInfo=null;
     redraw();emit('Posizionamento annullato');
   }
   function remove(){
@@ -395,13 +472,14 @@
     state.zoom=1;state.panX=0;state.panY=0;updateZoom();
   }
   root.TiralineeArrediPlacement=Object.freeze({
-    start,setAngle,cancel,remove,resetZoom,
+    start,setAngle,cancel,remove,resetZoom,beginWallSnap,
     onChange(fn){state.onChange=typeof fn==='function'?fn:null;emit();},
     getState(){return {ready:!!state.overlay,zoom:state.zoom,
       items:state.items.map(x=>({...x})),pending:state.pending?{...state.pending}:null,
       selectedId:state.selectedId,angle:state.angle,unit:state.meta?'cm':null,
       floor:state.meta?.floor||null,
       wallCount:state.walls.length,snapMode:state.snapMode,
-      snapSideIndex:state.snapSideIndex};}
+      snapSideIndex:state.snapSideIndex,
+      snapInfo:state.snapInfo?{...state.snapInfo}:null};}
   });
 })(window);

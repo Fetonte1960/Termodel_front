@@ -114,5 +114,99 @@
       wall:{a:{...wall.a},b:{...wall.b}},
       correction};
   }
-  return {extractWalls,pointsFromText,selectWall,alignFurniture,nearestOnSegment,localSides,norm360};
+
+  function angleDifference(a,b){
+    return Math.abs(norm180(a-b));
+  }
+  function wallSame(first,second){
+    if(!first?.a || !first?.b || !second?.a || !second?.b)return false;
+    const close=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)<0.01;
+    return (close(first.a,second.a)&&close(first.b,second.b)) ||
+      (close(first.a,second.b)&&close(first.b,second.a));
+  }
+  function alignTwoWalls(placement,wallFirst,wallSecond){
+    if(wallSame(wallFirst,wallSecond))return null;
+    const first=alignFurniture(placement,wallFirst);
+    if(!first || !wallSecond?.a || !wallSecond?.b)return null;
+
+    // Wall 1 fixes the angle and the perpendicular offset. Translation is
+    // allowed ONLY along that wall, so wall 2 can never rotate the first side.
+    const dx=wallFirst.b.x-wallFirst.a.x;
+    const dy=wallFirst.b.y-wallFirst.a.y;
+    const len=Math.hypot(dx,dy);
+    if(!len || !Number.isFinite(len))return null;
+    const u={x:dx/len,y:dy/len};
+    const firstContact=first.wallContact;
+    const along=(firstContact.x-wallFirst.a.x)*u.x+
+      (firstContact.y-wallFirst.a.y)*u.y;
+    const lower=-Math.max(0,Math.min(len,along));
+    const upper=len+lower;
+    const sides=localSides(placement.widthCm,placement.depthCm);
+    let choice=null;
+
+    for(const side of sides){
+      if(side.index===first.sideIndex)continue;
+      const mid=rotate(side.mid,first.angle);
+      const base={x:first.x+mid.x,y:first.y+mid.y};
+      const segmentDistance=t=>{
+        const q=nearestOnSegment({
+          x:base.x+t*u.x,y:base.y+t*u.y
+        },wallSecond);
+        return q?.distance??Infinity;
+      };
+      // Minimize distance from the SECOND side's midpoint to the finite
+      // SECOND segment, with a tiny regularizer to avoid needless sliding
+      // when walls are parallel and both translations are equally good.
+      const objective=t=>{
+        const d=segmentDistance(t);
+        return d*d+0.000001*t*t;
+      };
+      let lo=lower,hi=upper;
+      for(let i=0;i<66;i++){
+        const a=lo+(hi-lo)/3,b=hi-(hi-lo)/3;
+        if(objective(a)<=objective(b))hi=b;
+        else lo=a;
+      }
+      const t=(lo+hi)/2;
+      const gap=segmentDistance(t);
+      const sideDir=Math.atan2(side.b.y-side.a.y,
+        side.b.x-side.a.x)/DEG+first.angle;
+      const secondDir=Math.atan2(wallSecond.b.y-wallSecond.a.y,
+        wallSecond.b.x-wallSecond.a.x)/DEG;
+      const difference=angleDifference(sideDir,secondDir);
+      // Prefer a geometrically compatible face, but do not override wall 1
+      // in a conflicting-corner case. The second contact is best effort.
+      const score=gap*gap+0.000001*t*t+
+        (difference*0.15)*(difference*0.15);
+      if(!choice || score<choice.score){
+        choice={sideIndex:side.index,gap,angleErrorDeg:difference,
+          t,score};
+      }
+    }
+    if(!choice)return null;
+    const x=first.x+choice.t*u.x,y=first.y+choice.t*u.y;
+    const snapped={
+      x:Math.round(x*100)/100,y:Math.round(y*100)/100,
+      angle:first.angle,
+      firstSideIndex:first.sideIndex,
+      secondSideIndex:choice.sideIndex,
+      firstWall:wallFirst,secondWall:wallSecond,
+      // Recalculate after rounding to report actual resulting residual.
+      secondGapCm:0,
+      secondAngleErrorDeg:Math.round(choice.angleErrorDeg*100)/100
+    };
+    const secondSide=sides[choice.sideIndex];
+    const mid=rotate(secondSide.mid,snapped.angle);
+    snapped.secondGapCm=Math.round(
+      (nearestOnSegment({x:snapped.x+mid.x,y:snapped.y+mid.y},
+        wallSecond)?.distance??Infinity)*100)/100;
+    snapped.firstGapCm=Math.round(
+      (nearestOnSegment({
+        x:snapped.x+rotate(sides[first.sideIndex].mid,first.angle).x,
+        y:snapped.y+rotate(sides[first.sideIndex].mid,first.angle).y
+      },wallFirst)?.distance??Infinity)*100)/100;
+    return snapped;
+  }
+
+  return {extractWalls,pointsFromText,selectWall,alignFurniture,alignTwoWalls,nearestOnSegment,localSides,norm360,wallSame};
 });

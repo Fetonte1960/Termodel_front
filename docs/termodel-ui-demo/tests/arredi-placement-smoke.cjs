@@ -158,11 +158,43 @@ const flush=()=>new Promise(r=>setImmediate(r));
   h.view.events.contextmenu({clientX:300,clientY:300,
     preventDefault(){preventedOutside=true;}});
   assert.equal(preventedOutside,false,'OSNAP menu only while placing');
+  // Two-wall OSNAP: first click fixes angle, second fixes the position
+  // along the first wall, third confirms. The right-context menu exposes both.
+  const dual=harness('?istruzione=ARREDI');await flush();
+  const dualApi=dual.window.TiralineeArrediPlacement;
+  const dualOverlay=dual.view.querySelector('svg');
+  dualApi.start(item);dualApi.setAngle(30);
+  dualOverlay.events.pointermove({clientX:500,clientY:330});
+  dual.view.events.contextmenu({clientX:500,clientY:330,preventDefault(){}});
+  const dualMenu=dual.view.children.find(x=>x.id==='arredi-osnap-menu');
+  assert.equal(dualMenu.children[2].textContent,'Allinea due pareti');
+  dualMenu.children[2].events.click();
+  assert.equal(dualApi.getState().snapMode,'pick-first-wall');
+  dualOverlay.events.click({button:0,clientX:390,clientY:105});
+  assert.equal(dualApi.getState().snapMode,'pick-second-wall');
+  const firstAngle=dualApi.getState().angle;
+  assert.ok(dualOverlay.children.some(n=>n.getAttribute('data-arredi-osnap-target')==='first-wall'));
+  dualOverlay.events.click({button:0,clientX:390,clientY:105});
+  assert.equal(dualApi.getState().snapMode,'pick-second-wall','same wall cannot be selected twice');
+  dualOverlay.events.click({button:0,clientX:695,clientY:260});
+  assert.equal(dualApi.getState().snapMode,'aligned');
+  const both=dualApi.getState();
+  assert.equal(both.angle,firstAngle,'first wall fixes rotation');
+  assert.equal(both.items.length,0,'wall selection does not commit a furniture item');
+  assert.ok(both.snapInfo && both.snapInfo.firstSideIndex!==both.snapInfo.secondSideIndex);
+  assert.ok(both.snapInfo.firstGapCm<.05);
+  assert.ok(both.snapInfo.secondGapCm<.05,'corner should be in contact with both walls');
+  dualOverlay.events.click({button:0,clientX:550,clientY:460});
+  assert.equal(dualApi.getState().items.length,1);
+  assert.equal(dualApi.getState().items[0].x,both.pending.x);
+  assert.equal(dualApi.getState().items[0].y,both.pending.y);
+  assert.equal(dualApi.getState().items[0].angle,firstAngle);
+
   const invalid=harness('?istruzione=ARREDI','OTHER-FORMAT');
   await flush();assert.equal(invalid.window.TiralineeArrediPlacement.getState().ready,false,
     'unknown SVG must not be used as a metric plan');
   const wrongUnit=harness('?istruzione=ARREDI','TERMODEL-CLEAN-FLOOR-SVG-V1','px');
   await flush();assert.equal(wrongUnit.window.TiralineeArrediPlacement.getState().ready,false,
     'pixels are not allowed as metric coordinates');
-  console.log('ARREDI_PLACEMENT_SMOKE_OK: cm/viewBox, preview, click commit, slider angle, wheel zoom, drag, OSNAP wall select and snap preview, SOS guard, invalid SVG');
+  console.log('ARREDI_PLACEMENT_SMOKE_OK: cm/viewBox, preview, click commit, slider angle, wheel zoom, drag, OSNAP one/two walls and primary angle, SOS guard, invalid SVG');
 })().catch(err=>{console.error(err);process.exitCode=1;});

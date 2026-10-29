@@ -65,4 +65,47 @@ near(same.angle,aligned.angle);
 assert.equal(same.sideIndex,aligned.sideIndex);
 assert.equal(s.alignFurniture({...item,widthCm:0},diag),null);
 assert.equal(s.alignFurniture(item,{a:{x:1,y:1},b:{x:1,y:1}}),null);
+
+/* Dual-wall snap: first wall dictates angle, the other selected side fixes
+ * position along wall 1. Conflicting wall directions cannot rotate item. */
+const firstWall={a:{x:0,y:100},b:{x:800,y:100}};
+const secondWall={a:{x:100,y:0},b:{x:100,y:600}};
+const furniture={x:450,y:320,angle:30,widthCm:180,depthCm:90};
+const one=s.alignFurniture(furniture,firstWall);
+const two=s.alignTwoWalls(furniture,firstWall,secondWall);
+assert.ok(two,'two-wall snap should produce a result');
+assert.equal(two.firstSideIndex,one.sideIndex,
+  'first side must be selected using ORIGINAL rotation, not second-wall geometry');
+assert.equal(two.secondSideIndex,3,'near left side must contact second wall');
+near(two.angle,one.angle);
+near(two.x,190);
+near(two.y,145);
+near(two.firstGapCm,0);
+near(two.secondGapCm,0);
+near(two.secondAngleErrorDeg,0);
+assert.notEqual(two.firstSideIndex,two.secondSideIndex,
+  'two different furniture sides must be selected');
+const reversed=s.alignTwoWalls(furniture,
+  {a:{...firstWall.b},b:{...firstWall.a}},secondWall);
+assert.ok(reversed);
+near(reversed.angle,two.angle);
+near(reversed.x,two.x);
+near(reversed.y,two.y);
+const conflictingSecond={a:{x:100,y:0},b:{x:380,y:520}};
+const conflict=s.alignTwoWalls(furniture,firstWall,conflictingSecond);
+assert.ok(conflict);
+near(conflict.angle,one.angle);
+assert.ok(conflict.secondAngleErrorDeg>1,
+  'conflicting angle must be reported, never override first wall angle');
+near(conflict.firstGapCm,0,.05);
+const parallelSecond={a:{x:0,y:250},b:{x:800,y:250}};
+const parallel=s.alignTwoWalls(furniture,firstWall,parallelSecond);
+assert.ok(parallel);
+near(parallel.angle,one.angle);
+near(parallel.firstGapCm,0);
+assert.ok(parallel.secondGapCm>=0);
+assert.equal(s.alignTwoWalls(furniture,firstWall,firstWall),null,
+  'the same wall cannot count as two selections');
+console.log('ARREDI_TWO_WALL_OSNAP_OK: original primary side, two adjacent contacts, reversed walls, conflicting angles prioritize first');
+
 console.log('ARREDI_OSNAP_GEOMETRY_OK: nearest original side; rotate same side to wall; exact contact; reversed and diagonal walls; windows excluded');
