@@ -366,6 +366,7 @@
   // Diagnostic surface for integration tests only; never authorizes drawing or writes.
   window.TiralineeArrediCatalog = Object.freeze({
     getProfile: () => profile.id,
-    getSelected: () => state.items.find(x => x.id === state.selectedId) || null
+    getSelected: () => state.items.find(x => x.id === state.selectedId) || null,
+    getItems: () => state.items.map(x => ({...x}))
   });
 })();

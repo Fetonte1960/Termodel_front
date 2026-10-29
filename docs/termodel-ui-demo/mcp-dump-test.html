@@ -2463,6 +2463,24 @@ window.__termodelHarnessPreview?.(redraw);
 function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(host);resize();
 renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
+// M7: the 3D furniture renderer is imported ONLY by the explicit ARREDI
+// profile. It never changes the Service building or the 2D SVG.
+{
+ const params=new URLSearchParams(window.location.search);
+ const selected=params.has('istruzione')?
+   window.TiralineeMcpInstructionBootstrap?.resolve(params.get('istruzione')):null;
+ if(selected?.id==='ARREDI'){
+   import('./arredi-3d-viewer.js?v=0.1.0')
+     .then(({installArredi3D})=>{
+       window.TiralineeArredi3D=installArredi3D({
+         THREE,buildingRoot:root,
+         renderNow:()=>{resize();controls.update();renderer.render(scene,camera);},
+         isBuildingReady:()=>labFixtureLoaded&&objects.walls.length>0
+       });
+     })
+     .catch(error=>console.error('M7 Arredi 3D non disponibile:',error));
+ }
+}
 </script>
 </body>
 </html>

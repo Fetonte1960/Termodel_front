@@ -1,14 +1,17 @@
-name: MCP Arredi 2D catalog sidebar smoke
+name: MCP Arredi 2D and 3D catalog smoke
 on:
   pull_request:
     paths:
       - 'docs/termodel-ui-demo/arredi-2d-catalog.js'
       - 'docs/termodel-ui-demo/arredi-2d-placement.js'
       - 'docs/termodel-ui-demo/arredi-2d-osnap.js'
+      - 'docs/termodel-ui-demo/arredi-3d-*.js'
+      - 'docs/termodel-ui-demo/arredi-assets/**'
       - 'docs/termodel-ui-demo/mcp-dump-test.html'
       - 'docs/termodel-ui-demo/tests/arredi-catalog-smoke.cjs'
       - 'docs/termodel-ui-demo/tests/arredi-placement-smoke.cjs'
       - 'docs/termodel-ui-demo/tests/arredi-osnap-geometry-smoke.cjs'
+      - 'docs/termodel-ui-demo/tests/arredi-3d-math-smoke.cjs'
       - '.github/workflows/arredi-catalog-2d-smoke.yml'
   workflow_dispatch:
 
@@ -29,9 +32,34 @@ jobs:
           node --check docs/termodel-ui-demo/arredi-2d-catalog.js
           node --check docs/termodel-ui-demo/arredi-2d-placement.js
           node --check docs/termodel-ui-demo/arredi-2d-osnap.js
+          node --check docs/termodel-ui-demo/arredi-3d-math.js
+          node --input-type=module --check < docs/termodel-ui-demo/arredi-3d-viewer.js
           node docs/termodel-ui-demo/tests/arredi-catalog-smoke.cjs
           node docs/termodel-ui-demo/tests/arredi-placement-smoke.cjs
           node docs/termodel-ui-demo/tests/arredi-osnap-geometry-smoke.cjs
+          node docs/termodel-ui-demo/tests/arredi-3d-math-smoke.cjs
+      - name: Check binary GLB demo assets, SHA-256 and glTF scenes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, hashlib, struct, pathlib
+          base=pathlib.Path('docs/termodel-ui-demo/arredi-assets')
+          manifest=json.loads((base/'demo-models.json').read_text())
+          assert len(manifest['models'])==3
+          for model in manifest['models']:
+              name=model['url'].rsplit('/',1)[1]
+              data=(base/name).read_bytes()
+              magic,version,size=struct.unpack_from('<III',data,0)
+              assert magic==0x46546c67 and version==2 and size==len(data)
+              assert hashlib.sha256(data).hexdigest()==model['sha256'],name
+              json_size,json_type=struct.unpack_from('<II',data,12)
+              assert json_type==0x4e4f534a
+              gltf=json.loads(data[20:20+json_size].decode().strip())
+              assert gltf['asset']['version']=='2.0'
+              assert len(gltf['nodes'])>=6
+              assert len(gltf['meshes'])>=1
+              print('GLB OK',name,len(data),'bytes',len(gltf['nodes']),'nodes')
+          PY
       - name: Legacy view and profile selector presence
         shell: bash
         run: |
