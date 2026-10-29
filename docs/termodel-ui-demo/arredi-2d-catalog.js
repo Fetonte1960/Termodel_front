@@ -141,16 +141,16 @@
   osnapActions.className='arredi-actions';
   osnapActions.setAttribute('aria-label','OSNAP allineamento pareti');
   const osnapOne=document.createElement('button');
-  osnapOne.type='button';osnapOne.textContent='OSNAP · Allinea con parete';
+  osnapOne.type='button';osnapOne.textContent='OSNAP · Allinea con parete/arredo';
   osnapOne.addEventListener('click',()=>window.TiralineeArrediPlacement?.beginWallSnap(1));
   const osnapTwo=document.createElement('button');
-  osnapTwo.type='button';osnapTwo.textContent='OSNAP · Allinea due pareti';
+  osnapTwo.type='button';osnapTwo.textContent='OSNAP · Allinea con 2 pareti/arredi';
   osnapTwo.addEventListener('click',()=>window.TiralineeArrediPlacement?.beginWallSnap(2));
   osnapActions.append(osnapOne,osnapTwo);
   sidebar.appendChild(osnapActions);
   const zoomLabel=document.createElement('p');
   zoomLabel.className='arredi-help';
-  zoomLabel.textContent='Rotellina: zoom · OSNAP: una o due pareti dal pannello o tasto destro · barra: angolo';
+  zoomLabel.textContent='Rotellina: zoom · OSNAP: parete/arredo oppure 2 pareti/arredi · aggancio immediato';
   sidebar.appendChild(zoomLabel);
   window.TiralineeArrediPlacement?.onChange?.(info=>{
     placementState.textContent=info.message ||
@@ -160,7 +160,7 @@
       angleSlider.value=String(next);
       angleOutput.textContent=next+'°';
     }
-    zoomLabel.textContent='Zoom '+info.zoom+'% · rotellina: zoom · OSNAP 1/2 pareti · Esc: annulla';
+    zoomLabel.textContent='Zoom '+info.zoom+'% · rotellina: zoom · OSNAP parete/arredo (1 o 2) · Esc: annulla';
     osnapOne.disabled=!info.pending||!info.ready;
     osnapTwo.disabled=!info.pending||!info.ready;
     cancel.disabled=!info.pending;
