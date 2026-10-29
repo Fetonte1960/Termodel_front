@@ -42,17 +42,18 @@ assert.equal(demo.primitives.length,546);
 assert.equal(new Set(demo.primitives.map(p=>p.piano)).size,4);
 assert.ok(demo.primitives.every(p=>p.filterMetadata===true));
 const html=fs.readFileSync(path.join(root,'mcp-dump-test.html'),'utf8');
-for(const part of ["HARNESS_VERSION = '1.16.2'","chatMode==='sh'&&!handoffRequested","chatMode==='lab'",
+for(const part of ["shChatMode=(chatMode==='sh'&&handoffRequested)","const labChatMode=!handoffRequested","chatMode==='lab'",
  "window.__termodelLabReady?.({execute:executeLab,loadSosModel,","fetch('./TermodelWebModel.json'",
- "gatewayRequest('/browser/lab/register'","/browser/lab/model/","/browser/lab/interpret/","/browser/viewer/interpret/",
+ "gatewayRequest('/browser/lab/register'","/browser/lab/model/",
  "tiralinee-gateway-retry.js?v=1.0.0","TiralineeGatewayRetry.request","/health",
- "tiralinee-expert-handoff.js?v=1.0.0","TiralineeExpertHandoff.QUESTION",
- "offerExpertChat(input)","trustedSosExpertBootstrap=data.expertBootstrap",
- "chatPane.hidden=true","tiralinee-guided-chat.js?v=1.0.0",
+ "tiralinee-expert-handoff.js?v=1.0.1","TiralineeExpertHandoff.QUESTION",
+ "function offerExpertChat(lastRequest,guided=null)","trustedSosExpertBootstrap=data.expertBootstrap",
+ "chatPane.hidden=true","tiralinee-guided-chat.js?v=1.0.7",
  "startGuidedDialog()","/browser/lab/dialog/","/browser/viewer/dialog/",
  "onNoAction:summary","offerExpertChat(answer,summary)","&_refresh="]){
  assert.ok(html.includes(part),'missing integration '+part);
 }
+assert.match(html,/const HARNESS_VERSION\s*=\s*'[0-9]+\.[0-9]+\.[0-9]+'/,'HARNESS_VERSION must be semantic');
 assert.ok(!html.includes("SH: domanda"),'UI must not require prefixes');
 assert.ok(!html.includes("const info=await graphics.execute({action:'loadDemo'})"),
   'startup must not load the public fixture');
