@@ -135,8 +135,12 @@
   }
   // The pick radius is measured in screen pixels and converted through
   // the actual SVG screen transform, so zoom never changes hit accuracy.
-  function hitWall(point){
-    if(!state.walls.length || !root.TiralineeArrediOsnap)return null;
+  function hitTarget(point){
+    if(!root.TiralineeArrediOsnap)return null;
+    // Include the four transformed, metric edges of every CONFIRMED item.
+    // Never include the moving preview being placed.
+    const targets=[...state.walls,...root.TiralineeArrediOsnap.furnitureSegments(state.items)];
+    if(!targets.length)return null;
     const matrix=state.overlay?.getScreenCTM?.();
     let pixelsPerCm=Math.hypot(matrix?.a??NaN,matrix?.b??NaN);
     if(!Number.isFinite(pixelsPerCm)||pixelsPerCm<=0){
@@ -145,15 +149,16 @@
         box.height/state.meta.height)*state.zoom;
     }
     return root.TiralineeArrediOsnap.selectWall(
-      state.walls,point,12/Math.max(pixelsPerCm,.001));
+      targets,point,12/Math.max(pixelsPerCm,.001));
   }
   function closeContextMenu(){
     state.contextMenu?.remove?.();
     state.contextMenu=null;
   }
   function beginWallSnap(count=1){
-    if(!state.pending || !state.overlay || !state.walls.length){
-      emit('OSNAP non disponibile: nessun arredo in inserimento o pareti non presenti');
+    if(!state.pending || !state.overlay ||
+      (!state.walls.length && !state.items.length)){
+      emit('OSNAP non disponibile: nessun arredo in inserimento o lato selezionabile');
       return false;
     }
     closeContextMenu();
@@ -162,8 +167,8 @@
     state.snapFirstWall=null;state.snapSecondWall=null;
     state.snapInfo=null;state.snapSideIndex=null;state.hoveredWall=null;
     redraw();
-    emit(count===2?'OSNAP due pareti: seleziona la PRIMA parete architettonica':
-      'OSNAP: clicca sulla parete da selezionare (in arancione)');
+    emit(count===2?'OSNAP: scegli la PRIMA parete o il PRIMO lato di arredo':
+      'OSNAP: scegli una parete o un lato di arredo');
     return true;
   }
   function onContextMenu(e){
@@ -185,14 +190,14 @@
     title.style.cssText='display:block;margin:2px 5px 6px;font-size:12px';
     const align=document.createElement('button');
     align.type='button';align.setAttribute('role','menuitem');
-    align.textContent='Allinea con parete';
+    align.textContent='Allinea con parete/arredo';
     align.style.cssText='display:block;margin:0;width:100%;padding:9px;'+
       'text-align:left;cursor:pointer;background:#e8f3fb;'+
       'border:1px solid #9cbbd2;border-radius:4px';
     align.addEventListener('click',()=>beginWallSnap(1));
     const alignTwo=document.createElement('button');
     alignTwo.type='button';alignTwo.setAttribute('role','menuitem');
-    alignTwo.textContent='Allinea due pareti';
+    alignTwo.textContent='Allinea con 2 pareti/arredi';
     alignTwo.style.cssText=align.style.cssText+'margin-top:5px';
     alignTwo.addEventListener('click',()=>beginWallSnap(2));
     menu.append(title,align,alignTwo);
@@ -210,7 +215,7 @@
       }
     }else if(state.pending){
       if(['pick-wall','pick-first-wall','pick-second-wall'].includes(state.snapMode)){
-        const candidate=hitWall(point);
+        const candidate=hitTarget(point);
         state.hoveredWall=candidate?.segment||null;
         if(state.snapMode==='pick-second-wall' &&
           root.TiralineeArrediOsnap?.wallSame(state.snapFirstWall,state.hoveredWall))
@@ -219,8 +224,9 @@
         const found=!!state.hoveredWall;
         const hint=state.snapMode==='pick-first-wall'?'PRIMA':
           state.snapMode==='pick-second-wall'?'SECONDA':'unica';
-        emit(found?'Parete '+hint+' individuata: clicca per selezionarla':
-          'Seleziona la '+hint+' parete architettonica');
+        const kind=state.hoveredWall?.source==='arredo'?'Lato di arredo':'Parete';
+        emit(found?kind+' '+hint+' individuato: clicca per selezionarlo':
+          'Seleziona la '+hint+' parete o un lato di arredo');
         return;
       }
       if(state.snapMode==='aligned')return;
@@ -254,68 +260,11 @@
     redraw();
     emit('Posizione consolidata nel layout corrente');
   }
-  function onClick(e){
-    if(e.button!==0 || !state.pending || state.dragging)return;
-    const point=pointFromEvent(e);
-    if(!point)return;
-    if(['pick-wall','pick-first-wall','pick-second-wall'].includes(state.snapMode)){
-      const candidate=hitWall(point);
-      if(!candidate){emit('Clicca vicino a una parete architettonica (linea nera)');return;}
-      if(state.snapMode==='pick-first-wall'){
-        const alignedFirst=root.TiralineeArrediOsnap?.alignFurniture(
-          state.snapOriginal,candidate.segment);
-        if(!alignedFirst){emit('Impossibile allineare alla prima parete');return;}
-        state.snapFirstWall=candidate.segment;
-        state.pending.x=alignedFirst.x;state.pending.y=alignedFirst.y;
-        state.pending.angle=angleNumber(alignedFirst.angle);
-        state.angle=state.pending.angle;
-        state.snapSideIndex=alignedFirst.sideIndex;
-        state.snapMode='pick-second-wall';state.hoveredWall=null;
-        redraw();emit('Prima parete acquisita, angolo '+state.angle+
-          '°. Ora clicca la SECONDA parete');
-        return;
-      }
-      if(state.snapMode==='pick-second-wall'){
-        if(root.TiralineeArrediOsnap?.wallSame(state.snapFirstWall,candidate.segment)){
-          emit('Seleziona una seconda parete differente dalla prima');return;
-        }
-        const result=root.TiralineeArrediOsnap?.alignTwoWalls(
-          state.snapOriginal,state.snapFirstWall,candidate.segment);
-        if(!result){emit('Impossibile allineare alle due pareti');return;}
-        state.pending.x=result.x;state.pending.y=result.y;
-        state.pending.angle=angleNumber(result.angle);
-        state.angle=state.pending.angle;
-        state.snapInfo=result;
-        state.snapSideIndex=result.firstSideIndex;
-        state.snapSecondWall=candidate.segment;
-        state.hoveredWall=candidate.segment;
-        state.snapMode='aligned';
-        redraw();
-        const conflict=result.secondAngleErrorDeg>1;
-        const gap=result.secondGapCm>1;
-        emit('OSNAP due pareti: angolo '+state.angle+'° · '+
-          (conflict?'direzioni contrastanti, priorità PRIMA parete; ':
-            'due lati orientati; ')+
-          'scostamento seconda parete '+result.secondGapCm+' cm'+
-          (gap?' (accostamento parziale)':'')+' · clicca per confermare');
-        return;
-      }
-      const aligned=root.TiralineeArrediOsnap?.alignFurniture(state.pending,candidate.segment);
-      if(!aligned){emit('Impossibile allineare alla parete selezionata');return;}
-      state.pending.x=aligned.x;
-      state.pending.y=aligned.y;
-      state.pending.angle=angleNumber(aligned.angle);
-      state.angle=state.pending.angle;
-      state.snapSideIndex=aligned.sideIndex;
-      state.snapMode='aligned';
-      state.hoveredWall=candidate.segment;
-      redraw();emit('OSNAP: lato '+(aligned.sideIndex+1)+' allineato alla parete · '+
-        state.angle+'° · clicca per confermare');
-      return; // Wall click selects/snap only, never commits an item.
-    }
-    // A snapped preview has a precise wall-aligned center. The confirming
-    // click must NEVER replace it with the mouse click coordinates.
-    const center=state.snapMode==='aligned'?state.pending:point;
+  function commitPending(message,point){
+    if(!state.pending)return;
+    // For OSNAP, the calculated center is already stored in the pending
+    // item. Never replace it with the coordinates of the target click.
+    const center=point||state.pending;
     const item=Object.assign({},state.pending,{
       id:'AR-'+(++state.sequence),x:center.x,y:center.y,angle:state.angle
     });
@@ -326,8 +275,67 @@
     state.snapFirstWall=null;state.snapSecondWall=null;
     state.snapOriginal=null;state.snapInfo=null;
     redraw();
-    emit('Collocato '+item.name+' · '+item.widthCm+' × '+item.depthCm+
-      ' cm · '+item.angle+'° (layout di sessione)');
+    emit(message+' · '+item.name+' · '+item.widthCm+' × '+
+      item.depthCm+' cm · '+item.angle+'°');
+  }
+  function onClick(e){
+    if(e.button!==0 || !state.pending || state.dragging)return;
+    const point=pointFromEvent(e);
+    if(!point)return;
+    if(['pick-wall','pick-first-wall','pick-second-wall'].includes(state.snapMode)){
+      const candidate=hitTarget(point);
+      if(!candidate){emit('Clicca vicino a una parete o a un lato di arredo');return;}
+      if(state.snapMode==='pick-first-wall'){
+        const alignedFirst=root.TiralineeArrediOsnap?.alignFurniture(
+          state.snapOriginal,candidate.segment);
+        if(!alignedFirst){emit('Impossibile allineare al primo lato');return;}
+        state.snapFirstWall=candidate.segment;
+        state.pending.x=alignedFirst.x;state.pending.y=alignedFirst.y;
+        state.pending.angle=angleNumber(alignedFirst.angle);
+        state.angle=state.pending.angle;
+        state.snapSideIndex=alignedFirst.sideIndex;
+        state.snapMode='pick-second-wall';state.hoveredWall=null;
+        redraw();emit('Primo riferimento acquisito, angolo '+state.angle+
+          '°. Ora clicca il SECONDO riferimento parete/arredo');
+        return;
+      }
+      if(state.snapMode==='pick-second-wall'){
+        if(root.TiralineeArrediOsnap?.wallSame(state.snapFirstWall,candidate.segment)){
+          emit('Seleziona un secondo lato differente dal primo');return;
+        }
+        const result=root.TiralineeArrediOsnap?.alignTwoWalls(
+          state.snapOriginal,state.snapFirstWall,candidate.segment);
+        if(!result){emit('Impossibile allineare ai due lati');return;}
+        state.pending.x=result.x;state.pending.y=result.y;
+        state.pending.angle=angleNumber(result.angle);
+        state.angle=state.pending.angle;
+        state.snapInfo=result;
+        state.snapSideIndex=result.firstSideIndex;
+        state.snapSecondWall=candidate.segment;
+        state.hoveredWall=candidate.segment;
+        const conflict=result.secondAngleErrorDeg>1;
+        const gap=result.secondGapCm>1;
+        commitPending('OSNAP 2 pareti/arredi: angolo '+state.angle+'° · '+
+          (conflict?'direzioni contrastanti, priorità PRIMO riferimento; ':
+            'due lati orientati; ')+
+          'scostamento secondo riferimento '+result.secondGapCm+' cm'+
+          (gap?' (accostamento parziale)':''));
+        return;
+      }
+      const aligned=root.TiralineeArrediOsnap?.alignFurniture(state.pending,candidate.segment);
+      if(!aligned){emit('Impossibile allineare al lato selezionato');return;}
+      state.pending.x=aligned.x;
+      state.pending.y=aligned.y;
+      state.pending.angle=angleNumber(aligned.angle);
+      state.angle=state.pending.angle;
+      state.snapSideIndex=aligned.sideIndex;
+      state.hoveredWall=candidate.segment;
+      commitPending('OSNAP: lato '+(aligned.sideIndex+1)+
+        ' allineato a '+(candidate.segment.source==='arredo'?'arredo':'parete')+
+        ' · '+state.angle+'°');
+      return; // First target click has already confirmed the furniture.
+    }
+    commitPending('Collocato arredo (layout di sessione)',point);
   }
   function onWheel(e){
     if(!state.stage)return;

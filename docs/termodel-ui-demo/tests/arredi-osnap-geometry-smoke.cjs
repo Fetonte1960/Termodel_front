@@ -108,4 +108,27 @@ assert.equal(s.alignTwoWalls(furniture,firstWall,firstWall),null,
   'the same wall cannot count as two selections');
 console.log('ARREDI_TWO_WALL_OSNAP_OK: original primary side, two adjacent contacts, reversed walls, conflicting angles prioritize first');
 
+// Existing furniture is a geometry source just like architectural clean-boundary.
+const placed={id:'AR-12',x:400,y:260,widthCm:180,depthCm:90,angle:30};
+const edges=s.furnitureSegments([placed]);
+assert.equal(edges.length,4);
+assert.deepEqual(edges.map(e=>e.sideIndex),[0,1,2,3]);
+assert.ok(edges.every(e=>e.source==='arredo'&&e.sourceId==='AR-12'));
+const edge=s.localSides(180,90)[0];
+const rad=30*Math.PI/180;
+const edgeMid={x:400+edge.mid.x*Math.cos(rad)-edge.mid.y*Math.sin(rad),
+  y:260+edge.mid.x*Math.sin(rad)+edge.mid.y*Math.cos(rad)};
+const furnitureTarget=s.selectWall(edges,edgeMid,0.5);
+assert.ok(furnitureTarget && furnitureTarget.segment.sideIndex===0);
+const newItem={x:410,y:470,angle:35,widthCm:120,depthCm:60};
+const snapToFurniture=s.alignFurniture(newItem,furnitureTarget.segment);
+assert.ok(snapToFurniture);
+sideContact(newItem,snapToFurniture,furnitureTarget.segment);
+const twoFurniture=s.alignTwoWalls(newItem,edges[0],edges[1]);
+assert.ok(twoFurniture,'two distinct edges of the same placed item are valid references');
+const mixedFurnitureWall=s.alignTwoWalls(newItem,firstWall,edges[1]);
+assert.ok(mixedFurnitureWall,'one wall plus one furniture edge must be valid');
+assert.equal(s.alignTwoWalls(newItem,edges[1],edges[1]),null);
+assert.equal(s.furnitureSegments([{...placed,widthCm:-1}]).length,0);
+
 console.log('ARREDI_OSNAP_GEOMETRY_OK: nearest original side; rotate same side to wall; exact contact; reversed and diagonal walls; windows excluded');

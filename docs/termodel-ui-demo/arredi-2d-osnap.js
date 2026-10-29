@@ -76,6 +76,23 @@
       return {index:i,a,b,mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
     });
   }
+  function furnitureSegments(placements){
+    // Each confirmed item contributes four finite edges in the SAME
+    // Termodel centimeter coordinate system as architectural walls.
+    const result=[];
+    for(const item of placements||[]){
+      if(!item || ![item.x,item.y,item.angle,item.widthCm,item.depthCm].every(finite) ||
+          item.widthCm<=0 || item.depthCm<=0 || item.id==null)continue;
+      for(const side of localSides(item.widthCm,item.depthCm)){
+        const a=rotate(side.a,item.angle),b=rotate(side.b,item.angle);
+        const first={x:item.x+a.x,y:item.y+a.y};
+        const second={x:item.x+b.x,y:item.y+b.y};
+        result.push({a:first,b:second,length:Math.hypot(second.x-first.x,second.y-first.y),
+          source:'arredo',sourceId:String(item.id),sideIndex:side.index});
+      }
+    }
+    return result;
+  }
   function alignFurniture(placement,wall){
     if(!placement||![placement.x,placement.y,placement.widthCm,
       placement.depthCm,placement.angle].every(finite)||
@@ -208,5 +225,5 @@
     return snapped;
   }
 
-  return {extractWalls,pointsFromText,selectWall,alignFurniture,alignTwoWalls,nearestOnSegment,localSides,norm360,wallSame};
+  return {extractWalls,pointsFromText,selectWall,alignFurniture,alignTwoWalls,furnitureSegments,nearestOnSegment,localSides,norm360,wallSame};
 });
