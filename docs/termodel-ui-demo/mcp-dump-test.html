@@ -2489,7 +2489,7 @@ renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);}
            // M8: capture the ACTUAL scene after a dedicated off-screen render.
            // Do not rely on a stale/cleared default WebGL framebuffer.
            const cssW=Math.max(1,host.clientWidth),cssH=Math.max(1,host.clientHeight);
-           const scale=Math.min(1,2000/cssW,2000/cssH,Math.sqrt(2000000/(cssW*cssH)));
+           const scale=Math.min(2,2000/cssW,2000/cssH,Math.sqrt(2000000/(cssW*cssH)));
            const w=Math.max(1,Math.floor(cssW*scale));
            const h=Math.max(1,Math.floor(cssH*scale));
            if(w<200||h<140)throw Error('Vista 3D troppo piccola per il PDF');
