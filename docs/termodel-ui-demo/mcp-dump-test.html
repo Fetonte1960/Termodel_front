@@ -198,6 +198,16 @@ body.external-launch-mode #external-launch-panel{display:flex}
     const catalog=()=>{
       const script=document.createElement('script');
       script.src='./arredi-2d-catalog.js?v=0.5.0';
+      script.onload=()=>{
+        const algebra=document.createElement('script');
+        algebra.src='./arredi-distinta.js?v=0.1.0';
+        algebra.onload=()=>{
+          const ui=document.createElement('script');
+          ui.src='./arredi-distinta-ui.js?v=0.1.0';
+          document.head.appendChild(ui);
+        };
+        document.head.appendChild(algebra);
+      };
       document.head.appendChild(script);
     };
     // Only for istruzione=ARREDI: OSNAP geometry before placement, then sidebar.
