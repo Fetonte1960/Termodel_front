@@ -274,6 +274,7 @@
       setDocumentStatus('Modifiche agli arredi non ancora salvate in SOS.');
     }
     enableSave();
+    window.TiralineeArredi3D?.onPlacementChanged?.();
   });
   function showStatus(message) { status.textContent = message; }
   function safeNumber(value) { return typeof value === 'number' && Number.isFinite(value) && value > 0; }

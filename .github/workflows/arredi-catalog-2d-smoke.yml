@@ -6,6 +6,9 @@ on:
       - 'docs/termodel-ui-demo/arredi-2d-placement.js'
       - 'docs/termodel-ui-demo/arredi-2d-osnap.js'
       - 'docs/termodel-ui-demo/arredi-3d-*.js'
+      - 'docs/termodel-ui-demo/arredi-distinta*.js'
+      - 'docs/termodel-ui-demo/arredi-attachment.js'
+      - 'docs/termodel-ui-demo/tests/arredi-preventivi-smoke.cjs'
       - 'docs/termodel-ui-demo/arredi-assets/**'
       - 'docs/termodel-ui-demo/mcp-dump-test.html'
       - 'docs/termodel-ui-demo/tests/arredi-catalog-smoke.cjs'
@@ -33,11 +36,15 @@ jobs:
           node --check docs/termodel-ui-demo/arredi-2d-placement.js
           node --check docs/termodel-ui-demo/arredi-2d-osnap.js
           node --check docs/termodel-ui-demo/arredi-3d-math.js
+          node --check docs/termodel-ui-demo/arredi-distinta.js
+          node --check docs/termodel-ui-demo/arredi-distinta-ui.js
+          node --check docs/termodel-ui-demo/arredi-attachment.js
           node --input-type=module --check < docs/termodel-ui-demo/arredi-3d-viewer.js
           node docs/termodel-ui-demo/tests/arredi-catalog-smoke.cjs
           node docs/termodel-ui-demo/tests/arredi-placement-smoke.cjs
           node docs/termodel-ui-demo/tests/arredi-osnap-geometry-smoke.cjs
           node docs/termodel-ui-demo/tests/arredi-3d-math-smoke.cjs
+          node docs/termodel-ui-demo/tests/arredi-preventivi-smoke.cjs
       - name: Check binary GLB demo assets, SHA-256 and glTF scenes
         shell: bash
         run: |

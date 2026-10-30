@@ -4,13 +4,14 @@
  * The Termodel Service meshes are never rebuilt or modified here.
  */
 import './arredi-3d-math.js';
+import './arredi-attachment.js';
 const math=globalThis.TiralineeArredi3DMath;
 const ROOT='https://termodel-mcp-gateway.onrender.com/api/arredi/v1/models';
 const DEMO='./arredi-assets/demo-models.json';
 const MAX_BYTES=12*1024*1024;
 const hex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
 
-export function installArredi3D({THREE,buildingRoot,renderNow,isBuildingReady}){
+export function installArredi3D({THREE,buildingRoot,renderNow,captureFrame,isBuildingReady}){
   const params=new URLSearchParams(window.location.search);
   const profile=window.TiralineeMcpInstructionBootstrap?.resolve(params.get('istruzione'));
   if(!params.has('istruzione')||profile?.id!=='ARREDI')return null;
@@ -29,9 +30,19 @@ export function installArredi3D({THREE,buildingRoot,renderNow,isBuildingReady}){
   status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   status.style.cssText='font-size:12px;color:#344960;';
   status.textContent='Arredi 3D: premi Aggiorna dopo il posizionamento 2D';
-  toolbar.append(update,status);
+  const attach=document.createElement('button');
+  attach.id='arredi-3d-attach';attach.type='button';
+  attach.textContent='Allega 3D al preventivo';
+  attach.title='Cattura la vista 3D dal layout salvato, prepara PNG e manifest';
+  attach.disabled=true;
+  attach.style.cssText=update.style.cssText;
+  const evidenceState=document.createElement('span');
+  evidenceState.id='arredi-3d-attach-status';
+  evidenceState.setAttribute('role','status');
+  evidenceState.textContent='Non depositato nel dossier.';
+  toolbar.append(update,attach,status,evidenceState);
   tab.insertBefore(toolbar,tab.firstChild);
-  let currentLayer=null,busy=false,lastUpdated=-1;
+  let currentLayer=null,busy=false,lastUpdated=-1,lastPlanKey=null,lastImport=null,lastRevision=null,attachBusy=false;
   const glbCache=new Map();
   function proxy(item,entry){
     const obj=new THREE.Group();
@@ -117,6 +128,8 @@ export function installArredi3D({THREE,buildingRoot,renderNow,isBuildingReady}){
     if(currentLayer?.parent)currentLayer.parent.remove(currentLayer);
     // GLB geometry/material are cached and shared; do not dispose them here.
     currentLayer=null;
+    lastUpdated=-1;lastPlanKey=null;lastImport=null;lastRevision=null;
+    attach.disabled=true;
   }
   async function refresh(){
     if(busy)return;
@@ -174,6 +187,10 @@ export function installArredi3D({THREE,buildingRoot,renderNow,isBuildingReady}){
       buildingRoot.add(layer);
       renderNow();
       lastUpdated=beforeRevision;
+      lastPlanKey=state.planKey;
+      lastImport=context.importId;
+      lastRevision=context.projectRevision;
+      updateAttachAvailability();
       status.textContent='Edificio + '+state.items.length+' arredi · '+
         glb+' GLB, '+proxies+' proxy'+(failures?' ('+failures+' GLB non utilizzabili)':'')+
         ' · '+result.source;
@@ -182,9 +199,77 @@ export function installArredi3D({THREE,buildingRoot,renderNow,isBuildingReady}){
         ' arredi nelle posizioni della Pianta 2D ('+glb+' GLB; '+proxies+' proxy)';
     }catch(error){
       status.textContent='Aggiorna non completato: '+String(error?.message||error);
-    }finally {busy=false;update.disabled=false;}
+    }finally {busy=false;update.disabled=false;updateAttachAvailability();}
   }
+  function updateAttachAvailability(){
+    const state=window.TiralineeArrediPlacement?.getState?.();
+    const context=window.TiralineeArrediDocumentIo?.context?.();
+    attach.disabled=Boolean(attachBusy||busy||!currentLayer ||
+      currentLayer.parent!==buildingRoot||!isBuildingReady() ||
+      !math.validContext(context,state) ||
+      !state || state.pending || state.editRevision!==lastUpdated ||
+      state.planKey!==lastPlanKey ||
+      context.importId!==lastImport ||
+      context.projectRevision!==lastRevision);
+  }
+  function download(blob,filename){
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=filename;
+    document.body.appendChild(a);
+    try{a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  }
+  async function attachView(){
+    updateAttachAvailability();
+    if(attach.disabled)return;
+    attachBusy=true;attach.disabled=true;
+    evidenceState.textContent='Verifico layout salvato…';
+    try{
+      const context=window.TiralineeArrediDocumentIo.context();
+      const placement=window.TiralineeArrediPlacement;
+      const state=placement.getState();
+      const saved=await window.TiralineeArrediDocumentIo.load();
+      const now=placement.getState();
+      const check=globalThis.TiralineeArrediAttachment;
+      if(!check?.matching({scene:{busy,count:currentLayer?.children.length,
+          lastUpdated,planKey:lastPlanKey,importId:lastImport,
+          projectRevision:lastRevision},
+          now,context,saved,local:placement.exportLayout(context)}) ||
+          now.editRevision!==state.editRevision ||
+          currentLayer?.parent!==buildingRoot || !isBuildingReady())
+        throw Error('Modello/layout non allineati: Salva, quindi Aggiorna in 3D.');
+      const caption=window.prompt('Didascalia della vista 3D (massimo 300 caratteri):',
+        'Farmacia DEMO — vista edificio e arredi');
+      if(caption===null){evidenceState.textContent='Operazione annullata.';return;}
+      if(caption.length>300)throw Error('Didascalia troppo lunga');
+      if(!window.confirm('Creare PNG e manifest LOCALI? Il dossier Neon non è ancora autorizzato: NON saranno depositati.'))
+        {evidenceState.textContent='Operazione annullata.';return;}
+      evidenceState.textContent='Cattura 3D in corso…';
+      const {blob,width,height}=await captureFrame();
+      const current=placement.getState();
+      if(current.editRevision!==state.editRevision||
+         current.planKey!==state.planKey||
+         currentLayer?.parent!==buildingRoot||
+         window.TiralineeArrediDocumentIo?.context?.()?.importId!==context.importId)
+        throw Error('La pianta è cambiata durante la cattura: riprova.');
+      const bytes=await blob.arrayBuffer();
+      const digest=await crypto.subtle.digest('SHA-256',bytes);
+      const sha256=hex(new Uint8Array(digest));
+      const manifest=check.draft({context,layoutRevision:saved.version,
+        renderEditRevision:lastUpdated,caption,pixelWidth:width,
+        pixelHeight:height,byteLength:blob.size,sha256});
+      evidenceState.textContent='PNG pronto; esportazione LOCALE — NON DEPOSITATO.';
+      download(blob,'vista-3d-arredi-NON-DEPOSITATA.png');
+      download(new Blob([JSON.stringify(manifest,null,2)],
+        {type:'application/json'}),'vista-3d-arredi-manifest-NON-DEPOSITATO.json');
+    }catch(error){
+      evidenceState.textContent='Allegato non creato: '+String(error?.message||error);
+    }finally{attachBusy=false;updateAttachAvailability();}
+  }
+  attach.addEventListener('click',()=>void attachView());
   update.addEventListener('click',()=>void refresh());
   return Object.freeze({refresh,
-    getState:()=>({count:currentLayer?.children.length||0,lastUpdated,busy})});
+    onPlacementChanged:updateAttachAvailability,
+    getState:()=>({count:currentLayer?.children.length||0,lastUpdated,busy,
+      planKey:lastPlanKey,importId:lastImport,projectRevision:lastRevision})});
 }
