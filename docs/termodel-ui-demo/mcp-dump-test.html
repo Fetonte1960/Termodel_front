@@ -2485,6 +2485,46 @@ renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);}
        window.TiralineeArredi3D=installArredi3D({
          THREE,buildingRoot:root,
          renderNow:()=>{resize();controls.update();renderer.render(scene,camera);},
+         captureFrame:()=>{
+           // M8: capture the ACTUAL scene after a dedicated off-screen render.
+           // Do not rely on a stale/cleared default WebGL framebuffer.
+           const cssW=Math.max(1,host.clientWidth),cssH=Math.max(1,host.clientHeight);
+           const scale=Math.min(1,2000/cssW,2000/cssH,Math.sqrt(2000000/(cssW*cssH)));
+           const w=Math.max(1,Math.floor(cssW*scale));
+           const h=Math.max(1,Math.floor(cssH*scale));
+           if(w<200||h<140)throw Error('Vista 3D troppo piccola per il PDF');
+           const buffer=new Uint8Array(w*h*4);
+           const target=new THREE.WebGLRenderTarget(w,h,{depthBuffer:true});
+           const previous=renderer.getRenderTarget();
+           try{
+             renderer.setRenderTarget(target);
+             renderer.render(scene,camera);
+             renderer.readRenderTargetPixels(target,0,0,w,h,buffer);
+           }finally{
+             renderer.setRenderTarget(previous);target.dispose();
+           }
+           const first=[buffer[0],buffer[1],buffer[2]];
+           let varied=false;
+           for(let i=0;i<w*h;i+=Math.max(1,Math.floor(w*h/1500))){
+             const p=i*4;
+             if(Math.abs(buffer[p]-first[0])+
+                Math.abs(buffer[p+1]-first[1])+
+                Math.abs(buffer[p+2]-first[2])>40){varied=true;break;}
+           }
+           if(!varied)throw Error('Cattura 3D vuota o uniforme');
+           const canvas=document.createElement('canvas');
+           canvas.width=w;canvas.height=h;
+           const ctx=canvas.getContext('2d');
+           if(!ctx)throw Error('Canvas 2D non disponibile');
+           const output=ctx.createImageData(w,h);
+           for(let y=0;y<h;y++)output.data.set(
+             buffer.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);
+           ctx.putImageData(output,0,0);
+           return new Promise((resolve,reject)=>canvas.toBlob(
+             blob=>blob&&blob.size>0&&blob.size<=2000000?
+               resolve({blob,width:w,height:h}):
+               reject(Error('PNG assente o oltre 2 MB')),'image/png'));
+         },
          isBuildingReady:()=>labFixtureLoaded&&objects.walls.length>0
        });
      })
