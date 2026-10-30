@@ -68,6 +68,6 @@ assert.match(html,/renderer\.readRenderTargetPixels\(target,0,0,w,h,buffer\)/);
 assert.match(html,/arredi-distinta-ui\.js/);
 assert.match(viewer,/Allega 3D al preventivo/);
 assert.match(viewer,/Non depositato nel dossier/);
-assert.match(viewer,/NON_DEPOSITATO/);
+assert.match(viewer,/NON DEPOSITATO/);
 assert.match(viewer,/lastUpdated/);
 console.log('M8_M9_CONTRACT_OK: 2+1 confirmed items, 3 atomic lines, no duplicate summary, saved/edit guards, PNG and local-only manifest');
