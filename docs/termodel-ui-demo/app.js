@@ -106,7 +106,7 @@ const bimCadContext = (() => {
     if(new URL(document.referrer).origin!==BIM_CAD_PREVENTIVI_ORIGIN)return null;
   } catch { return null; }
   return {projectId:x.get('bimCadProjectId'),quoteId:x.get('bimCadQuoteId'),
-    nonce,revision:0};
+    nonce,revision:0,loaded:false};
 })();
 let pendingBimCadSave=null;
 function sendBimCadMessage(type,fields={}){
@@ -118,6 +118,8 @@ function sendBimCadMessage(type,fields={}){
 }
 async function saveBimCadToPreventivi(projectText){
   if(!bimCadContext)throw new Error('Nessun progetto BIM-CAD associato a Preventivi');
+  if(!bimCadContext.loaded)
+    throw new Error('Il progetto non è ancora stato caricato da Preventivi. Non salvare finché il caricamento non è confermato.');
   if(pendingBimCadSave)throw new Error('Salvataggio BIM-CAD già in corso');
   const receipt=new Promise((resolve,reject)=>{
     const timer=window.setTimeout(()=>{
@@ -150,6 +152,7 @@ if(bimCadContext){
        m.quoteId!==bimCadContext.quoteId)return;
     if(m.type==='load'){
       try {
+        bimCadContext.loaded=false;
         if(!Number.isInteger(m.revision)||m.revision<0)throw new Error('Revisione non valida');
         bimCadContext.revision=m.revision;
         if(m.projectText){
@@ -161,12 +164,15 @@ if(bimCadContext){
           });
         }
         activateCadPage();
+        bimCadContext.loaded=true;
         setMainAiStatus('BIM-CAD-Architettonico collegato a Preventivi · R'+m.revision);
       }catch(error){
+        bimCadContext.loaded=false;
         setMainAiStatus('⚠ Apertura progetto BIM-CAD: '+error.message);
         window.alert('Impossibile caricare il progetto BIM-CAD.\n'+error.message);
       }
     }else if(m.type==='load-error'){
+      bimCadContext.loaded=false;
       setMainAiStatus('⚠ '+(m.error||'Apertura BIM-CAD non riuscita'));
     }else if(m.type==='save-result'&&pendingBimCadSave){
       const pending=pendingBimCadSave;
