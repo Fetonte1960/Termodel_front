@@ -90,6 +90,101 @@ const APP_VERSION = String(
 // Identità dichiarativa di test: NON è autenticazione né controllo accessi.
 // Nessun parametro o "Non Registrato" lasciano invariata la modalità pubblica.
 const termodelLaunchParams = new URLSearchParams(window.location.search);
+
+// BIM-CAD-Architettonico launched from a Preventivi DEMO quotation.
+// The nonce and IDs are association hints, never credentials or database grants.
+const BIM_CAD_PREVENTIVI_ORIGIN = 'https://fetonte1960.github.io';
+const bimCadContext = (() => {
+  const x=termodelLaunchParams;
+  const guid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const nonce=x.get('bimCadNonce')||'';
+  if(x.get('bimCad')!=='preventivi'||!window.opener||
+     !guid.test(x.get('bimCadProjectId')||'')||
+     !guid.test(x.get('bimCadQuoteId')||'')||!/^[0-9a-f]{32}$/i.test(nonce))
+    return null;
+  try {
+    if(new URL(document.referrer).origin!==BIM_CAD_PREVENTIVI_ORIGIN)return null;
+  } catch { return null; }
+  return {projectId:x.get('bimCadProjectId'),quoteId:x.get('bimCadQuoteId'),
+    nonce,revision:0};
+})();
+let pendingBimCadSave=null;
+function sendBimCadMessage(type,fields={}){
+  if(!bimCadContext||!window.opener||window.opener.closed)
+    throw new Error('Finestra Preventivi non disponibile: riaprire il progetto dalla griglia.');
+  window.opener.postMessage({namespace:'preventivi-bimcad-v1',
+    type,projectId:bimCadContext.projectId,quoteId:bimCadContext.quoteId,
+    nonce:bimCadContext.nonce,...fields},BIM_CAD_PREVENTIVI_ORIGIN);
+}
+async function saveBimCadToPreventivi(projectText){
+  if(!bimCadContext)throw new Error('Nessun progetto BIM-CAD associato a Preventivi');
+  if(pendingBimCadSave)throw new Error('Salvataggio BIM-CAD già in corso');
+  const receipt=new Promise((resolve,reject)=>{
+    const timer=window.setTimeout(()=>{
+      pendingBimCadSave=null;
+      reject(new Error('Salvataggio non confermato: verificare la griglia BIM-CAD di Preventivi.'));
+    },30000);
+    pendingBimCadSave={resolve,reject,timer};
+  });
+  try {
+    sendBimCadMessage('save',{expectedRevision:bimCadContext.revision,projectText});
+    await receipt;
+    markArchivioWebSaved();
+    setMainAiStatus('✓ BIM-CAD-Architettonico salvato nel preventivo · R'+bimCadContext.revision);
+  } catch(error) {
+    if(pendingBimCadSave){
+      window.clearTimeout(pendingBimCadSave.timer);
+      pendingBimCadSave=null;
+    }
+    throw error;
+  }
+}
+if(bimCadContext){
+  window.addEventListener('message',async event=>{
+    const m=event.data;
+    if(event.origin!==BIM_CAD_PREVENTIVI_ORIGIN||
+       event.source!==window.opener||!m||
+       m.namespace!=='preventivi-bimcad-v1'||
+       m.nonce!==bimCadContext.nonce||
+       m.projectId!==bimCadContext.projectId||
+       m.quoteId!==bimCadContext.quoteId)return;
+    if(m.type==='load'){
+      try {
+        if(!Number.isInteger(m.revision)||m.revision<0)throw new Error('Revisione non valida');
+        bimCadContext.revision=m.revision;
+        if(m.projectText){
+          if(typeof m.projectText!=='string'||m.projectText.length>5_000_000)
+            throw new Error('Documento BIM-CAD non valido');
+          await loadProjectTextIntoFrontend(m.projectText,{
+            fileName:'progetto-bim-cad-'+bimCadContext.projectId+'.termodel.txt',
+            buildPreview:true
+          });
+        }
+        activateCadPage();
+        setMainAiStatus('BIM-CAD-Architettonico collegato a Preventivi · R'+m.revision);
+      }catch(error){
+        setMainAiStatus('⚠ Apertura progetto BIM-CAD: '+error.message);
+        window.alert('Impossibile caricare il progetto BIM-CAD.\n'+error.message);
+      }
+    }else if(m.type==='load-error'){
+      setMainAiStatus('⚠ '+(m.error||'Apertura BIM-CAD non riuscita'));
+    }else if(m.type==='save-result'&&pendingBimCadSave){
+      const pending=pendingBimCadSave;
+      pendingBimCadSave=null;
+      window.clearTimeout(pending.timer);
+      if(m.ok&&Number.isInteger(m.revision)&&m.revision>bimCadContext.revision){
+        bimCadContext.revision=m.revision;
+        pending.resolve(m.revision);
+      }else pending.reject(new Error(m.error||'Salvataggio BIM-CAD non confermato'));
+    }
+  });
+  // The main application module is loaded; ask Preventivi for this project's revision.
+  Promise.resolve().then(()=>{
+    try {sendBimCadMessage('ready');}
+    catch(error){setMainAiStatus('⚠ '+error.message);}
+  });
+}
+
 const termodelDevelopmentAlias =
   termodelLaunchParams.get('sviluppo') === 'diego1960fetonte';
 // Alias esclusivamente per collaudo: non costituisce login o autorizzazione.
@@ -4553,6 +4648,10 @@ function downloadProjectText(text, fileName) {
 
 async function saveCurrentProject(saveAs = false, destination = 'auto') {
   let text = await buildCurrentProjectText();
+  if(bimCadContext && !saveAs){
+    await saveBimCadToPreventivi(text);
+    return;
+  }
   let state = getArchivioWebState();
   // Sostituisce il nome generico soltanto in modalità admin; preserva
   // i nomi assegnati dall'operatore e non cambia Non Registrato.
